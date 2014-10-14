@@ -1,0 +1,3420 @@
+/*
+'Scene Tools' MEL script
+
+Author: Carlos Rico Adega
+Date: January 13, 2013
+
+Only Tested on Windows.
+
+Supposed to work on OSX. Not tested.
+
+On Linux the playblast feature is not available. Also, not tested on Linux.
+
+SCRIPT NAME:
+
+craSceneTools.mel
+
+
+DESCRIPTION:
+	The script provides tools with the following features:
+		- Custom Open Scene Dialog with thumbnails, playblast, scene note display and referencing/importing options
+		- Reload Current/Last Opened Scene
+		- Save Scene Version
+		- Current Scene Info Window
+		- Scene Thumbnails and Scene Note creation
+		- Scene Info HUDS
+		- Create Shot Camera at persp position
+		- Playblast/Shot Window
+		- Create Scene Playblast
+		- View Scene Playblast
+		- Custom Reference File Editor (many features and remote editing, commandPort 7777 must be available)
+		- Channel/Node Control ( lock / hide attributes, lock objects)
+		- Filter/Select Node Types
+		- Playback Options
+		- Setup Render Resolution
+		- Setup Working Units (Space, Time)
+		- Reload Scene Textures
+		- ChannelBox Scene Tools Buttons (doesn't work if you already have your own buttons)	
+		- Autoload script at startup setup
+	
+LAUNCH SCRIPT (Creates Scene Tools Menu):
+
+       craSceneTools;
+
+    
+Change log:
+
+Version: 1.1.5
+Date: March 30, 2013
+	- Small fix. On linux complains about not finding a menuItem, not anymore.
+	
+Version: 1.1.4
+Date: March 23, 2013
+	- Now, Reload Last Opened Scene tells you which scene is going to be reloaded.
+	  
+Version: 1.1.3
+Date: Frebuary 3, 2013
+	- Fixed a bug that caused the thumbnails not being created when the scene
+	  name contains more than one dot (ie:  scene-1.1.3.ma) 
+	  
+Version: 1.1.2
+Date: January 31, 2013
+	- Fixed a bug that caused the thumbnail number 0 always to be recreated when 
+	  saving a scene. Now if the thumbnail 0 exists it is not recreated.
+	  
+Version: 1.1.1
+Date: January 28, 2013
+	- Fixed a bug that prevented keys from being selected in the Graph Editor 
+	  while the Referenced File Editor is running.
+
+Version: 1.1.0
+Date: January 13, 2013
+	- Changed the name of the storage directory, now is ".craData". 
+	  On Linux and OSX dot starting directories are not shown by default, 
+	  on windows the hidden attribute is set. Previous version thumbnails will
+	  not work unless "PROJECT_ROOT/data/craData" directory
+	  is renamed  to  "PROJECT_ROOT/data/.craData" 
+
+	- Added an option to choose where to store the thumbnails and notes data. 
+	  You can now choose to set it relative to the current project root (Only one 
+	  directory per project) or you can set it relative to the scene file 
+	  opened (One directory per scene location, this allows to view thumbnails 
+	  of files outside the current project but creates as many .craData directories
+	  as different scene locations)
+	  
+	 - Scene Info HUDs state mantained between maya sessions (via optionVar)
+	 
+Version: 1.0.1
+Date: January 11, 2013
+	- Update Scene Info Window Note when creating note from Open Scene Dialog.
+	
+Version: 1.0.0
+Date: January 10, 2013
+	- First Release.
+
+
+*/
+global proc craSceneTools(){
+	global string $gPlayBackSlider;
+	global string $gMainWindow;
+	if(!`optionVar -exists craAddChannelBoxButtonsOV`)
+		optionVar -iv craAddChannelBoxButtonsOV 0;
+	
+	if(!`optionVar -exists craAutoLoadSceneToolsOV`)
+		optionVar -iv craAutoLoadSceneToolsOV 0;
+	
+	if(!`optionVar -exists craSceneInfoOptionsOV`)
+		optionVar -iv craSceneInfoOptionsOV 0;
+	
+	if(!`optionVar -exists craSceneInfoHUDsOV`)
+		optionVar -iv craSceneInfoHUDsOV 0;
+	
+	if (`menu -q -exists craSceneToolsMenu`)
+		deleteUI craSceneToolsMenu;
+        
+	menu -to 1 -l "Scene Tools" -pmc "craSceneUtilsInitMenuItems" -p $gMainWindow craSceneToolsMenu;
+
+		menuItem -d 1;
+		menuItem -l "Open Scene" -ann "Open Scene Custom Dialog"-c "OpenScene";
+			menuItem -l "Open Scene Options" -ob 1 -c "OpenSceneOptions";
+		menuItem -l "Reload Scene" -ann "Reloads current scene or last opened scene if none is opened" -c "craReloadScene";
+		menuItem -l "Save Scene Version" -ann "Incremental save" -c "craSaveSceneVersion";
+		menuItem -d 1;
+		menuItem -l "Scene Info" -ann "Opens window with thumbnail and note preview, option box closes the UI" -c "craSceneFileInfo";
+			menuItem -ob 1 -l "Scene Info" -ann "Scene Info Options" -c "craSceneFileInfoOptionsUI";
+		menuItem -l "Scene Info HUDs" -cb `optionVar -q craSceneInfoOptionsOV` -ann "Toggle User, Frame, Current Scene and Current Project HUDs information " -c "craSceneInfoHUDs #1;optionVar -iv craSceneInfoHUDsOV #1" craSceneInfoHUDsMI;
+		menuItem -d 1;
+		menuItem -l "Create shotCamera at persp" -ann "Create shotCamera at persp camera position. Option Box looks through created camera" -command "craCreateShotCamera 0";
+			menuItem -ob 1 -ann "Create shotCamera at persp and look through it" -l "Create shotCamera at persp and look through it" -command "craCreateShotCamera 1";
+		menuItem -l "Create Scene Playblast" -ann "Creates a scene playblast and saves it in the current project playblast directory " -c "craCreateScenePlayblast" craCreateScenePlayblastMI;
+		menuItem -l "Playblast / Shot Window" -ann "Creates a UI to playblast the scene" -c "craCreateScenePlayblastWindow";
+			menuItem -ob 1 -l "Playblast / Shot Window Options" -ann "Creates a UI to playblast the scene" -c "craCreateScenePlayblastOptions" craCreateScenePlayblastOptionsMI;
+		menuItem -l "View Scene Playblast" -ann "Open scene playblast" -c "craViewScenePlayblast" craViewScenePlayblastMI;
+		menuItem -d 1;
+		menuItem -l "Reference File Editor" -ann "Opens Custom Reference File Editor" -c "craReferenceFileEditor";
+		menuItem -l "Open/Close Remote Edit Port" -ann "Opens or closes the commandPort used for remote editing" -c "craSetupRemoteEdit" craSetupRemoteEditMI;
+		menuItem -d 1;
+		menuItem -l "Channel/Node Control" -ann "Open UI to lock and hide attributes from channel box" -c "craChannelControl";
+		menuItem -d 1;
+		menuItem -l "Filter/Select Nodes" -ann "Open UI to lock and hide attributes from channel box" -c "craSelectionFilter";
+		menuItem -d 1;
+		menuItem -l "Reload Scene Textures" -ann "Reload selected object(s) texture(s), reload all textures if no object is selected" -c "craReloadTextures";
+		menuItem -d 1;
+		
+		menuItem -l "Playback Options" -ann "Change various playback and timeline options" -sm 1 -to 1;
+			menuItem -l "Interactive Playback" -c "InteractivePlayback;headsUpMessage -t 0.1  \"Interactive Playback\";";
+			menuItem -d 1;
+			menuItem -l "Real-Time" -c "craPlaybackOptions 0";
+			menuItem -l "Play Every Frame" -c "craPlaybackOptions 1";
+			menuItem -l "Play Every Frame, Max Real-Time" -c "craPlaybackOptions 2";
+			menuItem -d 1;
+			menuItem -l "Playback Once" -c "craPlaybackOptions 3" ;
+			menuItem -l "Playback Oscillate" -c "craPlaybackOptions 4";
+			menuItem -l "Playback Continuous" -c "craPlaybackOptions 5";
+			menuItem -d 1;
+			menuItem -label "Timeline Snapping" -command "global string $gPlayBackSlider; timeControl -e -snap #1 $gPlayBackSlider" -checkBox `timeControl -q -snap $gPlayBackSlider` craTimelineSnappingMI;
+			menuItem -d 1;
+			menuItem -label "Update All Views" -command "craPlaybackOptions 6"; 
+			menuItem -label "Update Active View" -command "craPlaybackOptions 7";
+			
+		setParent -m ..;
+		
+		menuItem -l "Render Resolution" -ann "Change output file render resolution" -sm 1 -to 1 -p "craSceneToolsMenu";
+			
+			menuItem -l "320x240" -c "craSetRenderResolution(320,240,1.333)";
+			menuItem -l "640x480" -c "craSetRenderResolution(640,480,1.333)";
+			menuItem -l "DCP (1998x1080)" -c "craSetRenderResolution(1998,1080,1.850)";
+			menuItem -l "HD 720" -c "craSetRenderResolution(1280,720,1.778)";
+			menuItem -l "HD 1080" -c "craSetRenderResolution(1920,1080,1.778)";
+			menuItem -l "NTSC (720x486)" -c "craSetRenderResolution(720,486,1.481);currentUnit -t ntsc;print \"\\n30 fps\"";
+			menuItem -l "PAL (720x576)" -c "craSetRenderResolution(720,576,1.250);currentUnit -t pal;print \"\\n25 fps\"";
+			menuItem -l "Widescreen PAL (1024x576)" -c "craSetRenderResolution(1024,576,1.778);currentUnit -t pal;print \"\\n25 fps\"";
+			menuItem -d 1;
+			menuItem -l "1k Square" -c "craSetRenderResolution(1024,1024,1)";
+			menuItem -l "2k Square" -c "craSetRenderResolution(2048,2048,1)";
+			menuItem -l "3k Square" -c "craSetRenderResolution(3072,3072,1)";
+			menuItem -l "4k Square" -c "craSetRenderResolution(4096,4096,1)";
+			menuItem -d 1;
+			menuItem -l "Letter" -c "craSetRenderResolution(2550,3300,0.773)";
+			menuItem -l "A4" -c "craSetRenderResolution(2480,3508,0.707)";   
+		setParent ..;
+		
+		menuItem -l "Working Units" -ann "Change space units (measure units) and time units (frames per second)" -sm 1 -to 1 -p "craSceneToolsMenu";
+			menuItem -sm 1 -to 1 -l "Space";
+				menuItem -l "millimeter" -c "craSceneUnits \"millimeter\"";
+				menuItem -l "centimeter" -c "craSceneUnits \"centimeter\"";
+				menuItem -l "meter" -c "craSceneUnits \"meter\"";
+				menuItem -d 1;
+				menuItem -l "inch" -c "craSceneUnits \"in\"";
+				menuItem -l "foot" -c "craSceneUnits \"ft\"";
+				menuItem -l "yard" -c "craSceneUnits \"yd\"";
+				
+			setParent -m ..;
+		
+			menuItem -l "FPS" -sm 1 -to 1;
+				menuItem -l "15 - game" -c "currentUnit -t game;print \"\\n15 fps\"";
+				menuItem -l "24 - film" -c "currentUnit -t film;print \"\\n24 fps\"";
+				menuItem -l "25 - pal" -c "currentUnit -t pal;print \"\\n25 fps\"";
+				menuItem -l "30 - ntsc" -c "currentUnit -t ntsc;print \"\\n30 fps\"";
+				menuItem -l "48 - show" -c "currentUnit -t show;print \"\\n48 fps\"";
+				menuItem -l "50 - palf" -c "currentUnit -t palf;print \"\\n50 fps\"";
+				menuItem -l "60 - ntscf" -c "currentUnit -t ntscf;print \"\\n60 fps\"";   
+				menuItem -l "120" -c "currentUnit -t 120fps;print \"\\n120 fps\"";
+			setParent -m ..;
+		setParent -m ..;
+		
+			
+		setParent -m ..;
+		setParent ..;
+		
+		setParent -menu "craSceneToolsMenu";
+		menuItem -d 1;
+		menuItem -cb `optionVar -q craAddChannelBoxButtonsOV` -l "Add ChannelBox Tool Icons" -ann "Add Tool icons to the ChannelBox" -c "craAddChannelBoxSceneToolButtons #1;optionVar -iv craAddChannelBoxButtonsOV #1";
+		menuItem -cb `optionVar -q craAutoLoadSceneToolsOV` -l "Autoload Scene Tools" -ann "Adds craSceneTools to your userSetup.mel to auto load tools on Maya Start-Up" -c "craAutoLoadSceneTools #1;optionVar -iv craAutoLoadSceneToolsOV #1;" craAutoloadSceneToolsCB;
+		menuItem -d 1;
+		menuItem -l "About: Carlos Rico Adega 2013" -ann "About this script, option box deletes this menu" -en 1 -c "craAboutScript";;
+			menuItem -ob 1 -l "Delete this Menu" -c "evalDeferred -lp (\"if (`menu -q -exists craSceneToolsMenu`) deleteUI craSceneToolsMenu;\")";
+			
+	setParent -m ..;
+	 
+	craAddChannelBoxSceneToolButtons `optionVar -q craAddChannelBoxButtonsOV`;
+	craSceneInfoHUDs `optionVar -q craSceneInfoHUDsOV`;
+	
+	if(`about -linux`)
+		warning "Playblast utils not supported on Linux.";
+	
+	
+}
+
+
+
+global proc craSceneInfoHUDs(int $state)
+{
+	if($state)
+	{
+		if(`headsUpDisplay -exists craSceneHUDsProjectHUD`)
+			headsUpDisplay -rem craSceneHUDsProjectHUD;
+		
+		if(`headsUpDisplay -exists craSceneHUDsFrameHUD`)
+			headsUpDisplay -rem craSceneHUDsFrameHUD;
+		
+		if(`headsUpDisplay -exists craSceneHUDsSceneHUD`)
+			headsUpDisplay -rem craSceneHUDsSceneHUD;
+		
+		if(`headsUpDisplay -exists craSceneHUDsUserHUD`)
+			headsUpDisplay -rem craSceneHUDsUserHUD;
+		
+		headsUpDisplay 
+			-section 7 -block 1 -blockSize "small" 
+			-dfs "small"
+			-ao 1
+			-ba "center"
+			-label "Project :" 
+			-labelFontSize "small" 
+			-command "workspace -q -rd" -atr
+			craSceneHUDsProjectHUD;
+		
+		headsUpDisplay 
+		
+			-section 3 -block 0 -blockSize "small" 
+			-dfs "small"
+			-ba "right"
+			-ao 1
+			-label "Frame :" 
+			-labelFontSize "small" 
+			-command "currentTime -q" -atr
+			craSceneHUDsFrameHUD;
+			
+		
+		headsUpDisplay 
+			-section 7 -block 2 -blockSize "small" 
+			-dfs "small"
+			-ao 1
+			-ba "center"
+			-label "Scene :" 
+			-labelFontSize "small" 
+			-command "file -q -sn" -atr
+			craSceneHUDsSceneHUD;
+		
+		headsUpDisplay 
+			-section 1 -block 0 -blockSize "small" 
+			-dfs "small"
+		       -ao 1
+			-ba "center"
+			-label ("User : ")
+			-command "getenv \"USER\""
+			-atr
+			-labelFontSize "small" 
+			craSceneHUDsUserHUD;
+			
+	}
+	else
+	{
+		if(`headsUpDisplay -exists craSceneHUDsProjectHUD`)
+			headsUpDisplay -rem craSceneHUDsProjectHUD;
+		
+		if(`headsUpDisplay -exists craSceneHUDsFrameHUD`)
+			headsUpDisplay -rem craSceneHUDsFrameHUD;
+		
+		if(`headsUpDisplay -exists craSceneHUDsSceneHUD`)
+			headsUpDisplay -rem craSceneHUDsSceneHUD;
+		
+		if(`headsUpDisplay -exists craSceneHUDsUserHUD`)
+			headsUpDisplay -rem craSceneHUDsUserHUD;
+	}
+
+}
+
+
+global proc craReloadScene(){
+	
+	if(`file -q -loc` == "unknown")
+  {
+      string $recentFiles[] = `optionVar -query "RecentFilesList"`;	    
+      if(`confirmDialog -title "Reload Scene" -defaultButton "OK" -message ("Reload Last Opened Scene?\n\n" + $recentFiles[size($recentFiles)-1]) -cancelButton "Cancel" -dismissString "Cancel" -button "OK" -button "Cancel"` == "OK")
+      {
+          
+      		file -f -o $recentFiles[size($recentFiles)-1];
+    	}
+    
+	} 
+	else
+	{
+		if(`confirmDialog -title "Reload Scene" -defaultButton "OK" -message "Reload Current Scene?" -cancelButton "Cancel" -dismissString "Cancel" -button "OK" -button "Cancel"` == "OK")
+			file -f -o `file -q -loc`;
+	}
+}
+
+
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+// craReferenceFileEditor start 
+global proc craReferenceFileEditor(){
+	string $mySel[] = `ls -sl`;
+	string $craReferencedFileRN = "";
+	string $craReferencedFile = "";
+	if(size($mySel)){
+		if(`referenceQuery -inr $mySel[0]`){
+			$craReferencedFile = `referenceQuery -f $mySel[0]`;
+			$craReferencedFileRN = `referenceQuery -rfn $craReferencedFile`;
+		}
+	}
+	string $buffer[];
+	int $numTokens = `tokenize $craReferencedFile "{" $buffer`;
+	$craReferencedFile = $buffer[0];
+
+	if (`window -exists craRefFileWin`)
+		deleteUI craRefFileWin;
+	
+	window -s 0 -t ("Reference File Editor [" + $craReferencedFileRN + "]") -tlb 1 craRefFileWin;
+	columnLayout -adj 1 craRefEditorCL;
+	
+	rowLayout -h 21 -nc 4 -adj 3;
+		nodeIconButton -h 20 -w 20 -c "ReferenceEditor" -i "refEdFileList.png" -ann "Open Reference Editor";
+		nodeIconButton -h 20 -w 20 -c "CreateReference" -i "createReference.png" -ann "Create Reference";
+		textField-h 20  -w 500 -ed 0 -text $craReferencedFile craRefFilePath;
+		nodeIconButton  -bgc .4 .4 .4 -h 20 -w 20 -i "pickOtherObj.png" -ann "About" -c "craAboutScript";
+	setParent ..;
+	
+	rowLayout -h 21 -nc 7 -adj 1 craRefEditRow1RL;
+		button -h 20 -w 70 -l "Remote Edit" -ann "Edit in other Maya session" -c "craRemoteEditReference";
+		popupMenu;
+	
+		if (!`commandPort -q "127.0.0.1:7777"`) 
+			menuItem -l "Open commandPort 7777" -c "craSetupRemoteEdit;if (!(`commandPort -q \"127.0.0.1:7777\"`))menuItem -e -l \"Close commandPort 7777\" craSetupRemoteEditRefMI;else menuItem -e -l \"Open commandPort 7777\" craSetupRemoteEditRefMI;" craSetupRemoteEditRefMI;
+		
+		else 
+			menuItem -l "Close commandPort 7777" -c "craSetupRemoteEdit;if ((`commandPort -q \"127.0.0.1:7777\"`))menuItem -e -l \"Close commandPort 7777\" craSetupRemoteEditRefMI;else menuItem -e -l \"Open commandPort 7777\" craSetupRemoteEditRefMI;" craSetupRemoteEditRefMI;
+		
+		setParent -m ..;
+		
+		button -h 20 -w 70 -l "Open" -ann "Open Referenced Scene File" -c "craOpenReference";
+		button -h 20 -w 70 -l "Import" -ann "Import Selected Reference" -c "craImportReference";
+		button -h 20 -w 70 -l "Duplicate" -ann "Duplicate Reference. Make another reference from current selected reference" -c "craDuplicateReference";
+		button -h 20 -w 70 -l "Remove" -ann "Remove current selected references" -c "craRemoveReference";
+		button -h 20 -w 70 -l "Replace" -ann "Replace selected reference" -c "craReplaceReference";
+		button -h 20 -w 150 -label "---- no reference node ----" -ann "Select reference node" craRefFileRN_BTN;
+	setParent ..;
+	
+	rowLayout -h 21 -nc 6 -adj 6 craRefEditRow2RL;
+		button -h 20 -w 70 -l "Reload" -ann "Reload current selected reference" -c "craReloadReference" craReloadRefBTN;
+		popupMenu;
+				menuItem -l "Reload All Reference Instances" -c "craReloadAllReferenceInstances";
+				menuItem -d 1;
+				menuItem -l "Reload All References" -c "craReloadAllReferences";
+			setParent -m;
+		
+		button -h 20 -w 70 -l "Load" -ann "Load unloaded references" -c "craUnloadedReferences" craLoadRefBTN;
+		button -h 20 -w 70 -l "Unload" -ann "Unload selected references" -c "craUnloadReference" craUnloadRefBTN;
+		button -h 20 -w 120 -l "Referenced Files" -c "craListReferences 1" craListRefsBTN;
+			popupMenu;
+				menuItem -l "Referenced Files (file names)" -c "craListReferences 0";
+			setParent -m;
+		button -h 20 -w 120 -l "Reference Edits" -c "craListRefEdits" craListRefEditsBTN;
+		textField -h 20 -w 150 -ed 0 -text "" -ann "Selected object name" craSelectionTF;
+	setParent ..;
+		
+	textField -e -it "" -insertionPosition 1 craSelectionTF;
+	textField -e -it "" -insertionPosition 1 craRefFilePath;
+	
+	showWindow craRefFileWin;
+	scriptJob -e "SelectionChanged" "craUpdateReference" -p craRefFileWin;
+	
+	craUpdateReference;
+}
+
+
+global proc craListRefEdits(){
+	string $mySel[] = `ls -sl`;
+	
+	if(size($mySel)){
+		if(`referenceQuery -inr $mySel[0]`)
+			referenceEditsWindow `referenceQuery -f $mySel[0]` false;
+		else
+			error "No referenced object selected.";
+		
+	}
+	else
+	error "No object selected.";
+	
+	select -r $mySel;
+}
+
+global proc craDuplicateReference(){
+	string $mySel[] = `ls -sl`;
+	if(size($mySel)){
+		if(`referenceQuery -inr $mySel[0]`)
+			file -f -namespace (basenameEx(`textField -q -text craRefFilePath`)) -r `textField -q -text craRefFilePath`;
+	}
+		
+	select -r $mySel;
+}
+
+global proc craRemoteEditReference(){
+	if(`textField -q -text craRefFilePath` != ""){
+		python("import socket\nmaya = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\nmaya.connect((\"127.0.0.1\", 7777))\nmaya.send('file -f -o \"" + `textField -q -text craRefFilePath` + "\"')\nmaya.close()");
+			
+	} else 
+		error "No file selected";
+}
+
+global proc craReplaceReference(){
+
+	string $mySel[] = `ls -sl`;
+	string $craReplaceRefFile = `fileDialog -dm "*.ma;*.mb"`;
+	if($craReplaceRefFile != "")
+		file -loadReference `referenceQuery -rfn $mySel[0]` -f $craReplaceRefFile;
+	
+}
+
+global proc craUnloadReference(){
+	string $sel[] = `ls -sl`;
+	for($i in $sel){
+		if(`objExists $i`)
+			file -unloadReference `referenceQuery -rfn $i`;
+	}
+	
+	if (`window -exists craUnloadedReferencesWin`)
+		craUnloadedReferences;
+}
+
+global proc craOpenReference(){
+
+	string $mySel[] = `ls -sl`;
+	if(`textField -q -text craRefFilePath` != "")
+		file -f -o `referenceQuery -f $mySel[0]`;
+	else
+		warning "No referenced asset selected";
+}
+
+global proc craImportReference(){
+
+	string $mySel[] = `ls -sl`;
+	if(`textField -q -text craRefFilePath` != "")
+		file -referenceNode `referenceQuery -rfn $mySel[0]` -importReference `referenceQuery -f $mySel[0]`;
+	else
+		OpenScene;
+	select -r $mySel;
+	
+}
+
+global proc craReloadReference(){
+	
+	string $mySel[] = `ls -sl`;
+	
+	for($i in $mySel){
+		file -loadReference `referenceQuery -rfn $i`;
+	}
+	select -r $mySel;
+}
+
+global proc craReloadAllReferences(){
+	
+	string $mySel[] = `ls -sl`;
+	int $reloadedReferences = 0;
+	string $references[] = `ls -type "reference"`;
+		
+	for($refNode in $references){
+		if(`gmatch $refNode "*_UNKNOWN_REF_NODE_*"` || `gmatch $refNode "*sharedReferenceNode*"`)
+			continue;
+		file -loadReference $refNode;
+		$reloadedReferences++;
+	}
+	print ($reloadedReferences + " references reloaded.");
+	select -r $mySel;
+}
+
+
+global proc craReloadAllReferenceInstances(){
+	
+	string $mySel[] = `ls -sl`;
+	
+	int $reloadedReferences = 0;
+	
+	for($i in $mySel){
+		string $referenceNode = `referenceQuery -rfn $i`;
+		string $filename[];
+		string $rawFilename = `referenceQuery -f $referenceNode`;
+		tokenize $rawFilename "{" $filename;
+		string $references[] = `ls -type "reference"`;
+		
+		for($refNode in $references)
+		{
+			if(`gmatch $refNode "*_UNKNOWN_REF_NODE_*"` || `gmatch $refNode "*sharedReferenceNode*"`)
+				continue;
+			string $referenceNode2 = `referenceQuery -rfn $refNode`;
+			string $filename2[];
+			string $rawFilename2 = `referenceQuery -f $referenceNode2`;
+			tokenize $rawFilename2 "{" $filename2;
+			
+			if ($filename2[0] == $filename[0]){
+				file -loadReference `referenceQuery -rfn $refNode`;
+				$reloadedReferences++;
+			}
+		}
+	}
+	
+	print ($reloadedReferences + " references reloaded.");
+	
+	select -r $mySel;
+}
+
+global proc craRemoveReference(){
+	string $sel[] = `ls -sl`;
+	for($obj in $sel){
+		if(`objExists $obj` && `referenceQuery -inr $obj`)
+			file -removeReference `referenceQuery -f $obj`;
+	}
+}
+
+global proc craUpdateReference(){
+
+	string $mySel[] = `ls -sl`;
+	string $craReferencedFileRN = "";
+	string $references[] = `ls -type "reference"`;
+	string $craReferencedFile = "";
+	if(size($mySel)){
+		if(`referenceQuery -inr $mySel[0]`){
+			$craReferencedFile = `referenceQuery -f $mySel[0]`;
+			$craReferencedFileRN = `referenceQuery -rfn $craReferencedFile`;
+		}
+	}
+	string $buffer[];
+	int $numTokens = `tokenize $craReferencedFile "{" $buffer`;
+	$craReferencedFile = $buffer[0];
+	textField -e -text $craReferencedFile craRefFilePath;
+	
+	if($craReferencedFileRN != "") 
+		button -e -label $craReferencedFileRN -c ("select -r `button -q -label craRefFileRN_BTN`") craRefFileRN_BTN;
+	else
+		button -e -label "---- no reference node ----" -c "" craRefFileRN_BTN;
+	
+	
+	if(size($mySel)){
+		if(`referenceQuery -inr $mySel[0]`){
+			textField -e -text $mySel[0]  craSelectionTF;
+			rowLayout -e -en 1 craRefEditRow1RL;
+			button -e -en 1 craReloadRefBTN;
+			button -e -en 1 craUnloadRefBTN;
+			button -e -en 1 craListRefEditsBTN;
+			textField -e -en 1 craSelectionTF;
+		}
+		else {
+			textField -e -text "" craSelectionTF;
+			rowLayout -e -en 0 craRefEditRow1RL;
+			button -e -en 0 craReloadRefBTN;
+			button -e -en 0 craUnloadRefBTN;
+			button -e -en 0 craListRefEditsBTN;
+			textField -e -en 0 craSelectionTF;
+		}
+	}
+	else
+	{
+		textField -e -text "" craSelectionTF;
+		rowLayout -e -en 0 craRefEditRow1RL;
+		button -e -en 0 craReloadRefBTN;
+		button -e -en 0 craUnloadRefBTN;
+		button -e -en 0 craListRefEditsBTN;
+		textField -e -en 0 craSelectionTF;
+	}
+		
+	textField -e -it "" -insertionPosition 1 craSelectionTF;
+	textField -e -it "" -insertionPosition 1 craRefFilePath;
+	
+	if(!size(`craCheckUnloadedReferences`))
+		button -e -en 0 craLoadRefBTN;
+	else
+		button -e -en 1 craLoadRefBTN;
+	
+	if(!size($references))
+		button -e -en 0 craListRefsBTN;
+	else 
+		button -e -en 1 craListRefsBTN;
+	
+	window -e -t ("Reference File Editor [" + $craReferencedFileRN + "]") craRefFileWin;
+	
+	if (!`commandPort -q "127.0.0.1:7777"`) 
+		menuItem -e -l "Open commandPort 7777" -c "craSetupRemoteEdit" craSetupRemoteEditMI;
+	else 
+		menuItem -e -l "Close commandPort 7777" -c "craSetupRemoteEdit" craSetupRemoteEditMI;
+	
+}
+global proc string[] craCheckUnloadedReferences()
+{
+	string $unloadedReferences[];
+	string $refs[] =`ls -type "reference"`;
+	for($i in $refs){
+		if(`gmatch $i "*_UNKNOWN_REF_NODE_*"` || `gmatch $i "*sharedReferenceNode*"`)
+			continue;
+		if(catchQuiet(`referenceQuery -il $i`))
+			continue;
+		if(!`referenceQuery -il $i`){
+			string $buffer[];
+			string $shortName = `referenceQuery -f -shn $i`;
+			tokenize $shortName "{" $buffer;
+			$unloadedReferences[size($unloadedReferences)] = `referenceQuery -f $i`;
+		}
+	}
+	
+	return $unloadedReferences;
+}
+	
+global proc craUnloadedReferences(){
+	if (`window -exists craUnloadedReferencesWin`)
+		deleteUI craUnloadedReferencesWin;
+	
+	window -tlb 1 -w 750 -s 0 -t "Unloaded References" craUnloadedReferencesWin;
+	frameLayout -lv 0 -mw 3 -mh 3;
+	columnLayout -adj 1;
+	columnLayout -w 750 -adj 1;
+	separator;
+
+	textScrollList -dcc "craLoadSelectedReferences 0" -h 385 -ams 1 craUnloadedReferencesTSL;
+	
+	string $refs[] =`ls -type "reference"`;
+	for($i in $refs){
+		if(`gmatch $i "*_UNKNOWN_REF_NODE_*"` || `gmatch $i "*sharedReferenceNode*"`)
+			continue;
+		if(catchQuiet(`referenceQuery -il $i`))
+			continue;
+		if(!`referenceQuery -il $i`){
+			string $buffer[];
+			string $shortName = `referenceQuery -f -shn $i`;
+			tokenize $shortName "{" $buffer;
+			textScrollList -e -a ("  " + $i + "   ---   " + $buffer[0] + "   ---   " + `referenceQuery -f $i`) craUnloadedReferencesTSL;
+		}
+	}
+	separator -h 5 -st "none";
+	rowLayout -nc 2 -adj 2;
+	button -l "Load Selected References" -w 350 -c ("craLoadSelectedReferences 0");
+	button -l "Load All References" -c ("craLoadSelectedReferences 1;deleteUI craUnloadedReferencesWin");
+	                           
+	showWindow craUnloadedReferencesWin;
+}
+
+global proc craLoadSelectedReferences( int $mode ){
+	string $refs[];
+	if($mode)
+		$refs = `textScrollList -q -ai craUnloadedReferencesTSL`;
+	else
+		$refs = `textScrollList -q -si craUnloadedReferencesTSL`;
+	
+	if(size($refs)){
+		for($ref in $refs){
+			string $buffer[];
+			tokenize $ref " " $buffer;
+			file -lr $buffer[0]; 
+			textScrollList -e -ri $ref craUnloadedReferencesTSL;
+		}
+	}
+	
+	craUpdateReference;
+}
+
+
+global proc string[] craListReferences(int $fullPath){
+	
+	string $sceneRefs[];
+	
+	if(size(`file -q -r`)){
+		for ($i in `file -q -r`){
+			string $file = $i;
+			string $buffer[];
+			string $buffer2[];
+			int $numTokens = `tokenize $file "{" $buffer`;
+			if($fullPath)
+				$sceneRefs[size($sceneRefs)] = $buffer[0];
+			else {
+				int $numTokens2 = `tokenize $buffer[0] "/" $buffer2`;
+				$sceneRefs[size($sceneRefs)] = $buffer2[size($buffer2)-1];
+				print $buffer2[size($buffer2)];
+			}
+		}
+		$sceneRefs = stringArrayRemoveDuplicates($sceneRefs);
+		$sceneRefs = sort($sceneRefs);
+	} else error "No References found.";
+	
+	if (`window -exists craListReferencesWin`)
+		deleteUI craListReferencesWin;
+	window -s 1 -w 650 -t ("Referenced Files (" + size($sceneRefs) + ")") craListReferencesWin;
+	columnLayout -adj 1 -w 650 ;
+	
+	for($ref in $sceneRefs){
+		if(`textScrollList -q -exists craRefsTSL`)
+			textScrollList -e -ams 1 -w 648 -h 478 -append $ref craRefsTSL;
+		else
+			textScrollList -ams 1 -w 648 -h 478 -append $ref craRefsTSL;
+	}
+	
+	window -e -s 0 craListReferencesWin;
+	showWindow craListReferencesWin;
+	return $sceneRefs;		
+}
+
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+// craReferenceFileEditor end
+
+
+
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+//overrides the default behavior of the Open Scene file dialog with modified options
+// OpenScene start
+
+global proc OpenScene()
+{
+	string $startDir;
+	
+	if(dirname(`file -q -loc`) == "")
+		$startDir = (`workspace -q -rd` + `workspace -q -fre "mayaAscii"`);
+	else
+		$startDir = dirname(`file -q -loc`);
+	
+	string $file[] = `fileDialog2
+			-returnFilter 1
+			-dialogStyle 2
+			-caption "Open / Import / Reference File"
+			-fileMode 4
+			-okCaption "Open"
+			-optionsUICreate "craOptionsUISetup"
+			-optionsUIInit "craOptionsUIInitValues"
+			-selectionChanged "craSelectionChangedCallback"
+			-optionsUICommit "craOptionsUICallback"
+			-fileTypeChanged "craCurrentFileTypeOption"
+			-fileFilter "All Files (*.*)(*);;Audio (*.wav)(*.wav);;FBX (*.fbx)(*.fbx);;Maya Binary (*.mb)(*.mb);;Maya Files (*.ma *.mb *.fbx *.wav *.obj) (*.ma *.mb *.fbx *.wav *.obj);;Maya Scenes (*.ma *.mb)(*.ma *.mb);;Maya ASCII (*.ma)(*.ma);;Wavefront Object (*.obj)(*.obj)"
+			-selectFileFilter "Maya Files"
+			-dir $startDir`;
+	
+	int $len = size($file);
+		
+	if( $len > 0 && $file[0] != "" )
+	{
+		string $path = fromNativePath($file[0]);
+		file -f -o $path;
+		addRecentFile($path, "Best Guess");
+		print ("File: " + $path + "\n");
+	}
+		
+}
+
+global proc SaveScene(){
+	
+	checkForUnknownNodes(); 
+	FileMenu_SaveItem;
+	
+	string $craThumbnail = "craThumbnail";
+	string $craData = ".craData";
+	
+	string $fileDir;
+	string $filename = `file -q -ns`;
+	string $file = `file -q -loc`;
+	
+	if(`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = dirname($file);
+	if(!`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = (`workspace -q -rd` + "data");
+	
+	string $finalPath = ( $fileDir + "/" + $craData + "/" + $craThumbnail + "/" + $filename +"/" );
+	
+	if(!`file -q -exists ( $finalPath + $filename + "_T0.png" )`)
+	{
+		 
+		craSaveSceneThumbDoIt 0;
+	}
+		
+	craRefreshSceneInfo;
+	craRefreshPlaybastItems;
+}		
+
+
+global proc SaveSceneAs(){
+	
+	checkForUnknownNodes(); 
+	projectViewer SaveAs;
+	
+	string $craThumbnail = "craThumbnail";
+	string $craData = ".craData";
+	
+	string $fileDir;
+	string $filename = `file -q -ns`;
+	string $file = `file -q -loc`;
+	
+	if(`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = dirname($file);
+	if(!`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = (`workspace -q -rd` + "data");
+	
+	string $finalPath = ( $fileDir + "/" + $craData + "/" + $craThumbnail + "/" + $filename +"/" );
+
+	if(!`file -q -exists ( $finalPath + "/" + $filename + "_T0.png" )`)
+	{
+		 
+		craSaveSceneThumbDoIt 0;
+	}
+	
+	craRefreshSceneInfo;
+	craRefreshPlaybastItems;
+}
+
+global proc craOptionsUISetup(string $parent)
+{
+	setParent $parent;
+	
+	formLayout -w 492 craCustomOpenSceneDialogFL;
+	columnLayout -adj 1 craFilenameRL;
+		frameLayout -mw 10 -mh 5 -lv 0 -bs "etchedIn";
+			rowLayout -nc 2 -cw 1 70 -adj 2 craCurrentProjectNameRL;
+				text -label "Project Path: " craCurrentProjectText;
+				textField -ed 0 -text (toNativePath (`workspace -q -rd`)) craProjectText;
+			setParent ..;
+			rowLayout -nc 2 -cw 1 70 -adj 2 craFileInfoRL;
+				text -label "Current File: ";
+				textField -ed 0 craFilename;
+			setParent ..;
+		setParent ..;
+	setParent ..;
+	
+	frameLayout -mw 2 -mh 2 -lv 0 -bs "etchedIn" craFileImageFL;
+		tabLayout -w 485 -h 295 craFileImageTL;
+			image -en 0 -w 480 -h 270 -image "invisibleCursor.png" "craNoSceneThumbnail";
+		setParent ..;
+		tabLayout -e -tabLabel "craNoSceneThumbnail" "No File Selected" craFileImageTL;
+	setParent ..;
+			
+	columnLayout -adj 1 craSceneNoteCL;
+		frameLayout -mw 10 -lv 0 -bs "etchedIn";
+			rowLayout -nc 4 -adj 1;
+				text -l "" ;
+				text -l "Scene Note   " craNotaEscenaTXT;
+				symbolButton -ann "Save Note" -image "save.png" -c "craSaveSceneNote";
+				symbolButton -ann "Delete Note" -image "removeRenderable.png" -c "craDeleteSceneNote";
+			setParent ..;
+		setParent ..;
+		separator -h 5 -style "none";
+	setParent ..;
+		
+	scrollField -ww 1 -h 1 -ec "craSaveSceneNote" craSceneNoteSF;
+	
+	if(!`optionVar -exists craFileOptionsFLStateOV`)
+		optionVar -iv craFileOptionsFLStateOV 0;	
+	
+	int $frameLayoutState = `optionVar -q craFileOptionsFLStateOV`;
+	
+	frameLayout 
+		-cll 1
+		-cl $frameLayoutState
+		-mw 5
+		-mh 5
+		-l "File Options" 
+		-cc "optionVar -iv craFileOptionsFLStateOV `frameLayout -q -cl craCustomOptionsFL`"
+		-ec "optionVar -iv craFileOptionsFLStateOV `frameLayout -q -cl craCustomOptionsFL`"
+	craCustomOptionsFL;
+	
+	rowLayout -nc 4 -adj 3;
+		button  -l "Import" -c "craImportFile";
+		button -l "Reference" -c "craReferenceFile";
+		separator -st "none";
+		frameLayout -bs "etchedIn" -h 23 -lv 0 -mw 20;
+			iconTextButton -ann "Linked[In] Profile" -h 20 -st "textOnly" -l "  About: Carlos Rico Adega 2013  " -c "showHelp -absolute \"http://www.linkedin.com/pub/carlos-rico/6/58/325\"";
+			popupMenu;
+				menuItem -l "Free Downloads" -ann "Free downloads from CreativeCrash.com" -c "showHelp -absolute \"http://www.creativecrash.com/users/charliewales/contributions?tab=free_downloads\"";
+			setParent -m ..;
+		setParent ..;
+	setParent ..;
+	
+	columnLayout -adj 1 craNamespaceCL;
+		rowLayout -nc 2 -cw 1 100 -adj 2 craNamespaceRL;
+			checkBox -l "Use namespace" -v 1 craUseNamespace;
+			textField -ed 1 craNamespacePrefix;
+		setParent ..;
+	setParent ..;
+	setParent ..;
+	
+	frameLayout -bs "etchedIn" -lv 0 -mw 5 craMoreOptionsRL;
+		rowLayout -h 24 -nc 2;
+			nodeIconButton -h 20 -w 110 -style "iconAndTextHorizontal" -image "renderable_dim.png" -en 1 -bgc .4 .4 .4 -l "  No Playblast" -c "" craOpenSceneViewPlayblastBTN;
+			nodeIconButton -en 0 -w 26 -h 20 -bgc .4 .4 .4 -ann "Delete Scene Playblast" -i "removeRenderable.png"  -c "craOpenSceneDeletePlayblast" craOpenSceneDeletePlayblastBTN;
+		setParent ..;
+	setParent ..;
+	
+	formLayout -e
+		
+		-af craFilenameRL "top" 0
+		-af craFilenameRL "right" 0
+		-af craFilenameRL "left" 0
+		
+		-ac craFileImageFL "top" 5 craFilenameRL
+		-af craFileImageFL "right" 0
+		-af craFileImageFL "left" 0
+		
+		-ac craSceneNoteCL "top" 5 craFileImageFL
+		-ac craSceneNoteCL "left" 5 craMoreOptionsRL
+		-af craSceneNoteCL "right" 0
+		
+		-ac craSceneNoteSF "top" 0 craSceneNoteCL
+		-ac craSceneNoteSF "bottom" 5 craCustomOptionsFL
+		-af craSceneNoteSF "right" 0
+		-af craSceneNoteSF "left" 0
+		
+		-ac craMoreOptionsRL "top" 7 craFileImageFL
+		-af craMoreOptionsRL "left" 2
+		
+		-af craCustomOptionsFL "right" 0
+		-af craCustomOptionsFL "left" 0
+		-af craCustomOptionsFL "bottom" 0
+	
+	craCustomOpenSceneDialogFL;
+	
+}
+
+global proc craOptionsUICallback(string $parent)
+{
+       setParent $parent;
+	
+       // When the UI is going away we usually save the state in optionVar's
+       // int $intValue = `intSlider -query -value mbIntSlider`;
+       // optionVar -intValue mbIntSliderOption $intValue;
+}
+
+global proc craOptionsUIInitValues(string $parent, string $filterType)
+{
+	setParent $parent;
+	
+	print ("Current file filter: " + $filterType + "\n");
+	
+	// Probably make sure optionVar's or whatever are initialized here...
+	
+}
+
+global proc craCurrentFileTypeOption(string $parent, string $filterType)
+{
+	print ("File filter switched to: " + $filterType + "\n");
+}
+
+global proc craSelectionChangedCallback(string $parent, string $selection)
+{	
+	textField -e -ann `toNativePath $selection` -text `toNativePath $selection` craFilename;
+	textField -e -text `basenameEx $selection` craNamespacePrefix;
+	textField -e -text (toNativePath(`workspace -q -rd`)) craProjectText;
+	string $fileDir;
+	
+	if(`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = dirname($selection);
+	if(!`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = (`workspace -q -rd` + "data");
+	
+	string $craThumbnails[] = getFileList("-folder",($fileDir + "/.craData/craThumbnail/" + `basenameEx $selection` + "/"),"-filespec", (`basenameEx $selection` + "_T*.png"));
+	if(size($craThumbnails)){
+		for($thumb in `tabLayout -q -ca craFileImageTL`)
+			deleteUI $thumb;
+		for ($i=0;$i<size($craThumbnails);$i++){
+				string $craThumb = ( $fileDir + "/.craData/craThumbnail/" + `basenameEx $selection` + "/" + $craThumbnails[$i]);
+				image -w 480 -h 270 -p "craFileImageTL" -image ( $fileDir + "/.craData/craThumbnail/" + `basenameEx $selection` + "/" + $craThumbnails[$i]) ("craSceneThumbnail" + $i);
+				string $buffer[];
+				int $numTokens = `tokenize $craThumbnails[$i] "_" $buffer`;
+				tabLayout -e -tabLabel ("craSceneThumbnail" + $i) ("  " + `substituteAllString $buffer[size($buffer)-1] ".png" ""` + "  ") craFileImageTL;
+		}
+	} else {
+		for($thumb in `tabLayout -q -ca craFileImageTL`)
+			deleteUI $thumb;
+		image -w 480 -h 270 -en 0 -p "craFileImageTL" -image "invisibleCursor.png" craNoSceneThumbnail;
+		tabLayout -e -tabLabel "craNoSceneThumbnail" "No Thumbnails Available" craFileImageTL;
+	}
+	
+	textField -e -ip 1 craProjectText;
+	textField -e -ip 1 craFilename; 
+	craLoadSceneNote;
+	
+	//check for playblast
+	string $playblastFileExt = "avi";	
+	
+	if(`about -macOS`)
+		$playblastFileExt = "mov";
+	
+	if(file("-q","-ex", (`workspace -q -rd`+ "playblast/" + `basenameEx $selection` + "." + $playblastFileExt)))
+	{
+		nodeIconButton -e -style "iconAndTextHorizontal" -image "renderable.png" -en 1 -bgc 0.4 .8 0.4 -l " View Playblast" -c "craOpenSceneViewPlayblast" craOpenSceneViewPlayblastBTN;
+		nodeIconButton -e -en 1 -bgc .6 .4 .4 craOpenSceneDeletePlayblastBTN;
+	}
+	else
+	{
+		nodeIconButton -e -style "iconAndTextHorizontal" -image "renderable_dim.png" -en 1 -bgc .4 .4 .4 -l "  No Playblast" -c "" craOpenSceneViewPlayblastBTN;
+		nodeIconButton -e -en 0 -bgc .4 .4 .4 craOpenSceneDeletePlayblastBTN;
+	}
+	
+		
+}
+
+global proc craImportFile(){
+	if (`checkBox -q -v craUseNamespace`){
+		file -f -namespace `textField -q -text craNamespacePrefix` -i `textField -q -text craFilename`;
+		print ("// File " + `textField -q -text craFilename` + " imported. Namespace: " + `textField -q -text craNamespacePrefix`);
+	} else {
+		file -f -i `textField -q -text craFilename`;
+		print ("// File " + `textField -q -text craFilename` + " imported. No namespace.");
+	}
+}
+
+
+global proc craReferenceFile(){
+	if (`checkBox -q -v craUseNamespace`){
+		file -f -namespace `textField -q -text craNamespacePrefix` -r `textField -q -text craFilename`;
+		print ("// File " + `textField -q -text craFilename` + " referenced. Namespace: " + `textField -q -text craNamespacePrefix`);
+	} else {
+		file -f -r `textField -q -text craFilename`;
+		print ("// File " + `textField -q -text craFilename` + " referenced. No namespace.");
+	}
+	
+}
+
+global proc craOpenSceneViewPlayblast(){
+	
+	//check for playblast
+	string $playblastFileExt = "avi";	
+	
+	if(`about -macOS`)
+		$playblastFileExt = "mov";
+	
+	string $file = (`workspace -q -rd` + "playblast/" + basenameEx(`textField -q -text craFilename`) + "." + $playblastFileExt);
+	print $file;
+	
+	if(`about -windows`)
+		system ("start explorer " + `toNativePath $file`);
+	if(`about -macOS`)
+		system ("open " + `toNativePath $file`);
+}
+
+global proc craOpenSceneDeletePlayblast()
+{
+	//check for playblast
+	string $playblastFileExt = "avi";	
+	
+	if(`about -macOS`)
+		$playblastFileExt = "mov";
+	
+	string $fileDir = `workspace -q -rd`;
+	string $file = ($fileDir + "playblast/" + basenameEx(`textField -q -text craFilename`) + "." + $playblastFileExt);
+	
+	if(file("-q", "-exists", $file))
+	{
+		if(`confirmDialog -title "Delete Playblast" -defaultButton "OK" -message "       Are you sure?" -cancelButton "Cancel" -dismissString "Cancel" -button "OK" -button "Cancel"` == "OK")
+		{
+			sysFile -delete $file;
+			nodeIconButton -e -style "iconAndTextHorizontal" -image "renderable_dim.png" -en 1 -bgc .4 .4 .4 -l "  No Playblast" -c "" craOpenSceneViewPlayblastBTN;
+			nodeIconButton -e -en 0 -bgc .4 .4 .4 craOpenSceneDeletePlayblastBTN;
+			print ($file + " deleted.");
+			craRefreshSceneInfo;
+			craRefreshPlaybastItems;
+		}
+		
+	}
+}
+
+global proc craSaveSceneNote()
+{
+	string $craData = "/.craData";
+	string $craNote = "craNote";
+	
+	string $craFileName = `textField -q -tx craFilename`;
+	string $fileDir;
+	
+	if(`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = dirname($craFileName);
+	if(!`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = (`workspace -q -rd` + "data");
+
+	
+	string $filename = basenameEx(`textField -q -tx craFilename`);	
+	string $finalPath = ( $fileDir + "/" + $craData + "/" + $craNote + "/");
+	
+	if(`filetest -d ($fileDir + $craData)`) {
+		sysFile -md ($fileDir + "/.craData/craNote/");
+		if(`about -win`)
+			system( "attrib +H \"" + $fileDir + "/.craData\"" );
+	} else {
+		sysFile -md ($fileDir + "/.craData");
+		sysFile -md ($fileDir + "/.craData/craNote/");
+		if(`about -win`)
+			system( "attrib +H \"" + $fileDir + "/.craData\"" );
+	}
+	
+	if ( $filename != "" )
+	{
+		craWriteFileInfo;
+		sysFile -md ( $finalPath );
+		$craNoteFile = ( $finalPath + $filename );
+		$craFileID = `fopen $craNoteFile "w"`;		
+		string $craGetNoteText = `scrollField -q -tx craSceneNoteSF`;
+		fprint $craFileID ( $craGetNoteText );	
+		fclose $craFileID;  
+		print ( "Note has been saved!" );
+    
+		craRefreshSceneInfo;
+	}
+	else
+	{
+		warning ( "Please select a file to write a note!" );
+	}
+}
+
+global proc craLoadSceneNote()
+{
+	scrollField -e -cl craSceneNoteSF;
+	string $craData = "/.craData";
+	string $craNote = "craNote";
+	string $filename = basenameEx(`textField -q -tx craFilename`);
+	
+	string $fileDir;
+	
+	if(`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = dirname(`textField -q -tx craFilename`);
+	if(!`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = (`workspace -q -rd` + "data");
+
+	
+	string $finalPath = ( $fileDir + "/" + $craData + "/" + $craNote + "/");
+	
+	string $fileNameWithPath = ( $finalPath + $filename );
+	
+	if ( `file -q -ex $fileNameWithPath` )
+	{
+		string $craNoteFile = ( $finalPath + "/" + $filename );
+		int $craFileId =`fopen $craNoteFile "r"`;
+		string $getWords = ( `fread $craFileId $getWords` );
+		scrollField -e -it `strip $getWords` craSceneNoteSF;
+		fclose $craFileId;
+	}		
+}
+
+global proc craWriteFileInfo()
+{	
+	string $getUser = `getenv userName`;
+	string $getDate = `system("date /t")`; 
+	string $getTime = `system("time /t")`;
+	string $line = "_______________________________________________________________";
+	scrollField -e -it ( "\n" + $line + "\n" + "USER: " + $getUser + "\t    " + "DATE: " + strip($getDate) + "        TIME: " + strip($getTime) ) craSceneNoteSF;
+}
+
+global proc craDeleteSceneNote()
+{
+	
+	string $craData = "/.craData";
+	string $craNote = "craNote";
+	
+	string $fileDir;
+	
+	if(`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = dirname(`textField -q -tx craFilename`);
+	if(!`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = (`workspace -q -rd` + "data");
+
+	
+	string $selectedFile = basenameEx(`textField -q -tx craFilename`);
+	string $finalPath = ( $fileDir + "/" + $craData + "/" + $craNote + "/");
+		
+	string $fileNameWithPath = ( $finalPath + $selectedFile );
+	if ( `file -q -ex $fileNameWithPath` )
+	{
+		if(`confirmDialog -title "Delete Scene Note" -defaultButton "OK" -message "    Are you sure?" -cancelButton "Cancel" -dismissString "Cancel" -button "OK" -button "Cancel"` == "OK"){
+			scrollField -e -cl craSceneNoteSF;
+			sysFile -delete $fileNameWithPath;
+			craRefreshSceneInfo;
+		}
+	}		
+}
+
+
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+// OpenScene end
+
+
+
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+// craSceneFileInfo start
+
+global proc craSceneFileInfoOptionsUI(){
+	
+	if (`window -exists craSceneFileInfoOptionsWin`)
+		deleteUI craSceneFileInfoOptionsWin;
+
+	window -t " Scene Info Options" -tlb 1 -s 0 craSceneFileInfoOptionsWin;
+		frameLayout -lv 0 -bs "etchedIn" -mw 5 -mh 5 craSceneFileInfoOptionsMainFL;
+			columnLayout -w 300 -adj 1 craSceneFileInfoOptionsMainCL;
+				text -h 20 -l "Set thumbnails and notes storage paths relative to:";
+				separator -h 10;
+				rowLayout -nc 2 -adj 1;
+				radioCollection craThumbsNotesPathsRC;
+					radioButton -ann `workspace -q -rd` -label "Project Path" craSetRelativeProjectPath;
+					radioButton -ann (dirname(`file -q -loc`)) -label "Scene Path" craSetRelativeScenePath;
+				setParent ..;
+				separator -h 15;
+				rowLayout -nc 2 -adj 2;
+				button -w 150 -l "Save" -h 20 -c "craSetSceneFileInfoOptions";
+				button -l "Close" -h 20 -c "deleteUI craSceneFileInfoOptionsWin;";
+				setParent ..;
+			setParent ..;
+		setParent ..;
+		
+	showWindow craSceneFileInfoOptionsWin;
+	
+	if(`optionVar -q craSceneInfoOptionsOV`)
+		radioCollection -e -select craSetRelativeScenePath craThumbsNotesPathsRC;
+	if(!`optionVar -q craSceneInfoOptionsOV`)
+		radioCollection -e -select craSetRelativeProjectPath craThumbsNotesPathsRC;
+}
+
+
+global proc craSetSceneFileInfoOptions(){
+	
+	if(`radioButton -q -sl craSetRelativeProjectPath`)
+		optionVar -iv craSceneInfoOptionsOV 0;
+	
+	if(`radioButton -q -sl craSetRelativeScenePath`)
+		optionVar -iv craSceneInfoOptionsOV 1;
+	
+	craRefreshSceneInfo;
+}
+
+global proc craSceneFileInfo()
+{
+	string $file = `file -q -loc`;
+	
+	int $floating = 0;					
+	
+	if(`dockControl -q -exists craSceneFileInfoDC`)
+	{
+		$floating = `dockControl -q -floating craSceneFileInfoDC`;
+		dockControl -e -raise craSceneFileInfoDC;
+		dockControl -e -visible 1 craSceneFileInfoDC;
+		craRefreshSceneInfo;
+	}
+	else
+	{
+		if (`window -exists craSceneFileInfoWin`)
+			deleteUI craSceneFileInfoWin;
+		
+		window -t "Scene Info" -tlb 0 -s 1 craSceneFileInfoWin;
+		formLayout  craSceneInfoFormL;
+			frameLayout -lv 0 -mw 5 -mh 5 -cll 0 -cl 0 -bs "etchedIn" craSceneFileInfoFL;
+				columnLayout -adj 1 craAssetFileInfoMainCL;
+				rowLayout -nc 2 -adj 2;
+						text -l "Project:   ";
+						textField -ed 0 craProjectNamePathTF;
+					setParent ..;
+					rowLayout -nc 2 -adj 2;
+						text -l "File Path: ";
+						textField -ed 0 craSceneFileNamePathTF;
+					setParent ..;
+					rowLayout -nc 6 -adj 4;
+						text -l "File Size:  ";
+						textField -w 65 -ed 0 craSceneFileSizeTF;
+						text -l "    Date:  " -ann "Creation Date";
+						textField -ed 0 craSceneCreationDateTF;
+						text -l "   Mod Date:  " -ann "Modification Date";
+						textField -w 120 -ed 0 craSceneFileModDateTF;
+					setParent ..;
+				setParent ..;
+			setParent ..;
+				
+			
+		frameLayout -lv 0 -mw 5 -mh 5 -cll 0 -cl 0 -bs "etchedIn" craImageThumbFL;
+			columnLayout -adj 1 craImageThumbCL;
+				tabLayout -w 480 -h 295 craSceneFileInfoImageTL;
+					image -en 0 -w 480 -h 270 -image "invisibleCursor.png" "craThumbnail0";
+				setParent ..;
+				tabLayout -e -tabLabel "craThumbnail0" "" craSceneFileInfoImageTL;
+			
+				rowLayout -nc 12 -adj 11;
+					for( $i=0; $i<10 ;$i++ ){
+						button -w 33 -h 20 -ann ( "Grab Screen Thumbnail " + string($i) ) -l ("T"+ string($i)) -c ("craSaveSceneThumbDoIt " + string($i)) ("craThumbnailBTN" + string($i));
+						popupMenu -mm 0;
+							menuItem -ann "Render Thumbnail" -l "Render" -c ("craRenderSceneThumbnail " + string($i) + " 1 1");
+							menuItem -d 1;
+							menuItem -ann "Delete Thumbnail" -l "Delete" -c ("craDeleteThumbnail " + string($i));
+						setParent -m ..;
+					}
+					
+					nodeIconButton -mw 5 -i "renderable_dim.png" -style "iconAndTextHorizontal" -h 20 -en 1 -l "View Playblast" -c "craViewScenePlayblast" craSceneViewPlayblastBTN;
+					nodeIconButton -w 22 -h 22 -bgc .6 .4 .4 -ann "Delete Scene Playblast" -i "removeRenderable.png"  -c "craDeleteScenePlayblast" craSceneDeletePlayblastBTN;
+				setParent ..;
+			setParent ..;
+		setParent ..;
+			
+		
+		frameLayout -lv 0 -mw 5 -mh 2 -cll 0 -cl 0 -bs "etchedIn" craSceneNoteFL;
+			columnLayout -adj 1 craSceneNoteCL;
+				rowLayout -nc 5 -adj 4 ;
+					text -l "Scene Note   " craNotaEscenaTXT;
+					symbolButton -ann "Save Note" -image "save.png" -c ("craSceneInfoSaveNote \""  + `file -q -loc` + "\"");
+					symbolButton -ann "Delete Note" -image "removeRenderable.png" -c ("craSceneDeleteSceneNote \""  + `file -q -loc` + "\"");
+					text -l "";
+				setParent ..;
+			setParent ..;
+		setParent ..;
+			
+		scrollField -ww 1 -ec ("craSceneInfoSaveNote \""  + $file + "\"") craCurrentSceneNoteSF;
+		
+		frameLayout -lv 0 -mw 5 -mh 5 -cll 0 -cl 0 -bs "etchedIn" craCloseUIAndSJFL;
+			rowLayout -nc 3 -adj 2;
+				symbolButton -i "refresh.png" -ann "Refresh UI" -c "craRefreshSceneInfo";
+				button -l "Close" -ann "Closes the UI and deletes the scriptJob that reloads the UI when a new scene is opened" -c "deleteUI craSceneFileInfoDC";
+				symbolButton -i "pickOtherObj.png" -ann "About" -c "craAboutScript";
+			setParent ..;
+		setParent ..;
+		
+		formLayout -e 
+			
+			-af craSceneFileInfoFL "top" 5
+			-af craSceneFileInfoFL "right" 5
+			-af craSceneFileInfoFL "left" 5
+			
+			-ac craImageThumbFL "top" 5 craSceneFileInfoFL
+			-af craImageThumbFL "right" 5
+			-af craImageThumbFL "left" 5
+			
+			-ac craSceneNoteFL "top" 5 craImageThumbFL 
+			-af craSceneNoteFL "right" 5
+			-af craSceneNoteFL "left" 5
+			
+			-ac craCurrentSceneNoteSF "top" 2 craSceneNoteFL
+			-ac craCurrentSceneNoteSF "bottom" 5 craCloseUIAndSJFL
+			-af craCurrentSceneNoteSF "left" 5
+			-af craCurrentSceneNoteSF "right" 5
+			
+			-af craCloseUIAndSJFL "bottom" 5
+			-af craCloseUIAndSJFL "left" 5
+			-af craCloseUIAndSJFL "right" 5
+		
+		craSceneInfoFormL;
+		
+		if(`getApplicationVersionAsFloat` == 2011)
+		{
+			dockControl 
+				-area "right"
+				-floating $floating
+				-content "craSceneFileInfoWin"
+				-allowedArea "left"
+				-allowedArea "right"
+				-l "Scene Info"
+				craSceneFileInfoDC
+			;
+		}
+		else
+		{
+			dockControl 
+				-area "right"
+				-floating $floating
+				-content "craSceneFileInfoWin"
+				-allowedArea "left"
+				-allowedArea "right"
+				-floatChangeCommand "craSceneInfoDockChange"
+				-l "Scene Info" 
+				craSceneFileInfoDC
+			;
+		}
+		
+		scriptJob -e "SceneOpened" "craRefreshSceneInfo" -p craSceneFileInfoDC;
+		
+		craSceneLoadSceneNote $file;
+		craRefreshSceneInfo;
+	}
+}
+
+global proc craSceneInfoDockChange(){
+	int $floatingState = `dockControl -q -floating craSceneFileInfoDC`;
+	
+	if($floatingState)
+	{
+		if(`getApplicationVersionAsFloat` == 2012)
+			window -e -h 720 craSceneFileInfoDC;
+		
+		if(`getApplicationVersionAsFloat` == 2013)
+		{
+			window -e -s 0 craSceneFileInfoDC;
+			window -e -h 720 craSceneFileInfoDC;
+			evalDeferred -lp ("window -e -s 1 craSceneFileInfoDC");
+		}
+	}
+	
+}
+
+
+global proc craSceneInfoSaveNote(string $file)
+{
+	string $craData = "/.craData";
+	string $craNote = "craNote";
+	string $fileDir;
+	
+	if(`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = dirname($file);
+	else
+		$fileDir = (`workspace -q -rd` + "data");
+
+	
+	string $filename = basenameEx($file);
+	string $finalPath = ( $fileDir + "/" + $craData + "/" + $craNote + "/");
+	
+	if(`filetest -d ($fileDir + $craData)`) {
+		sysFile -md ($fileDir + "/.craData/craNote/");
+		if(`about -win`)
+			system( "attrib +H \"" + $fileDir + "/.craData\"" );
+	} else {
+		sysFile -md ($fileDir + "/.craData");
+		sysFile -md ($fileDir + "/.craData/craNote/");
+		if(`about -win`)
+			system( "attrib +H \"" + $fileDir + "/.craData\"" );
+		
+	}
+	
+	if ( $filename != "" )
+	{
+		craSceneWriteFileInfo;
+		sysFile -md ( $finalPath );
+		$craNoteFile = ( $finalPath + $filename );
+		$craFileID = `fopen $craNoteFile "w"`;		
+		string $craGetNoteText = `scrollField -q -tx craCurrentSceneNoteSF`;
+		fprint $craFileID ( $craGetNoteText );	
+		fclose $craFileID;  
+		print ( "Note has been saved!" );
+	}
+	else
+	{
+		warning ( "Please select a file to write a note!" );
+	}
+}
+
+global proc craSceneLoadSceneNote(string $file)
+{
+	scrollField -e -cl craCurrentSceneNoteSF;
+	string $craData = "/.craData";
+	string $craNote = "craNote";
+	string $filename = basenameEx($file);
+	string $fileDir;
+	
+	if(`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = dirname($file);
+	if(!`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = (`workspace -q -rd` + "data");
+
+	
+	string $finalPath = ( $fileDir + $craData + "/" + $craNote + "/");
+	string $fileNameWithPath = ( $finalPath + $filename );
+	
+	if ( `file -q -ex $fileNameWithPath` && $filename != "")
+	{
+		int $craFileId =`fopen $fileNameWithPath "r"`;
+		string $getWords = ( `fread $craFileId $getWords` );
+		scrollField -e -it `strip $getWords` craCurrentSceneNoteSF;
+		fclose $craFileId;
+	}		
+}
+
+global proc craSceneWriteFileInfo()
+{	
+	string $getUser = `getenv userName`;
+	string $getDate = `system("date /t")`; 
+	string $getTime = `system("time /t")`;
+	string $line = "_______________________________________________________________";
+	scrollField -e -it ( "\n" + $line + "\n" + "USER: " + $getUser + "\t    " + "DATE: " + strip($getDate) + "        TIME: " + strip($getTime) ) craCurrentSceneNoteSF;
+}
+
+global proc craSceneDeleteSceneNote(string $file)
+{
+	string $craData = "/.craData";
+	string $craNote = "craNote";
+	
+	string $fileDir;
+	
+	if(`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = dirname($file);
+	if(!`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = (`workspace -q -rd` + "data");
+
+	
+	string $finalPath = ( $fileDir + "/" + $craData + "/" + $craNote + "/");
+		
+	string $fileNameWithPath = ( $finalPath + basenameEx($file) );
+	if ( `file -q -ex $fileNameWithPath` )
+	{
+		if(`confirmDialog -title "Delete Scene Note" -defaultButton "OK" -message "Are you sure?" -cancelButton "Cancel" -dismissString "Cancel" -button "OK" -button "Cancel"` == "OK"){
+			scrollField -e -cl craCurrentSceneNoteSF;
+			sysFile -delete $fileNameWithPath;
+		}
+	}		
+}
+
+global proc craRefreshSceneInfo()
+{
+	string $file = `file -q -loc`;
+	string $fileDir;
+
+	if(`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = dirname($file);
+	if(!`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = (`workspace -q -rd` + "data");
+
+	  
+	if(`dockControl -exists craSceneFileInfoDC`)
+	{
+		string $craThumbnails[] = getFileList("-folder",( $fileDir + "/.craData/craThumbnail/" + `basenameEx $file` + "/"),"-filespec", (`basenameEx $file` + "_T*.png"));
+		if(size($craThumbnails)){
+			for($thumb in `tabLayout -q -ca craSceneFileInfoImageTL`)
+				deleteUI $thumb;
+			for ($i=0;$i<size($craThumbnails);$i++){
+				string $thumbIndex = `substring $craThumbnails[$i] (size($craThumbnails[$i])-4) (size($craThumbnails[$i])-4)`;
+				string $craThumb = ( $fileDir + "/.craData/craThumbnail/" + `basenameEx $file` + "/" + $craThumbnails[$i]);
+				image -w 480 -h 270 -p "craSceneFileInfoImageTL" -image ($fileDir+ "/.craData/craThumbnail/" + `basenameEx $file` + "/" + $craThumbnails[$i]) ("craThumbnail" + $thumbIndex);
+				string $buffer[];
+				int $numTokens = `tokenize $craThumbnails[$i] "_" $buffer`;
+				tabLayout -e -tabLabel ("craThumbnail" + $thumbIndex)("  " + `substituteAllString $buffer[size($buffer)-1] ".png" ""` + "  ") craSceneFileInfoImageTL;
+			}
+		} else {
+			for($thumb in `tabLayout -q -ca craSceneFileInfoImageTL`)
+				deleteUI $thumb;
+			
+			image -w 480 -h 270 -en 0 -p "craSceneFileInfoImageTL" -image "invisibleCursor.png" craNoThumbnail;
+			tabLayout -e -tabLabel "craNoThumbnail" "No Thumbnails Available" craSceneFileInfoImageTL;
+			for($t=0;$t<10;$t++){
+				button -e -bgc 0.4 .4 0.4 ("craThumbnailBTN" + string($t));
+			}
+		}
+		
+		for($t=0;$t<10;$t++){
+			button -e -bgc 0.4 .4 0.4 ("craThumbnailBTN" + string($t));
+			if( file("-q", "-exists", ( $fileDir + "/.craData/craThumbnail/" + basenameEx($file)  +"/" + basenameEx($file)  + "_T" + $t + ".png")))
+				button -e -bgc 0.4 .6 0.4 ("craThumbnailBTN" + string($t));
+		}	
+		
+		//check for playblast
+		string $playblastFileExt = "avi";	
+		if(`about -macOS`)
+			$playblastFileExt = "mov";
+		if(file("-q","-ex", (`workspace -q -rd`+ "playblast/" + `basenameEx $file` + "." + $playblastFileExt)))
+		{
+			nodeIconButton -e -image "renderable.png" -bgc 0.4 .8 0.4 -l " View Playblast" -c "craViewScenePlayblast" craSceneViewPlayblastBTN;
+			nodeIconButton -e -en 1 -bgc .6 .4 .4 craSceneDeletePlayblastBTN;
+		}
+		else
+		{
+			nodeIconButton -e -image "renderable_dim.png" -bgc .4 .4 .4 -l "  No Playblast" -c "craCreateScenePlayblast" craSceneViewPlayblastBTN;
+			nodeIconButton -e -en 0 -bgc .4 .4 .4 craSceneDeletePlayblastBTN;
+		}
+		
+		textField -e -text `workspace -q -rd` -ann `workspace -q -rd` -ed 0 craProjectNamePathTF;
+		
+		//file size and date
+		if($file != "unknown"){
+			python("import maya.cmds as mc\nimport os\nfilename = '" + `file -q -loc` + "'\nsize = os.path.getsize(filename)/(1024*1024.0)\nmc.textField('craSceneFileSizeTF', e=True, ann='%0.2f  MB' % size, text='%0.2f  MB' % size)");
+			python("import os.path, time\nimport maya.cmds as mc\nfile = mc.file(q=True, loc=True)\nmod_year, mod_mon, mod_day, mod_hour, mod_min, mod_sec, mod_wday, mod_yday, mod_isdst = time.gmtime(os.path.getmtime(file))\ncreat_year, creat_mon, creat_day, creat_hour, creat_min, creat_sec, creat_wday, creat_yday, creat_isdst = time.gmtime(os.path.getctime(file))\nmodTime = '%s/%s/%s  %s:%s:%s' % (str(mod_mon).zfill(2), str(mod_day).zfill(2),str(mod_year).zfill(2),str(mod_hour).zfill(2),str(mod_min).zfill(2),str(mod_sec).zfill(2))\ncreatTime = '%s/%s/%s  %s:%s:%s' % (str(creat_mon).zfill(2), str(creat_day).zfill(2), str(creat_year).zfill(2), str(creat_hour).zfill(2), str(creat_min).zfill(2), str(creat_sec).zfill(2))\nmc.textField('craSceneCreationDateTF', edit=True, ann=creatTime, text=creatTime)\nmc.textField('craSceneFileModDateTF', edit=True, ann=modTime, text=modTime)");
+			textField -e -text $file -ann $file -ed 0 craSceneFileNamePathTF;
+		} else {
+			textField -e -text "" -ed 0 craSceneFileNamePathTF;
+			textField -e -text "" -ed 0 craSceneFileSizeTF;
+			textField -e -text "" -ed 0 craSceneCreationDateTF;
+			textField -e -text "" -ed 0 craSceneFileModDateTF;
+		}
+		craSceneUtilsInitMenuItems;
+		craSceneLoadSceneNote $file;
+		dockControl -e -w 495 craSceneFileInfoDC;
+	}
+}
+
+global proc craSaveSceneThumbDoIt ( int $number )
+{
+	if(`file -q -loc` == "unknown")	
+	{
+		if(`confirmDialog -m "Save Your Scene?" -t "Unsaved Scene" -b "OK" -b "Cancel" -db "OK"` == "OK"){
+			SaveScene;
+			if(`file -q -loc` == "unknown")
+				error "Scene not saved.";
+		}
+		else
+			error "Save your Scene first.";
+	} 
+	else
+	{
+		string $craData = "/.craData";
+		string $craThumbnail = "craThumbnail";
+		string $craNote = "craNote";
+		string $currentDirectory = `file -q -loc`;
+		string $fileName = `file -q -ns`;
+		
+		string $fileDir;
+	
+		if(`optionVar -q craSceneInfoOptionsOV`)
+			$fileDir = dirname($currentDirectory);
+		if(!`optionVar -q craSceneInfoOptionsOV`)
+			$fileDir = (`workspace -q -rd` + "data");
+
+		
+		if(`filetest -d ($fileDir + "/.craData")`) {
+			sysFile -md ($fileDir + "/.craData/craThumbnail/" + $fileName);
+			if(`about -win`)
+			system( "attrib +H \"" + $fileDir + "/.craData\"" );
+		} else {
+			sysFile -md ($fileDir + "/.craData");
+			sysFile -md ($fileDir + "/.craData/craThumbnail/" + $fileName);
+			if(`about -win`)
+			system( "attrib +H \"" + $fileDir + "/.craData\"" );
+		}
+		string $finalPath = ( $fileDir + "/" + $craData + "/" + $craThumbnail + "/" + $fileName +"/" );
+		
+		float $currentTime = `currentTime -query`;
+		
+		int $cw_imageFormat = `getAttr "defaultRenderGlobals.imageFormat"`;
+		setAttr "defaultRenderGlobals.imageFormat" 32;
+		
+		if(`getApplicationVersionAsFloat` < 2012){
+			string $craCurrentPanel = `getPanel -wf`;
+			float $craCurrentOverscan = 0;
+			string $craModelPanelCamera;
+			if(`modelPanel -exists $craCurrentPanel`)
+			{
+				$craModelPanelCamera = `modelPanel -q -cam $craCurrentPanel`;
+				$craCurrentOverscan = `getAttr ($craModelPanelCamera + ".overscan")`;
+				setAttr ($craModelPanelCamera + ".overscan") 1;
+			}
+			catch(`playblast -p 100 -st $currentTime -et $currentTime -w 480 -h 270 -orn false -cf ( $finalPath + "/" + $fileName + "_T" + $number + ".png" ) -fmt "image"`);
+			if($craCurrentOverscan)
+				setAttr ($craModelPanelCamera + ".overscan") $craCurrentOverscan;
+		}
+		else 
+		{
+			string $craCurrentPanel = `getPanel -wf`;
+			float $craCurrentOverscan = 0;
+			string $craModelPanelCamera;
+			if(`modelPanel -exists $craCurrentPanel`)
+			{
+				$craModelPanelCamera = `modelPanel -q -cam $craCurrentPanel`;
+				$craCurrentOverscan = `getAttr ($craModelPanelCamera + ".overscan")`;
+				setAttr ($craModelPanelCamera + ".overscan") 1;
+			}
+			
+			$currentTime = `floor $currentTime`;
+			catch(`playblast -p 100 -st $currentTime -et $currentTime -w 480 -h 270 -orn false -f ( $finalPath + "/" + $fileName + "_T" + $number ) -fmt "image"`);
+			sysFile -rename ($finalPath + $fileName + "_T" + $number + ".png") ( $finalPath + $fileName + "_T" + $number + "." +  cra_numberPadding($currentTime, 4, "0") + ".png");
+			if($craCurrentOverscan)
+				setAttr ($craModelPanelCamera + ".overscan") $craCurrentOverscan;
+		}
+	
+		
+		setAttr "defaultRenderGlobals.imageFormat" $cw_imageFormat;
+		
+		string $currentDirectory = `file -q -loc`;
+		string $fileName = `file -q -ns`;
+		
+		if(`dockControl -q -exists craSceneFileInfoDC`)
+		{
+			craRefreshSceneInfo;
+			tabLayout -e -st ("craThumbnail" + string($number)) craSceneFileInfoImageTL;
+		}
+		
+	}
+}
+
+
+global proc craRenderSceneThumbnail(int $num, int $mode , int $closeRenderView) {
+	
+	string $craData = "/.craData";
+	string $craThumbnail = "craThumbnail";
+	string $craNote = "craNote";
+	string $fileName = `file -q -ns`;
+	string $currentDirectory = `file -q -loc`;
+	string $fileDir;
+	
+	if(`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = dirname($currentDirectory);
+	if(!`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = (`workspace -q -rd` + "data");
+
+	
+	if(`filetest -d ($fileDir + "/.craData")`) {
+		sysFile -md ($fileDir + "/.craData/craThumbnail/" + $fileName);
+		if(`about -win`)
+			system( "attrib +H \"" + $fileDir + "/.craData\"" );
+	} else {
+		sysFile -md ($fileDir + "/.craData");
+		sysFile -md ($fileDir + "/.craData/craThumbnail/" + $fileName);
+		if(`about -win`)
+			system( "attrib +H \"" + $fileDir + "/.craData\"" );
+	}
+	string $finalPath = ( $fileDir + "/" + $craData + "/" + $craThumbnail + "/" + $fileName +"/" );
+	
+	int $prevWidth = `getAttr defaultResolution.width`;
+	int $prevHeight = `getAttr defaultResolution.height`;
+	int $prevFormat = `getAttr defaultRenderGlobals.outf`;
+	float $prevDevAspectRatio = `getAttr "defaultResolution.deviceAspectRatio"`;
+	float $prevPixelAspect = `getAttr "defaultResolution.pixelAspect"`;
+	
+	string $shortName[];
+	string $sceneName = `file -q -ns`;
+	string $sceneThumbsDir = ( $fileDir + "/.craData/craThumbnail/");
+	
+	setAttr "defaultResolution.width" 480;
+	setAttr "defaultResolution.height" 270;	
+	setAttr "defaultResolution.deviceAspectRatio" 1.777;
+	setAttr "defaultResolution.pixelAspect" 1;
+
+	setAttr defaultRenderGlobals.outf 32;
+	setAttr defaultRenderGlobals.imfkey -type "string" "";
+
+	setAttr defaultRenderGlobals.outf 32;
+	setAttr defaultRenderGlobals.imfkey -type "string" "";
+	if($mode)
+		RenderIntoNewWindow;
+	
+	renderWindowSaveImageCallback "renderView" ($finalPath + $sceneName + "_T" + $num )"PNG";
+	
+	sysFile -rename ($finalPath + $shortName[0] + "_T" + $num ) ($sceneThumbsDir + $sceneName + "_T" + $num + ".png");
+	
+	setAttr defaultRenderGlobals.outf $prevFormat;
+	setAttr defaultRenderGlobals.imfkey -type "string" "";
+	setAttr defaultResolution.deviceAspectRatio $prevDevAspectRatio;
+	setAttr defaultResolution.pixelAspect $prevPixelAspect;	
+	
+	setAttr "defaultResolution.width" $prevWidth;
+	setAttr "defaultResolution.height" $prevHeight;
+	
+	if($closeRenderView){
+		if (`window -exists renderViewWindow`)
+			evalDeferred -lp "deleteUI renderViewWindow";
+	}
+	
+	evalDeferred -lp ("craSceneFileInfo");
+	evalDeferred -lp (("button -e -bgc 0.4 .6 0.4 craThumbnailBTN" + string($num)));
+	evalDeferred -lp (("tabLayout -e -st craThumbnail" + string($num) + " craSceneFileInfoImageTL"));
+	
+}
+
+global proc craDeleteThumbnail(int $num)
+{
+	string $craData = "/.craData";
+	string $craThumbnail = "craThumbnail";
+	string $fileName = `file -q -ns`;
+	string $currentDirectory = `file -q -loc`;
+	string $fileDir;
+	
+	if(`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = dirname($currentDirectory);
+	if(!`optionVar -q craSceneInfoOptionsOV`)
+		$fileDir = (`workspace -q -rd` + "data");
+	string $finalPath = ( $fileDir + "/" + $craData + "/" + $craThumbnail + "/" + $fileName + "/");
+		
+	string $fileNameWithPath = ( $finalPath + $fileName + "_T" + $num + ".png");
+	if ( `file -q -ex $fileNameWithPath` )
+	{
+		sysFile -delete $fileNameWithPath;
+
+		button -e -bgc 0.4 .4 0.4 ("craThumbnailBTN" + string($num));
+		deleteUI ("craThumbnail" + string($num));
+		if(!size(`tabLayout -q -ca craSceneFileInfoImageTL`)){
+			symbolButton -w 480 -h 270 -en 0 -p "craSceneFileInfoImageTL" -image "invisibleCursor.png" craNoThumbnail;
+			tabLayout -e -tabLabel "craNoThumbnail" "No Thumbnails Available" craSceneFileInfoImageTL;
+		}
+	}
+}
+
+
+global proc string cra_numberPadding (string $str,int $pad,string $chr)
+{
+	string $return;
+
+	for ($i=0;$i<$pad;$i++) {
+		if (size($str)<=$i)
+			$return += $chr;
+	}
+	return ($return + $str);
+}
+
+//cra_numberPadding ("20", 4, "0")
+
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+// craSceneFileInfo end
+
+
+
+
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+// craCreateScenePlayblast start
+
+global proc craCreateScenePlayblast(){
+	
+	global string $gPlayBackSlider;
+	
+	if(!`window -q -exists craScenePlayblastWin`){	
+		craCreateScenePlayblastWindow;
+	}
+	else
+	{
+		if(`modelPanel -exists craPlayblastMPL`)
+			setFocus craPlayblastMPL;
+		
+		if(`file -q -loc` == "unknown"){
+			error "Save your Scene.";
+		}
+		
+		//file extension defaults to windows format
+		string $fileExt = "avi";	
+		
+		if(`about -macOS`)
+			$fileExt = "mov";
+		
+		if(!file("-q", "-exists", (`workspace -q -rd` + "playblast/")))
+			sysFile -makeDir (`workspace -q -rd` + "playblast/");
+		
+		if(`craCheckPlayblast`){
+			if(`confirmDialog -t "Warning" -ma "center" -m "Scene Playblast already exists, overwrite?" -b "Yes" -b "No" -db "Yes" -cb "No"` == "No")
+				error "Create Scene Playblast cancelled.";
+		}
+		
+		string $soundFileCheck = `timeControl -q -s $gPlayBackSlider`;
+		
+		
+		if(`about -windows`){
+			if( $soundFileCheck == "")
+				playblast -fo -f (`workspace -q -rd` + "playblast/" +(basenameEx(`file -q -shortName -sn`))) -compression "MS-CRAM" -format "movie" -sequenceTime 0 -clearCache 1 -viewer 1 -showOrnaments 1 -fp 4 -percent 100 -quality 100;
+			else
+				playblast -fo -f (`workspace -q -rd` + "playblast/" +(basenameEx(`file -q -shortName -sn`))) -compression "MS-CRAM" -format "movie" -sequenceTime 0 -clearCache 1 -viewer 1 -showOrnaments 1 -fp 4 -percent 100 -quality 100 -sound `timeControl -q -s $gPlayBackSlider`;
+		}
+	
+		if(`about -macOS`){
+			if( $soundFileCheck == "")
+				playblast -fo -f (`workspace -q -rd` + "playblast/" +(basenameEx(`file -q -shortName -sn`))) -format "mov" -sequenceTime 0 -clearCache 1 -viewer 1 -showOrnaments 1 -fp 4 -percent 100 -quality 100;
+			else
+				playblast -fo -f (`workspace -q -rd` + "playblast/" +(basenameEx(`file -q -shortName -sn`))) -format "mov" -sequenceTime 0 -clearCache 1 -viewer 1 -showOrnaments 1 -fp 4 -percent 100 -quality 100 -sound `timeControl -q -s $gPlayBackSlider`;
+		}
+		
+	
+		if(`window -q -exists craScenePlayblastWin`)
+			iconTextButton -e -bgc .4 .6 .4 craCreateScenePlayblastBTN;
+		
+		craRefreshSceneInfo;
+		craSceneUtilsInitMenuItems;
+		craRefreshPlaybastItems;
+	}
+}
+
+
+global proc craCreateScenePlayblastWindow()
+{
+	if(`window -q -exists craScenePlayblastWin`)
+		deleteUI craScenePlayblastWin;
+	
+	window -tlb 1 -title ("Playblast / Shot Window") -mxb 0 -mnb 1 -s 0 craScenePlayblastWin;
+	
+	formLayout craPlayblastFormL;
+	
+		paneLayout craPlayblastPL;
+			if(`modelPanel -exists craPlayblastMPL`)
+				catchQuiet ( `deleteUI -pnl craPlayblastMPL` );
+			string $pane = `modelPanel -mbv 0 -p craPlayblastPL craPlayblastMPL`;
+			frameLayout -e -cl 1 `modelPanel -q -barLayout craPlayblastMPL`;
+			modelEditor -e -da "smoothShaded" -displayTextures on -dl "default" $pane;
+				popupMenu -p craScenePlayblastWin -b 2 -ctl 0 -alt 0 -mm 1 -pmc "menuItem -e -en `craCheckPlayblast` craViewPlayblastMainPUMMI;menuItem -e -en `craCheckPlayblast` craDeletePlayblastMainPUMMI;" craPlayblastMPLPUM;
+					menuItem -p craPlayblastMPLPUM -l "Start" -rp "N" -c "playButtonStart" ;
+					menuItem -p craPlayblastMPLPUM-l "Play" -rp "S" -c "playButtonForward";
+					menuItem -p craPlayblastMPLPUM-l "Step Backward" -rp "W" -c "playButtonStepBackward" ;		
+					menuItem -p craPlayblastMPLPUM -l "Step Forward" -rp "E" -c "playButtonStepForward" ;
+					menuItem -p craPlayblastMPLPUM -l "Previous Keyframe" -rp "NW" -c "currentTime -edit `findKeyframe -timeSlider -which previous`" ;	
+					menuItem -p craPlayblastMPLPUM -l "Next Keyframe" -rp "NE" -c "currentTime -edit `findKeyframe -timeSlider -which next`" ;
+					menuItem -p craPlayblastMPLPUM -l "Start Time Dragger" -rp "SW" -c "storeLastAction( \"restoreLastContext \" + `currentCtx` );setToolTo TimeDragger" ;
+					menuItem -p craPlayblastMPLPUM -l "Stop Time Dragger" -rp "SE" -c "invokeLastAction" ;
+					menuItem -p craPlayblastMPLPUM -l "View Playblast" -en `craCheckPlayblast` -c "craViewScenePlayblast" craViewPlayblastMainPUMMI;
+					menuItem -p craPlayblastMPLPUM -d 1;
+					menuItem -p craPlayblastMPLPUM -l "Delete Playblast" -en `craCheckPlayblast` -c "craDeleteScenePlayblast" craDeletePlayblastMainPUMMI;
+				setParent -m ..;
+			panel -e -mbv 0 $pane;
+			
+		if(size(`ls -type "camera" "shotCameraShape"`))
+		      modelEditor -e -camera "shotCamera" craPlayblastMPL;
+		else
+		      modelEditor -e -camera "persp" craPlayblastMPL;
+          
+		setParent ..;
+		setParent craPlayblastFormL;
+	
+		rowLayout -h 35 -nc 4 -adj 2 craTimelineRL;
+		frameLayout -h 28 -bs "etchedIn" -lv 0 -mw 1 -mh 1 craTimelineOptionsFL;
+			iconTextButton -w 23 -h 23 -ann "Display Options" -image "render_physical_light.png" -c "craCreateScenePlayblastOptions" craScenePlayblastOptionsBTN;
+		setParent ..;
+	
+		frameLayout -h 28 -bs "etchedIn" -lv 0 craTimelineFL;
+			timePort -bgc 0.4 0.4 0.4 -h 25 craPlayblastTimePort;
+			popupMenu -p craPlayblastTimePort -b 2 -mm 1;
+				menuItem -l "Start" -rp "N" -c "playButtonStart" ;
+				menuItem -l "Play" -rp "S" -c "playButtonForward" craPlayblastViewPlayBTN;
+				menuItem -l "Step Backward" -rp "W" -c "playButtonStepBackward" ;		
+				menuItem -l "Step Forward" -rp "E" -c "playButtonStepForward" ;
+				menuItem -l "Previous Keyframe" -rp "NW" -c "currentTime -edit `findKeyframe -timeSlider -which previous`" ;	
+				menuItem -l "Next Keyframe" -rp "NE" -c "currentTime -edit `findKeyframe -timeSlider -which next`" ;
+				menuItem -l "Start Time Dragger" -rp "SW" -c "storeLastAction( \"restoreLastContext \" + `currentCtx` );setToolTo TimeDragger" ;
+				menuItem -l "Stop Time Dragger" -rp "SE" -c "invokeLastAction" ;
+			setParent -m ..;
+		setParent ..;
+		
+		separator -hr 1 -w 1 -st "none";
+		
+		frameLayout -bs "etchedOut" -h 30 -lv 0 -mw 2 -mh 2 craTimeline2FL;
+			rowLayout -h 26 -nc 10 -adj 2 craTimelineRL;
+				symbolButton -w 23 -h 23 -image "timerew.png"  -c "playButtonStart" ;
+				symbolButton -w 23 -h 23 -image "timeplay.png" -c "playButtonForward" craPlayblastViewPlayBTN;
+				symbolButton -w 23 -h 23 -image "timeend.png" -c "playButtonStepBackward" ;		
+				symbolButton -w 23 -h 23 -image "timestart.png" -c "playButtonStepForward" ;
+				symbolButton -w 23 -h 23 -image "timeprev.png"  -c "currentTime -edit `findKeyframe -timeSlider -which previous`" ;	
+				symbolButton -w 23 -h 23 -image "timenext.png"  -c "currentTime -edit `findKeyframe -timeSlider -which next`" ;
+				separator -hr 1 -w 5 -st "none";
+				iconTextButton -bgc .26 .26 .26 -st "iconOnly" -w 23 -h 23 -ann "Create Playblast" -image "LearningMovies.png" -c "craCreateScenePlayblast" craCreateScenePlayblastBTN;
+				popupMenu;
+					menuItem -l "View Playblast" -en `craCheckPlayblast` -c "craViewScenePlayblast" craPlayblastWinViewPlayblastMI;
+					menuItem -d 1;
+					menuItem -l "Delete Playblast" -en `craCheckPlayblast` -c "craDeleteScenePlayblast" craPlayblastWinDeletePlayblastMI;
+				setParent -m ..;
+				separator -hr 1 -w 1 -st "none";
+				iconTextButton -w 23 -h 23 -ann "Select Camera" -image "Camera.png" -c "craSelectPlayBlastCameraUI" craScenePlayblastCameraBTN;
+				popupMenu -p craScenePlayblastCameraBTN -pmc "craPopulateCameras" craSceneCamerasMM;
+			setParent ..;
+		setParent ..;
+	setParent ..;
+	
+	setParent craPlayblastFormL;
+	
+	formLayout -e
+		-af craPlayblastPL "top" 0
+		-af craPlayblastPL "left" 0
+		-af craPlayblastPL "right" 0
+		-ac craPlayblastPL "bottom" 0 craTimelineRL
+		
+		-af craTimelineRL "left" 2
+		-af craTimelineRL "right" 2
+		-af craTimelineRL "bottom" 0
+		
+	craPlayblastFormL;
+	
+	scriptJob -e "SceneOpened" "craRefreshPlaybastItems" -p craScenePlayblastWin;
+	
+	if(`craCheckPlayblast`)
+		iconTextButton -e -bgc .4 .6 .4 craCreateScenePlayblastBTN;
+	
+	catchQuiet(`condition -dependency "playingBack" -script "craPlayblackCondition" "craPlaybackIconsCondition"`);
+	print  "\n";
+		
+	craRefreshPlaybastItems;
+	craInitDisplayOptions;
+	craSetModelPanelFlags;
+	showWindow craScenePlayblastWin;
+  
+}
+
+global proc craSetModelPanelFlags()
+{
+ craInitDisplayOptions;
+ int $craDisplayOptions[] = `optionVar -q craPlayblastModelPanelFlagsOV`;  
+    string $craModelPanelFlags[];
+    string $craVisibleObjects[]; 
+    if(`getApplicationVersionAsFloat` == 2011)
+	{
+		$craModelPanelFlags = { "CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "-nurbsCurves", "-nurbsSurfaces", "-polymeshes", "-subdivSurfaces", "-planes", "-lights", "-cameras", "-joints", "-ikHandles", "-deformers", "-dynamics", "-fluids", "-hairSystems", "-follicles", "-nCloths", "-nParticles", "-nRigids", "-dynamicConstraints", "-locators", "-dimensions", "-pivots", "-handles", "-textures", "-strokes", "-manipulators", "-controlVertices", "-hulls", "-grid", "-headsUpDisplay" };
+		$craVisibleObjects = {"CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "NURBS Curves", "NURBS Surfaces", "Polygons", "Subdiv Surfaces", "Planes", "Lights", "Cameras", "Joints", "IK Handles", "Deformers", "Dynamics", "Fluids", "Hair Systems", "Follicles", "nCloths", "nParticles", "nRigids", "Dynamic Constraints", "Locators", "Dimensions", "Pivots", "Handles", "Textures", "Strokes", "Manipulators", "NURBS CVs", "NURBS Hulls", "Grid", "HUD"};
+	}
+	if(`getApplicationVersionAsFloat` == 2012)
+	{
+		$craModelPanelFlags = { "CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "-nurbsCurves", "-nurbsSurfaces", "-polymeshes", "-subdivSurfaces", "-planes", "-lights", "-cameras", "-joints", "-ikHandles", "-deformers", "-dynamics", "-fluids", "-hairSystems", "-follicles", "-nCloths", "-nParticles", "-nRigids", "-dynamicConstraints", "-locators", "-dimensions", "-pivots", "-handles", "-textures", "-strokes", "-motionTrails", "-manipulators", "-controlVertices", "-hulls", "-grid", "-headsUpDisplay"};
+		$craVisibleObjects = {"CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "NURBS Curves", "NURBS Surfaces", "Polygons", "Subdiv Surfaces", "Planes", "Lights", "Cameras", "Joints", "IK Handles", "Deformers", "Dynamics", "Fluids", "Hair Systems", "Follicles", "nCloths", "nParticles", "nRigids", "Dynamic Constraints", "Locators", "Dimensions", "Pivots", "Handles", "Textures", "Strokes", "Motion Trails", "Manipulators", "NURBS CVs", "NURBS Hulls", "Grid", "HUD"};
+	}	
+	if(`getApplicationVersionAsFloat` == 2013)
+	{
+		$craModelPanelFlags = {"CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "-nurbsCurves", "-nurbsSurfaces", "-polymeshes", "-subdivSurfaces", "-planes", "-lights", "-cameras", "-joints", "-ikHandles", "-deformers", "-dynamics", "-fluids", "-hairSystems", "-follicles", "-nCloths", "-nParticles", "-nRigids", "-dynamicConstraints", "-locators", "-dimensions", "-pivots", "-handles", "-textures", "-strokes", "-motionTrails", "-manipulators", "-clipGhosts", "-controlVertices", "-hulls", "-grid", "-headsUpDisplay", "-imagePlane"};
+		$craVisibleObjects = {"CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "NURBS Curves", "NURBS Surfaces", "Polygons", "Subdiv Surfaces", "Planes", "Lights", "Cameras", "Joints", "IK Handles", "Deformers", "Dynamics", "Fluids", "Hair Systems", "Follicles", "nCloths", "nParticles", "nRigids", "Dynamic Constraints", "Locators", "Dimensions", "Pivots", "Handles", "Textures", "Strokes", "Motion Trails", "Manipulators", "Clip Ghosts", "NURBS CVs", "NURBS Hulls", "Grid", "HUD", "Image Planes"};
+	}
+	if(`getApplicationVersionAsFloat` == 2014)
+	{
+		$craModelPanelFlags = {"CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "-nurbsCurves", "-nurbsSurfaces", "-polymeshes", "-subdivSurfaces", "-planes", "-lights", "-cameras", "-joints", "-ikHandles", "-deformers", "-dynamics", "-fluids", "-hairSystems", "-follicles", "-nCloths", "-nParticles", "-nRigids", "-dynamicConstraints", "-locators", "-dimensions", "-pivots", "-handles", "-textures", "-strokes", "-motionTrails", "-manipulators", "-clipGhosts", "-controlVertices", "-hulls", "-grid", "-headsUpDisplay", "-imagePlane"};
+		$craVisibleObjects = {"CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "NURBS Curves", "NURBS Surfaces", "Polygons", "Subdiv Surfaces", "Planes", "Lights", "Cameras", "Joints", "IK Handles", "Deformers", "Dynamics", "Fluids", "Hair Systems", "Follicles", "nCloths", "nParticles", "nRigids", "Dynamic Constraints", "Locators", "Dimensions", "Pivots", "Handles", "Textures", "Strokes", "Motion Trails", "Manipulators", "Clip Ghosts", "NURBS CVs", "NURBS Hulls", "Grid", "HUD", "Image Planes"};
+	}
+	
+	for( $i=0; $i < size($craDisplayOptions) ;$i++ )
+	{
+        if($i == 0 || $i == 1 || $i == 2)
+            continue;
+	    modelEditor -e $craModelPanelFlags[$i] $craDisplayOptions[$i] craPlayblastMPL;
+	}
+  
+}
+
+global proc craRefreshPlaybastItems()
+{
+	global int $gUseNewScenePanelConfig;
+	
+	if(`symbolButton -exists craPlayblastWinViewPlayblastCBBTN`)
+	{
+		if(`craCheckPlayblast`)
+		{
+			symbolButton -e -bgc .4 .6 .4 craPlayblastWinViewPlayblastCBBTN;
+			menuItem -e -en 1 craPlayblastWinViewPlayblastCBMI;
+			menuItem -e -en 1 craPlayblastWinDeletePlayblastCBMI;
+		}
+		else
+		{
+			
+			symbolButton -e -bgc .26 .26 .26 craPlayblastWinViewPlayblastCBBTN;
+			menuItem -e -en 0 craPlayblastWinViewPlayblastCBMI;
+			menuItem -e -en 0 craPlayblastWinDeletePlayblastCBMI;
+		}
+	}
+	
+	if(`window -q -exists craScenePlayblastWin`)
+	{	
+		
+		if($gUseNewScenePanelConfig)
+		{
+			if(`modelPanel -exists craPlayblastMPL`)
+				catchQuiet ( `deleteUI -pnl craPlayblastMPL` );
+			string $pane = `modelPanel -mbv 0 -p craPlayblastPL craPlayblastMPL`;
+			frameLayout -e -cl 1 `modelPanel -q -barLayout craPlayblastMPL`;
+			modelEditor -e -da "smoothShaded" -displayTextures on -dl "default" $pane;	
+			evalDeferred("modelPanel -e -mbv 0 craPlayblastMPL");
+		}
+    
+		if(`modelPanel -exists craPlayblastMPL`)
+		{
+			setFocus craPlayblastMPL;
+			if(size(`ls shotCamera`))
+				modelPanel -e -camera "shotCamera" -mbv 0 craPlayblastMPL;
+      craSetModelPanelFlags;
+		}
+		
+		if(`craCheckPlayblast`) 
+		{
+			iconTextButton -e -bgc .4 .6 .4 craCreateScenePlayblastBTN;
+			menuItem -e -en 1 craPlayblastWinViewPlayblastMI;
+			menuItem -e -en 1 craPlayblastWinDeletePlayblastMI;
+		}
+		else
+		{
+			iconTextButton -e -bgc .26 .26 .26 craCreateScenePlayblastBTN;
+			menuItem -e -en 0 craPlayblastWinViewPlayblastMI;
+			menuItem -e -en 0 craPlayblastWinDeletePlayblastMI;
+		}
+	}
+}
+
+global proc craCreateScenePlayblastOptions(){
+	
+	if (`window -exists craScenePlayblastOptions`)
+		deleteUI craScenePlayblastOptions;
+	
+	craInitDisplayOptions;
+	
+	window -t "Display Options" -tlb 1 -mnb 0 -mxb 0 -s 0 craScenePlayblastOptions;
+	
+	string $craVisibleObjects[];
+	string $craModelPanelFlags[];
+	
+	if(`getApplicationVersionAsFloat` == 2011)
+	{
+		$craModelPanelFlags = { "CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "-nurbsCurves", "-nurbsSurfaces", "-polymeshes", "-subdivSurfaces", "-planes", "-lights", "-cameras", "-joints", "-ikHandles", "-deformers", "-dynamics", "-fluids", "-hairSystems", "-follicles", "-nCloths", "-nParticles", "-nRigids", "-dynamicConstraints", "-locators", "-dimensions", "-pivots", "-handles", "-textures", "-strokes", "-manipulators", "-controlVertices", "-hulls", "-grid", "-headsUpDisplay" };
+		$craVisibleObjects = {"CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "NURBS Curves", "NURBS Surfaces", "Polygons", "Subdiv Surfaces", "Planes", "Lights", "Cameras", "Joints", "IK Handles", "Deformers", "Dynamics", "Fluids", "Hair Systems", "Follicles", "nCloths", "nParticles", "nRigids", "Dynamic Constraints", "Locators", "Dimensions", "Pivots", "Handles", "Textures", "Strokes", "Manipulators", "NURBS CVs", "NURBS Hulls", "Grid", "HUD"};
+	}
+	if(`getApplicationVersionAsFloat` == 2012)
+	{
+		$craModelPanelFlags = { "CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "-nurbsCurves", "-nurbsSurfaces", "-polymeshes", "-subdivSurfaces", "-planes", "-lights", "-cameras", "-joints", "-ikHandles", "-deformers", "-dynamics", "-fluids", "-hairSystems", "-follicles", "-nCloths", "-nParticles", "-nRigids", "-dynamicConstraints", "-locators", "-dimensions", "-pivots", "-handles", "-textures", "-strokes", "-motionTrails", "-manipulators", "-controlVertices", "-hulls", "-grid", "-headsUpDisplay"};
+		$craVisibleObjects = {"CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "NURBS Curves", "NURBS Surfaces", "Polygons", "Subdiv Surfaces", "Planes", "Lights", "Cameras", "Joints", "IK Handles", "Deformers", "Dynamics", "Fluids", "Hair Systems", "Follicles", "nCloths", "nParticles", "nRigids", "Dynamic Constraints", "Locators", "Dimensions", "Pivots", "Handles", "Textures", "Strokes", "Motion Trails", "Manipulators", "NURBS CVs", "NURBS Hulls", "Grid", "HUD"};
+	}	
+	if(`getApplicationVersionAsFloat` == 2013)
+	{
+		$craModelPanelFlags = {"CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "-nurbsCurves", "-nurbsSurfaces", "-polymeshes", "-subdivSurfaces", "-planes", "-lights", "-cameras", "-joints", "-ikHandles", "-deformers", "-dynamics", "-fluids", "-hairSystems", "-follicles", "-nCloths", "-nParticles", "-nRigids", "-dynamicConstraints", "-locators", "-dimensions", "-pivots", "-handles", "-textures", "-strokes", "-motionTrails", "-manipulators", "-clipGhosts", "-controlVertices", "-hulls", "-grid", "-headsUpDisplay", "-imagePlane"};
+		$craVisibleObjects = {"CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "NURBS Curves", "NURBS Surfaces", "Polygons", "Subdiv Surfaces", "Planes", "Lights", "Cameras", "Joints", "IK Handles", "Deformers", "Dynamics", "Fluids", "Hair Systems", "Follicles", "nCloths", "nParticles", "nRigids", "Dynamic Constraints", "Locators", "Dimensions", "Pivots", "Handles", "Textures", "Strokes", "Motion Trails", "Manipulators", "Clip Ghosts", "NURBS CVs", "NURBS Hulls", "Grid", "HUD", "Image Planes"};
+	}
+	if(`getApplicationVersionAsFloat` == 2014)
+	{
+		$craModelPanelFlags = {"CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "-nurbsCurves", "-nurbsSurfaces", "-polymeshes", "-subdivSurfaces", "-planes", "-lights", "-cameras", "-joints", "-ikHandles", "-deformers", "-dynamics", "-fluids", "-hairSystems", "-follicles", "-nCloths", "-nParticles", "-nRigids", "-dynamicConstraints", "-locators", "-dimensions", "-pivots", "-handles", "-textures", "-strokes", "-motionTrails", "-manipulators", "-clipGhosts", "-controlVertices", "-hulls", "-grid", "-headsUpDisplay", "-imagePlane"};
+		$craVisibleObjects = {"CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "NURBS Curves", "NURBS Surfaces", "Polygons", "Subdiv Surfaces", "Planes", "Lights", "Cameras", "Joints", "IK Handles", "Deformers", "Dynamics", "Fluids", "Hair Systems", "Follicles", "nCloths", "nParticles", "nRigids", "Dynamic Constraints", "Locators", "Dimensions", "Pivots", "Handles", "Textures", "Strokes", "Motion Trails", "Manipulators", "Clip Ghosts", "NURBS CVs", "NURBS Hulls", "Grid", "HUD", "Image Planes"};
+	}
+	
+	int $craInitModelPanelFlagsOV[] = `optionVar -q craPlayblastModelPanelFlagsOV`;
+	
+	frameLayout -lv 0 -bs "etchedOut" -mw 5 -mh 5 craPlayPlayblastOptionsMainFL;
+		columnLayout -adj 1 craPlayblastOptionsMainCL;
+			rowLayout -nc 2 -adj 2 craPlayblastCameraWidth;
+				text -w 100 -l "Resolution Width";
+				intField -w 40 -cc "craUpdateDisplayOptionsOV;craInitDisplayOptions;" -v $craInitModelPanelFlagsOV[0] craPlayblastCameraWidthIF;
+			setParent ..;
+			rowLayout -nc 2 -adj 2 craPlayblastCameraHeight; 
+				text -w 100 -l "Resolution Height";
+				intField -w 40 -cc "craUpdateDisplayOptionsOV;craInitDisplayOptions;" -v $craInitModelPanelFlagsOV[1] craPlayblastCameraHeightIF;
+			setParent ..;
+			
+			separator -en 0 -h 10;
+			
+			for( $i=2; $i<size($craVisibleObjects) ;$i++ )
+			{
+				if($i == 2)
+				{
+					checkBox -l $craVisibleObjects[$i] -v $craInitModelPanelFlagsOV[$i] -onc "checkBox -e -v 1 craHUDCB;if(`modelEditor -exists craPlayblastMPL`) modelEditor -e  -headsUpDisplay -1 craPlayblastMPL" -cc ("craSceneInfoHUDs #1;menuItem -e -cb #1 craSceneInfoHUDsMI;craUpdateDisplayOptionsOV") craSceneInfoHUDsCB;
+					separator -en 0 -h 5;
+					continue;
+				}
+					
+				checkBox -l $craVisibleObjects[$i] -v $craInitModelPanelFlagsOV[$i]  -cc ("if(`modelEditor -exists craPlayblastMPL`) modelEditor -e " + $craModelPanelFlags[$i] + " #1 craPlayblastMPL;craUpdateDisplayOptionsOV") ("cra" + $craVisibleObjects[$i] + "CB");
+				if(`modelEditor -exists craPlayblastMPL`)
+					modelEditor -e $craModelPanelFlags[$i] $craInitModelPanelFlagsOV[$i] craPlayblastMPL;
+				
+				if($craVisibleObjects[$i] == "Manipulators" && `getApplicationVersionAsFloat` != 2013)
+					separator -en 0 -h 5;
+				
+				if($craVisibleObjects[$i] == "Clip Ghosts")
+					separator -en 0 -h 5;
+			}
+			
+			separator -en 0 -h 10;
+				button -l "OK" -bgc .4 .5 .4 -c "deleteUI craScenePlayblastOptions";
+		setParent ..;
+	setParent ..;
+	
+	showWindow craScenePlayblastOptions;
+	
+	if(`window -q -exists craScenePlayblastWin`)
+	{
+		if(`window -q -exists craScenePlayblastOptions`)
+		{
+			int $pos[] = `window -q -tlc craScenePlayblastWin`;
+			window -e -tlc $pos[0] $pos[1] craScenePlayblastOptions;
+		}
+	}
+	
+}
+global proc craPlayblackCondition(){
+	
+	if(`symbolButton -exists craPlayblastViewPlayBTN`)
+	{
+		if( `symbolButton -q -image craPlayblastViewPlayBTN` == "timeplay.png")
+			symbolButton -e -image "timestop.png" craPlayblastViewPlayBTN;
+		else 
+			symbolButton -e -image "timeplay.png" craPlayblastViewPlayBTN;
+	}
+}
+
+global proc craPopulateCameras(){
+	
+	popupMenu -e -dai craSceneCamerasMM;
+	
+	string $allCameras[] = `ls -type "camera"`;
+	string $defaultCameras[] = {"perspShape", "topShape", "frontShape", "sideShape"};
+	string $userCameras[] =  sort(`stringArrayRemove $defaultCameras $allCameras`);
+	
+	for($i in $userCameras)
+	{
+		string $parent[] = `listRelatives -p $i`;
+		menuItem -p "craSceneCamerasMM" -l $parent[0] -c ("modelEditor -e -camera " + $parent[0] + " craPlayblastMPL");
+	
+	
+	}
+	
+	menuItem -d 1 -p "craSceneCamerasMM";
+	
+	for($i in $defaultCameras)
+	{
+		string $parent[] = `listRelatives -p $i`;
+		menuItem -p "craSceneCamerasMM" -l $parent[0] -c ("modelEditor -e -camera " + $parent[0] + " craPlayblastMPL");
+	}
+	
+}
+
+global proc craSelectPlayBlastCameraUI(){
+	
+	if (`window -exists craSelectPlayBlastCameraWin`)
+		deleteUI craSelectPlayBlastCameraWin;
+	
+	string $allCameras[] = `ls -type "camera"`;
+	string $defaultCameras[] = {"perspShape", "topShape", "frontShape", "sideShape"};
+	string $userCameras[] =  sort(`stringArrayRemove $defaultCameras $allCameras`);
+	
+	
+	window -t " Playblast Camera" -tlb 1 -s 0 craSelectPlayBlastCameraWin;
+	frameLayout -lv 0 -bs "etchedOut" -mw 5 -mh 5 craSelectPlayBlastCameraMainFL;
+		columnLayout -adj 1 craSelectPlayBlastCameraMainCL;
+			text -label "User Cameras";
+			separator -h 5 -st "none";
+			for($i in $userCameras)
+			{
+				string $parent[] = `listRelatives -p $i`;
+				button -l $parent[0] -c ("if(`modelEditor -exists craPlayblastMPL`); modelEditor -e -camera " + $parent[0] + " craPlayblastMPL");
+			}
+			separator -h 10;
+			text -label "Startup Cameras";
+			separator -h 5 -st "none";
+			for($i in $defaultCameras)
+			{
+				string $parent[] = `listRelatives -p $i`;
+				button -l $parent[0] -c ("if(`modelEditor -exists craPlayblastMPL`); modelEditor -e -camera " + $parent[0] + " craPlayblastMPL");
+			}
+			separator -h 10;
+			button -w 100 -bgc .4 .5 .4 -l "OK" -c "deleteUI craSelectPlayBlastCameraWin";
+		setParent ..;
+	setParent ..;
+
+	showWindow craSelectPlayBlastCameraWin;
+	
+	if(`window -q -exists craScenePlayblastWin`)
+	{
+		if(`window -q -exists craSelectPlayBlastCameraWin`)
+		{
+			int $pos[] = `window -q -tlc craScenePlayblastWin`;
+			window -e -tlc $pos[0] ($pos[1] + `window -q -w craScenePlayblastWin` - `window -q -w craSelectPlayBlastCameraWin`) craSelectPlayBlastCameraWin;
+		}
+	}
+}
+
+global proc craSelectPlayBlastCamera()
+{
+	
+	string $cameras[] = `ls -type "camera"`;
+	
+	for($i in $cameras)
+	{
+		string $parent[] = `listRelatives -p $i`;
+		menuItem -l $parent[0] -c ("modelEditor -e -camera " + $parent[0] + " craPlayblastMPL");
+	
+	
+	}
+	
+}
+
+global proc craUpdateDisplayOptionsOV(){
+	
+	if(`columnLayout -exists craPlayblastOptionsMainCL`)
+	{
+		string $flagCB[] = `columnLayout -q -ca craPlayblastOptionsMainCL`;
+		int $flagsValue[];
+		
+							
+		for($flag in $flagCB)
+		{
+			if($flag == "craPlayblastCameraWidth" || $flag == "craPlayblastCameraHeight"){
+				$flagsValue[size($flagsValue)] = `intField -q -v ($flag + "IF")` ;
+				continue;
+			}
+				
+			if(`checkBox -exists $flag`)
+				$flagsValue[size($flagsValue)] = `checkBox -q -v $flag`;
+		}
+		
+		optionVar -remove craPlayblastModelPanelFlagsOV;
+		
+		for($flagValue in $flagsValue)
+		{
+			optionVar -iva craPlayblastModelPanelFlagsOV $flagValue;
+		}
+	}
+}
+
+
+global proc craInitDisplayOptions(){
+	
+	if(!`optionVar -exists craPlayblastModelPanelFlagsOV`)
+	{
+		if(`getApplicationVersionAsFloat` == 2011)
+			$craInitModelPanelFlagsOV = {720, 404, 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+		
+		if(`getApplicationVersionAsFloat` == 2012)
+			$craInitModelPanelFlagsOV = {720, 404, 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+		if(`getApplicationVersionAsFloat` == 2013)
+			$craInitModelPanelFlagsOV = {720, 404, 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+		if(`getApplicationVersionAsFloat` == 2014)
+			$craInitModelPanelFlagsOV = {720, 404, 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+		
+		
+		for($value in $craInitModelPanelFlagsOV)
+		{
+			optionVar -iva craPlayblastModelPanelFlagsOV $value;
+		}
+	}
+	
+  string $craModelPanelFlags[];
+  string $craVisibleObjects[];
+  if(`getApplicationVersionAsFloat` == 2011)
+	{
+		$craModelPanelFlags = { "CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "-nurbsCurves", "-nurbsSurfaces", "-polymeshes", "-subdivSurfaces", "-planes", "-lights", "-cameras", "-joints", "-ikHandles", "-deformers", "-dynamics", "-fluids", "-hairSystems", "-follicles", "-nCloths", "-nParticles", "-nRigids", "-dynamicConstraints", "-locators", "-dimensions", "-pivots", "-handles", "-textures", "-strokes", "-manipulators", "-controlVertices", "-hulls", "-grid", "-headsUpDisplay" };
+		$craVisibleObjects = {"CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "NURBS Curves", "NURBS Surfaces", "Polygons", "Subdiv Surfaces", "Planes", "Lights", "Cameras", "Joints", "IK Handles", "Deformers", "Dynamics", "Fluids", "Hair Systems", "Follicles", "nCloths", "nParticles", "nRigids", "Dynamic Constraints", "Locators", "Dimensions", "Pivots", "Handles", "Textures", "Strokes", "Manipulators", "NURBS CVs", "NURBS Hulls", "Grid", "HUD"};
+	}
+	if(`getApplicationVersionAsFloat` == 2012)
+	{
+		$craModelPanelFlags = { "CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "-nurbsCurves", "-nurbsSurfaces", "-polymeshes", "-subdivSurfaces", "-planes", "-lights", "-cameras", "-joints", "-ikHandles", "-deformers", "-dynamics", "-fluids", "-hairSystems", "-follicles", "-nCloths", "-nParticles", "-nRigids", "-dynamicConstraints", "-locators", "-dimensions", "-pivots", "-handles", "-textures", "-strokes", "-motionTrails", "-manipulators", "-controlVertices", "-hulls", "-grid", "-headsUpDisplay"};
+		$craVisibleObjects = {"CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "NURBS Curves", "NURBS Surfaces", "Polygons", "Subdiv Surfaces", "Planes", "Lights", "Cameras", "Joints", "IK Handles", "Deformers", "Dynamics", "Fluids", "Hair Systems", "Follicles", "nCloths", "nParticles", "nRigids", "Dynamic Constraints", "Locators", "Dimensions", "Pivots", "Handles", "Textures", "Strokes", "Motion Trails", "Manipulators", "NURBS CVs", "NURBS Hulls", "Grid", "HUD"};
+	}	
+	if(`getApplicationVersionAsFloat` == 2013)
+	{
+		$craModelPanelFlags = {"CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "-nurbsCurves", "-nurbsSurfaces", "-polymeshes", "-subdivSurfaces", "-planes", "-lights", "-cameras", "-joints", "-ikHandles", "-deformers", "-dynamics", "-fluids", "-hairSystems", "-follicles", "-nCloths", "-nParticles", "-nRigids", "-dynamicConstraints", "-locators", "-dimensions", "-pivots", "-handles", "-textures", "-strokes", "-motionTrails", "-manipulators", "-clipGhosts", "-controlVertices", "-hulls", "-grid", "-headsUpDisplay", "-imagePlane"};
+		$craVisibleObjects = {"CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "NURBS Curves", "NURBS Surfaces", "Polygons", "Subdiv Surfaces", "Planes", "Lights", "Cameras", "Joints", "IK Handles", "Deformers", "Dynamics", "Fluids", "Hair Systems", "Follicles", "nCloths", "nParticles", "nRigids", "Dynamic Constraints", "Locators", "Dimensions", "Pivots", "Handles", "Textures", "Strokes", "Motion Trails", "Manipulators", "Clip Ghosts", "NURBS CVs", "NURBS Hulls", "Grid", "HUD", "Image Planes"};
+	}	
+	if(`getApplicationVersionAsFloat` == 2014)
+	{
+		$craModelPanelFlags = {"CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "-nurbsCurves", "-nurbsSurfaces", "-polymeshes", "-subdivSurfaces", "-planes", "-lights", "-cameras", "-joints", "-ikHandles", "-deformers", "-dynamics", "-fluids", "-hairSystems", "-follicles", "-nCloths", "-nParticles", "-nRigids", "-dynamicConstraints", "-locators", "-dimensions", "-pivots", "-handles", "-textures", "-strokes", "-motionTrails", "-manipulators", "-clipGhosts", "-controlVertices", "-hulls", "-grid", "-headsUpDisplay", "-imagePlane"};
+		$craVisibleObjects = {"CameraPixelWidth", "CameraPixelHeight", "Scene Info HUDs", "NURBS Curves", "NURBS Surfaces", "Polygons", "Subdiv Surfaces", "Planes", "Lights", "Cameras", "Joints", "IK Handles", "Deformers", "Dynamics", "Fluids", "Hair Systems", "Follicles", "nCloths", "nParticles", "nRigids", "Dynamic Constraints", "Locators", "Dimensions", "Pivots", "Handles", "Textures", "Strokes", "Motion Trails", "Manipulators", "Clip Ghosts", "NURBS CVs", "NURBS Hulls", "Grid", "HUD", "Image Planes"};
+	}	
+
+	
+	int $craDisplayOptions[] = `optionVar -q craPlayblastModelPanelFlagsOV`;
+	
+	if(`modelEditor -exists craPlayblastMPL`){
+		for( $i=0; $i < size($craModelPanelFlags) ;$i++ )
+		{
+			//camera size w*h
+			if($i == 0)
+			{
+				if (`window -exists craScenePlayblastWin`){
+					
+						paneLayout -e -w $craDisplayOptions[$i] -h $craDisplayOptions[$i+1] craPlayblastPL;
+						window -e -s 0 -w ($craDisplayOptions[$i] + 4) -h ($craDisplayOptions[$i+1] + 40) craScenePlayblastWin;
+					
+				}
+				continue;
+			}
+			
+			if($i == 1)
+				continue;
+			
+			//Scene Info HUDs
+			if($i == 2)
+			{
+				craSceneInfoHUDs $craDisplayOptions[$i];
+				if(`menuItem -exists craSceneInfoHUDsMI`)
+					menuItem -e -cb $craDisplayOptions[$i] craSceneInfoHUDsMI;
+				continue;
+			}
+			
+			//modelPanel display flags
+			modelEditor -e $craModelPanelFlags[$i] $craDisplayOptions[$i-3] craPlayblastMPL;
+			 
+		}
+	}
+}
+
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+// craCreateScenePlayblast end
+
+
+
+
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+// craReloadTextures start
+global proc craReloadTextures()
+{
+	string $cra_list[];
+	string $craReloadedTestures[];
+	
+	if(!size(`ls -sl`))
+                     $cra_list = `ls -l -type "file"`;
+        else
+        
+        $cra_list = `craGetTextureArray`;
+	string $cra_fileName[];
+
+	if (`size($cra_list)` == 0)
+	{
+		print ("RELOAD FILE TEXTURE(S) : no file(s) to reload \n");
+		headsUpMessage ("RELOAD FILE TEXTURE(S) : no file(s) to reload \n");
+	}
+	else
+	{
+		int $cra_i;
+		for ($cra_i=0; $cra_i < size($cra_list) ; $cra_i++)
+		{
+			if($cra_list[$cra_i] != "")
+			{
+				string $cra_textureName = `getAttr($cra_list[$cra_i]+".fileTextureName")`;
+				catchQuiet(`setAttr -type "string" ( $cra_list[$cra_i] + ".fileTextureName") $cra_textureName`);
+				$craReloadedTestures[size($craReloadedTestures)] = $cra_list[$cra_i];
+				print ($cra_list[$cra_i] + " reloaded \n");
+			}
+		}
+		
+		print ("RELOAD FILE TEXTURE(S) : " + size($craReloadedTestures) + " file(s) reloaded \n");
+		headsUpMessage ("RELOAD FILE TEXTURE(S) : " + size($craReloadedTestures) + " file(s) reloaded \n"); 
+	}
+}
+
+
+
+global proc string craGetShader() {
+
+		string $shape[] = `listRelatives -f -s`;
+		if(!size($shape))
+			return "";
+		// find the shading engine
+		string $SG[] = `listConnections -source false -type "shadingEngine" $shape[0]`;
+		//find the shader
+		if(!size($SG))
+			return "";
+      
+		string $shader[] = `listConnections -s 1 ($SG[0] + ".surfaceShader")`;
+		//print ($shader[0] + "\n");
+		return $shader[0];
+}
+
+global proc string[] craGetShaderArray() {
+
+    string $material[];
+    string $mySel[] = `ls -sl -l`;
+
+    for ($j=0; $j<size($mySel);$j++) {
+        select -r $mySel[$j];
+        if(`craGetShader` != "")
+          $material[$j] = `craGetShader`;
+    }
+    select -r $mySel;
+    return $material;
+}
+
+//cw_changeTexPath( "uv", "cw")
+//cw_changeTexPath( "cw", "uv")
+
+global proc craChangeTexPath( string $oldString, string $newString){
+
+	string $fileNodes[] = `craGetTextureArray`;
+	string $filePaths[] = `craGetTexturePathArray`;
+	int $fileNodeIndex= 0;
+	for($filePath in $filePaths){
+		string $newFileName = substituteAllString($filePath, $oldString, $newString);
+		setAttr -type "string" ( $fileNodes[$fileNodeIndex] +".fileTextureName") $newFileName ;
+		$fileNodeIndex++;
+	}
+
+}
+
+global proc string craGetTexture() {
+	string $material = `craGetShader`;
+	string $connections[] = `listConnections -p 0 -d 0 -s 1 ($material + ".color")`;
+	return $connections[0];
+
+}
+
+global proc string[] craGetTextureArray() {
+
+	string $materials[] = `craGetShaderArray`;
+	string $texturas[];
+
+	for ($j=0; $j<size($materials);$j++) {
+		if(`attributeExists "color" $materials[$j]`)
+			{
+			string $connections[] = `listConnections -p 0 -d 0 -s 1 ($materials[$j] + ".color")`;
+			if(size($connections))
+			{
+				if(`nodeType $connections[0]` == "file")
+					$texturas[$j] = $connections[0];
+			}
+		}
+    }
+
+    return $texturas;
+
+
+}
+
+global proc string craGetTexturePath() {
+
+	string $texture = `craGetTexture`;
+	string $texturePath = `getAttr ($texture +".fileTextureName")`;
+	return $texturePath;
+
+}
+
+
+global proc string[] craGetTexturePathArray() {
+
+	string $textures[] = `craGetTextureArray`;
+	string $texturePathArray[];
+
+	string $mySel[] = `ls -sl -l`;
+
+	for ($j=0; $j<size($mySel);$j++) {
+		select -r $mySel[$j];
+		$texturePathArray[$j] = `craGetTexturePath`;
+	}
+
+	for ($k=0; $k<size($texturePathArray);$k++)
+		print (($k+1) + ". - " + $texturePathArray[$k] + "\n");
+
+	select -r $mySel;
+	return $texturePathArray;
+
+}
+
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+// craReloadTextures end
+
+global proc craSceneUnits (string $unit) {
+
+	string $panelName = `getPanel -wf`;
+	string $camera = `modelPanel -q -camera $panelName`;
+
+	setAttr ($camera + ".farClipPlane") 100000;
+	setAttr ($camera + ".nearClipPlane") 0.01;
+
+	currentUnit -l $unit;
+	grid -spacing 5 -size 12  -displayPerspectiveLabels 0;
+
+}
+
+global proc string[] craGetNameSpace(){
+	string $sel[] = `ls -sl`;
+	if(!size($sel)){
+		error "Select some object.";
+	}
+	string $namespaces[];
+	for ($i in $sel){
+		string $getNamespace[];
+		string $getNamespace[];
+		int $numNamespaces = `tokenize $i ":" $getNamespace` ;
+		string $characterNamespace = $getNamespace[0];
+		$namespaces[size($namespaces)] = $characterNamespace;
+	}
+	
+	return $namespaces;
+}
+
+global proc craCheckRemoteEdit(){
+	
+	if (!(`commandPort -q "127.0.0.1:7777"`)) 
+	{
+		commandPort -n "127.0.0.1:7777";
+		print "commandPort 7777 OPEN.\n";
+		menuItem -e -l "Close commandPort 7777" -c "craSetupRemoteEdit" craSetupRemoteEditMI;
+	} else {
+		commandPort -close -n "127.0.0.1:7777";
+		menuItem -e -l "Open commandPort 7777" -c "craSetupRemoteEdit" craSetupRemoteEditMI;
+		print "commandPort 7777 CLOSED.\n";		
+	}
+	
+}
+
+global proc craSetupRemoteEdit(){
+	
+	if (!(`commandPort -q "127.0.0.1:7777"`)) 
+	{
+		commandPort -n "127.0.0.1:7777";
+		print "commandPort 7777 OPEN.\n";
+		menuItem -e -l "Close commandPort 7777" -c "craSetupRemoteEdit" craSetupRemoteEditMI;
+	} 
+	else 
+	{
+		commandPort -close -n "127.0.0.1:7777";
+		menuItem -e -l "Open commandPort 7777" -c "craSetupRemoteEdit" craSetupRemoteEditMI;
+		print "commandPort 7777 CLOSED.\n";		
+	}
+	
+}
+
+global proc craViewScenePlayblast(){
+	//check for playblast
+	string $playblastFileExt = "avi";	
+	
+	if ( `file -q -loc` == "unknown")
+		error "Save you scene.";
+	
+	if(`about -macOS`)
+		$playblastFileExt = "mov";
+	
+	if(file("-q", "-exists", (`workspace -q -rd` + "playblast/" +(basenameEx(`file -q -shortName -sn`) + "." + $playblastFileExt)))){
+		string $file = (`workspace -q -rd` + "playblast/" + basenameEx(`file -q -shortName -sn`) + "." + $playblastFileExt);
+		print $file;
+		
+		if(`about -windows`)
+			system ("start explorer " + `toNativePath $file`);
+		if(`about -macOS`)
+			system ("open " + `toNativePath $file`);
+	} else
+		error "No scene playblast.";
+}
+
+
+global proc craSceneUtilsInitMenuItems(){
+	
+	if(`menu -exists craSceneToolsMenu`)
+	{
+		if(`about -linux`){
+			if (`menuItem -exists craViewScenePlayblastMI`)
+				deleteUI craViewScenePlayblastMI;
+			if (`menuItem -exists craCreateScenePlayblastMI`)
+				deleteUI craCreateScenePlayblastMI;
+		} else {
+			
+			if(`craCheckPlayblast`)
+				menuItem -e -en 1 -l "View Scene Playblast" -ann "Open scene playblast" craViewScenePlayblastMI;
+			else
+				menuItem -e -en 0 -l "No Scene Playblast" -ann "No Scene Playblast" craViewScenePlayblastMI;
+		}
+		
+		menuItem -e -cb `headsUpDisplay -exists craSceneHUDsProjectHUD` craSceneInfoHUDsMI;
+		
+		if (!`commandPort -q "127.0.0.1:7777"`) 
+			menuItem -e -l "Open commandPort 7777" craSetupRemoteEditMI;
+		else 
+			menuItem -e -l "Close commandPort 7777" craSetupRemoteEditMI;
+		
+		global string $gPlayBackSlider;
+		
+		menuItem -e -checkBox `timeControl -q -snap $gPlayBackSlider` craTimelineSnappingMI;
+	}
+			
+}
+
+
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+// Channel/Node Control start
+global proc craChannelControl()
+{
+	if (`window -exists craChannelControlWin`)
+		deleteUI craChannelControlWin;
+	
+	window -t "Channel/Node Control" -tlb 1 -s 0 craChannelControlWin;
+	columnLayout -w 100 -adj 1;
+		frameLayout -lv 0 -mw 1 -mh 1;
+		columnLayout -adj 1;
+			rowLayout -nc 3 -bgc 0.55 0.4 0.4 -adj 1;
+				button -h 18 -w 100 -ann "Lock and Hide All Transform Channels" -bgc 0.55 0.3 0.3 -l "Lock/Hide Attrs" -c "craChannelControlProc {\"tx\", \"ty\",\"tz\",\"rx\",\"ry\",\"rz\",\"sx\",\"sy\",\"sz\",\"v\"} 1 0";
+				popupMenu -pmc "popupMenu -e -dai craLockHideAllAttrsPUM; menuItem -l \"Lock and Hide All Keyable Channels\" -en (size(ls(\"-sl\"))) -c \"craChannelControlProc `listAttr -k` 1 0\" -p craLockHideAllAttrsPUM craLocHidekAllAttrsMI;" craLockHideAllAttrsPUM;
+				rowLayout -h 20 -bgc 0.55 0.4 0.4 -nc 4 -cw4 20 20 20 20;
+					button -h 18 -ann "Lock/Hide Translate Channels" -w 21 -bgc 0.55 0.4 0.4  -l "T" -c "craLockHideChannelsProc {\"tx\", \"ty\",\"tz\"} 1 0";
+					popupMenu -mm 1;                                          
+						menuItem -rp "NW" -l "TX" -c "craLockHideChannelsProc {\"tx\"} 1 0";
+						menuItem -rp "N" -l "TY" -c "craLockHideChannelsProc {\"ty\"} 1 0";
+						menuItem -rp "NE" -l "TZ" -c "craLockHideChannelsProc {\"tz\"} 1 0";
+					setParent -m ..;
+					button -h 18 -ann "Lock/Hide Rotate Channels" -w 21 -bgc 0.55 0.4 0.4  -l "R" -c "craChannelControlProc {\"rx\",\"ry\",\"rz\"} 1 0";
+					popupMenu -mm 1;
+						menuItem -rp "NW" -l "RX" -c "craLockHideChannelsProc {\"rx\"} 1 0";
+						menuItem -rp "N" -l "RY" -c "craLockHideChannelsProc {\"ry\"} 1 0";
+						menuItem -rp "NE" -l "RZ" -c "craLockHideChannelsProc {\"rz\"} 1 0";
+					setParent -m ..;
+					button -h 18 -ann "Lock/Hide Scale Channels" -w 21 -bgc 0.55 0.4 0.4  -l "S" -c "craLockHideChannelsProc {\"sx\",\"sy\",\"sz\"} 1 0";
+					popupMenu -mm 1;
+						menuItem -rp "NW" -l "SX" -c "craLockHideChannelsProc {\"sx\"} 1 0";
+						menuItem -rp "N" -l "SY" -c "craLockHideChannelsProc {\"sy\"} 1 0";
+						menuItem -rp "NE" -l "SZ" -c "craLockHideChannelsProc {\"sz\"} 1 0";
+					setParent -m ..;
+					button -h 18 -ann "Lock/Hide Visibility Channel" -w 21 -bgc 0.55 0.4 0.4  -l "V" -c "craLockHideChannelsProc {\"v\"} 1 0";
+				setParent ..;
+				nodeIconButton -h 18 -w 24 -bgc 0.55 0.3 0.3 -i "Lock_ON.png" -ann "Lock Transform Channels" -c "craLockAttrs {\"tx\", \"ty\",\"tz\",\"rx\",\"ry\",\"rz\",\"sx\",\"sy\",\"sz\",\"v\"} 1";
+			setParent ..;
+			
+			rowLayout -nc 3 -bgc 0.4 0.55 0.4 -adj 1;
+				button -h 18  -ann "Unlock and Unhide All Transform Channels" -bgc 0.3 0.55 0.3 -l "UnLock/UnHide Attrs" -c "craChannelControlProc {\"tx\", \"ty\",\"tz\",\"rx\",\"ry\",\"rz\",\"sx\",\"sy\",\"sz\",\"v\"} 0 1";
+					popupMenu -pmc "popupMenu -e -dai craUnlockUnhideAllAttrsPUM; menuItem -l \"Unlock and Unhide All Locked and Keyable Channels\" -en (size(ls(\"-sl\"))) -c \"craChannelControlProc `listAttr -l` 0 1\" -p craUnlockUnhideAllAttrsPUM craUnlocUnhidekAllAttrsMI;" craUnlockUnhideAllAttrsPUM;
+					popupMenu -pmc "popupMenu -e -dai craUnlockAllAttrsPUM; menuItem -l \"Unlock All Keyable Channels\" -en (size(ls(\"-sl\"))) -c \"craLockAttrs `listAttr -k` 0\" -p craUnlockAllAttrsPUM craUnlockAllAttrsMI;" craUnlockAllAttrsPUM;
+				setParent -m ..;
+				
+				rowLayout -h 20 -bgc 0.4 0.55 0.4 -nc 4 -cw4 20 20 20 20;
+					button -h 18 -ann "Unlock/Unhide Translate Channels" -w 21 -bgc 0.4 0.55 0.4 -l "T" -c "craLockHideChannelsProc {\"tx\", \"ty\",\"tz\"} 0 1";
+					popupMenu -mm 1;
+						menuItem -rp "NW" -l "TX" -c "craLockHideChannelsProc {\"tx\"} 0 1";
+						menuItem -rp "N" -l "TY" -c "craLockHideChannelsProc {\"ty\"} 0 1";
+						menuItem -rp "NE" -l "TZ" -c "craLockHideChannelsProc {\"tz\"} 0 1";
+					setParent -m ..;
+					button -h 18 -ann "Unlock/Unhide Rotate Channels" -w 21 -bgc 0.4 0.55 0.4 -l "R" -c "craLockHideChannelsProc {\"rx\",\"ry\",\"rz\"} 0 1";
+					popupMenu -mm 1;
+						menuItem -rp "NW" -l "RX" -c "craLockHideChannelsProc {\"rx\"} 0 1";
+						menuItem -rp "N" -l "RY" -c "craLockHideChannelsProc {\"ry\"} 0 1";
+						menuItem -rp "NE" -l "RZ" -c "craLockHideChannelsProc {\"rz\"} 0 1";
+					setParent -m ..;
+					button -h 18 -ann "Unlock/Unhide Scale Channels" -w 21 -bgc 0.4 0.55 0.4 -l "S" -c "craLockHideChannelsProc {\"sx\",\"sy\",\"sz\"} 0 1";
+					popupMenu -mm 1;
+						menuItem -rp "NW" -l "SX" -c "craLockHideChannelsProc {\"sx\"} 0 1";
+						menuItem -rp "N" -l "SY" -c "craLockHideChannelsProc {\"sy\"} 0 1";
+						menuItem -rp "NE" -l "SZ" -c "craLockHideChannelsProc {\"sz\"} 0 1";
+					setParent -m ..;
+					button -h 18 -ann "Unlock/Unhide Visibility Channel" -w 21 -bgc 0.4 0.55 0.4 -l "V" -c "craLockHideChannelsProc {\"v\"} 0 1";
+					setParent ..;
+					nodeIconButton -h 18 -w 24 -bgc 0.4 0.55 0.4 -i "Lock_OFF.png" -ann "Unlock Transform Channels" -c "craLockAttrs {\"tx\", \"ty\",\"tz\",\"rx\",\"ry\",\"rz\",\"sx\",\"sy\",\"sz\",\"v\"} 0";
+			setParent ..;
+			
+			rowLayout -h 20 -nc 4 -bgc 0.4 0.4 0.6 -adj 2;
+				nodeIconButton -l "Node" -bgc .4 .4 .6 -h 18 -st "iconAndTextHorizontal" -i "Lock_ON.png" -ann "Locks one or more dependency nodes. A locked node is restricted in the following ways:\n - It may not be deleted.\n - It may not be renamed.\n - Its parenting may not be changed.\n - Attributes may not be added to or removed from it.\n - Locked attributes may not be unlocked.\n - Unlocked attributes may not be locked." -c "craLockNode 1 0";	
+				nodeIconButton -l "Node Hi" -bgc .4 .4 .6 -h 18 -st "iconAndTextHorizontal" -i "Lock_ON.png" -ann "Lock selection hierarchy" -c "craLockNode 1 1 ";	
+				nodeIconButton -l "Node" -bgc 0.55 0.55 0.2 -h 18 -st "iconAndTextHorizontal" -i "Lock_OFF.png" -ann "Unlock selected nodes" -c "craLockNode 0 0 ";	
+				nodeIconButton -l "Node Hi" -bgc 0.55 0.55 0.2 -h 18 -st "iconAndTextHorizontal" -i "Lock_OFF.png" -ann "Unlock selection hierarchy" -c "craLockNode 0 1";	
+			setParent ..;
+			
+			rowLayout -h 20 -nc 5 -adj 1 -bgc .4 .4 .4 ;
+				button -h 18 -bgc .55 .55 .55 -ann "Open Channel Control Window" -l "Channel Control" -c "ChannelControlEditor";
+					button -h 18 -bgc .55 .55 .55 -l " Add " -ann "Add Custom Attribute" -c "AddAttribute";
+					button -h 18 -bgc .55 .55 .55  -l " Edit " -ann "Edit Custom Attribute" -c "RenameAttribute";
+					button -h 18 -bgc .55 .55 .55  -l " Delete " -ann "Delete Custom Attribute" -c "DeleteAttribute";
+					nodeIconButton -bgc .4 .4 .4 -h 18 -w 18 -i "pickOtherObj.png" -ann "About" -c "craAboutScript";
+			setParent ..;
+			
+	setParent ..;
+	
+	showWindow craChannelControlWin;
+}	
+
+global proc string[] craGetCBAttrs()
+{
+	string $attrs[] = `channelBox -q -sma mainChannelBox`;
+	$attrs = stringArrayCatenate( $attrs, `channelBox -q -ssa mainChannelBox`);
+	$attrs = stringArrayCatenate( $attrs, `channelBox -q -sha mainChannelBox`);
+        return $attrs;
+}
+global proc craChannelControlProc( string $attrs[], int $lock , int $keyable)
+{
+	string $listedObjects[] = `ls -sl -l`;
+	
+	if(size(`craGetCBAttrs`)){
+		if($lock && !$keyable){
+			channelBoxCommand -lock;
+			channelBoxCommand -unkeyable;
+		} else if($lock && $keyable){
+			channelBoxCommand -lock;
+		} else {
+			channelBoxCommand -unlock;
+	}
+	} else {
+		for($attr in $attrs){
+			for ($object in $listedObjects) {
+				if(`attributeExists $attr $object`){
+					setAttr -l $lock -k $keyable ($object + "." + $attr);	
+				}
+			}
+		}
+	}
+}
+global proc craLockHideChannelsProc( string $attrs[], int $lock , int $keyable)
+{
+	string $listedObjects[] = `ls -sl -l`;
+	for($attr in $attrs){
+		for ($object in $listedObjects) {
+			if(`attributeExists $attr $object`){
+				setAttr -l $lock -k $keyable ($object + "." + $attr);	
+			}
+		}
+	}
+}
+global proc craLockAttrs(string $attrs[], int $state)
+{
+	string $listedObjects[] = `ls -sl`;
+	if(size(`craGetCBAttrs`))
+		$attrs = `craGetCBAttrs`;
+	
+	for($attr in $attrs){
+		for ($object in $listedObjects) {
+			string $shapes[] = `listRelatives -s $object`;
+			if(`attributeExists $attr $object`)
+				setAttr -l $state ($object + "." + $attr);
+			if(`attributeExists $attr $shapes[0]`)
+				setAttr -l $state ($shapes[0] + "." + $attr);
+		}
+	}
+}
+global proc craLockNode(int $mode, int $hi)
+{
+	string $mySel[] = `ls -sl`;
+	
+	if(!size(`ls -sl`))
+		error "Select object(s)";
+	
+	if($hi)
+	{
+		select -hi;
+	}
+	
+	for($i in `ls -sl`){
+		
+		lockNode -lock $mode;
+		if($mode == 1)
+			print ($i + " node locked.\n");
+		else
+			print ($i + " node unlocked.\n"); 
+	}
+	
+	select -r $mySel;
+}
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+// Channel/Node Control end
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+// Selection Filter start
+global proc craSelectionFilter(){
+	
+	if (`window -exists craSelectionFilterWin`)
+		deleteUI craSelectionFilterWin;
+	
+	window -t "  Filter/Select Nodes" -tlb 1 -s 0 -w 75 -h 50 craSelectionFilterWin;
+	
+	frameLayout -lv 0 -cll 0 -mw 2 -mh 2 -bs "etchedIn";
+	columnLayout;
+	
+	rowLayout -nc 4 -cw4 60 100 57 52 mainStringRL;
+		text -l " String Filter" craStringTXT;
+		textField -w 170 -text "*" -ec "craSelectNodes" craStringSearchTF;
+		popupMenu;
+		// edit this array to populate the popupMenu in the nodeType textField
+		string $commonSuffixes[] = {"*_anim", "*_skin", "*_geo","*_jnt", "*_ctrl", "*"};
+		//comment the next line to prevent the popupMenu items from being sorted by name
+		$commonSuffixes = sort($commonSuffixes);
+		
+		for ($commonSuffix in $commonSuffixes)
+			menuItem -l $commonSuffix -c ("textField -e -tx \"" + $commonSuffix + "\" craStringSearchTF") ($commonSuffix + "MI");
+		
+		button -w 70 -l "Get Name" -c ("textField -e -tx (`craGetNodeType(2)` + \"*\") craStringSearchTF;textField -e -tx `craGetNodeType(0)` craNodeTypeTF") craGetNameBTN;
+		button -w 70 -l "Select All" -c "craSelectNodes" craSelectBTN;
+		popupMenu;
+			menuItem -l "Deselect All" -c "craDeselectNodes";
+		setParent -m ..;
+	setParent ..;
+	
+	rowLayout -nc 4 -cw4 60 100 57 52 mainRL;
+	text -l " Node Type  " craStringTXT;
+	textField -w 170 -text "*" -ec "craSelectNodes" craNodeTypeTF;
+	
+	popupMenu;
+	// edit this array to populate the popupMenu in the nodeType textField
+	string $commonNodes[] = {"joint", "nCloth", "file", "lambert", "mesh",  "nurbsSurface", "nurbsCurve", "*"};
+	//comment the next line to prevent the popupMenu items from being sorted by name
+	$commonNodes = sort($commonNodes);
+	
+	for ($commonNode in $commonNodes)
+		menuItem -l $commonNode -c ("textField -e -tx \"" + $commonNode + "\" craNodeTypeTF") ($commonNode + "MI");
+	
+	button -w 70 -l "Get Type" -c ("textField -e -tx `craGetNodeType(0)` craNodeTypeTF") craGetTypeBTN;
+	popupMenu;
+	menuItem -l "from Shape" -c ("textField -e -tx `craGetNodeType(1)` craNodeTypeTF");
+	
+	button -w 70 -l "Filter Type" -c "select(\"-r\",ls(\"-sl\", \"-type\", `textField -q -text craNodeTypeTF`,`textField -q -text craStringSearchTF`))" craFilterBTN;
+	popupMenu;
+	menuItem -l "Filter Hierarchy" -c ("select -r -hi;select(\"-r\",ls(\"-sl\", \"-type\", `textField -q -text craNodeTypeTF`,`textField -q -text craStringSearchTF`))");
+	setParent ..;
+	
+	rowLayout -nc 4 -adj 2 craRL2;
+	
+	text  -l " Set  Type    " craNodeTypeTF;
+	optionMenu -w 290 -cc "textField -e -tx `optionMenu -q -v craFilSelOM` craNodeTypeTF" craFilSelOM;
+	separator -st "none" -hr 1 -w 1;
+	nodeIconButton -h 19 -w 19 -i "pickOtherObj.png" -ann "About" -c "craAboutScript";
+	string $nodes[] = {"abstractBaseCreate","abstractBaseNurbsConversion","addDoubleLinear","addMatrix","aimConstraint",
+		"airField","alignCurve","alignSurface","ambientLight","angleBetween","animBlend","animBlendInOut","animClip","animCurve",
+		"animCurveTA","animCurveTL","animCurveTT","animCurveTU","animCurveUA","animCurveUL","animCurveUT","animCurveUU","anisotropic",
+		"annotationShape","arcLengthDimension","areaLight","arrayMapper","attachCurve","attachSurface","audio","avgCurves",
+		"avgNurbsSurfacePoints","avgSurfacePoints","bakeSet","baseGeometryVarGroup","baseLattice","baseShadingSwitch","bevel",
+		"bevelPlus","birailSrf","blend","blendColorSets","blendColors","blendDevice","blendShape","blendTwoAttr","blendWeighted",
+		"blindDataTemplate","blinn","boneLattice","boolean","boundary","boundaryBase","brownian","brush","bulge","bump2d","bump3d",
+		"cacheBase","cacheBlend","cacheFile","camera","cameraView","character","characterMap","characterOffset","checker","choice",
+		"chooser","clamp","clipLibrary","clipScheduler","closeCurve","closeSurface","closestPointOnMesh","closestPointOnSurface",
+		"cloth","cloud","cluster","clusterHandle","condition","constraint","container","contrast","controlPoint","copyColorSet",
+		"copyUVSet","crater","createColorSet","createUVSet","curveFromMesh","curveFromMeshCoM","curveFromMeshEdge","curveFromSubdiv",
+		"curveFromSubdivEdge","curveFromSubdivFace","curveFromSurface","curveFromSurfaceBnd","curveFromSurfaceCoS","curveFromSurfaceIso",
+		"curveInfo","curveIntersect","curveNormalizer","curveNormalizerAngle","curveNormalizerLinear","curveRange","curveShape",
+		"curveVarGroup","dagNode","dagPose","defaultLightList","defaultRenderUtilityList","defaultShaderList","defaultTextureList",
+		"deformBend","deformFlare","deformFunc","deformSine","deformSquash","deformTwist","deformWave","deformableShape","deleteColorSet",
+		"deleteComponent","deleteUVSet","dependNode","detachCurve","detachSurface","dielectric_material","dimensionShape","directedDisc",
+		"directionalLight","diskCache","displacementShader","displayLayer","displayLayerManager","distanceBetween","distanceDimShape","dof",
+		"doubleShadingSwitch","dpBirailSrf","dragField","dropoffLocator","dynBase","dynGlobals","dynamicConstraint","entity","envBall",
+		"envChrome","envCube","envFacade","envFog","envSky","envSphere","environmentFog","explodeNurbsShell","expression","extendCurve",
+		"extendSurface","extrude","FurAttractors","FurCurveAttractors","FurDescription","FurFeedback","FurGlobals","facade","ffBlendSrf",
+		"ffBlendSrfObsolete","ffFilletSrf","ffd","field","file","filletCurve","filter","filterClosestSample","filterEuler","filterResample",
+		"filterSimplify","fitBspline","flexorShape","flow","fluidEmitter","fluidShape","fluidTexture2D","fluidTexture3D","follicle",
+		"fourByFourMatrix","fractal","frameCache","furPointOnMeshInfo","furPointOnSubd","gammaCorrect","geoConnectable","geoConnector",
+		"geometryConstraint","geometryFilter","geometryShape","geometryVarGroup","globalCacheControl","globalStitch","granite",
+		"gravityField","grid","groupId","groupParts","guide","hairConstraint","hairSystem","hairTubeShader","hardenPoint",
+		"hardwareRenderGlobals","heightField","hikEffector","hikFloorContactMarker","hikGroundPlane","hikHandle","hikSolver",
+		"historySwitch","holdMatrix","hsvToRgb","hwReflectionMap","hwRenderGlobals","hwShader","hyperGraphInfo","hyperLayout",
+		"hyperView","ikEffector","ikHandle","ikMCsolver","ikPASolver","ikRPsolver","ikSCsolver","ikSolver","ikSplineSolver","ikSystem",
+		"imagePlane","implicitBox","implicitCone","implicitSphere","insertKnotCurve","insertKnotSurface","instancer","intersectSurface",
+		"jiggle","joint","jointCluster","jointFfd","jointLattice","lambert","lattice","layeredShader","layeredTexture",
+		"leastSquaresModifier","leather","light","lightFog","lightInfo","lightLinker","lightList","lineModifier","locator","lodGroup",
+		"lodThresholds","loft","lookAt","luminance","makeCircularArc","makeGroup","makeIllustratorCurves","makeNurbCircle","makeNurbCone",
+		"makeNurbCube","makeNurbCylinder","makeNurbPlane","makeNurbSphere","makeNurbTorus","makeNurbsSquare","makeTextCurves",
+		"makeThreePointCircularArc","makeTwoPointCircularArc","marble","materialFacade","materialInfo","mentalrayIblShape","mentalrayTexture",
+		"mesh","meshVarGroup","motionPath","mountain","movie","mpBirailSrf","multDoubleLinear","multMatrix","multilisterLight","multiplyDivide",
+		"mute","nCloth","nComponent","nParticle","nRigid","network","newtonField","noise","nonAmbientLightShapeNode","nonExtendedLightShapeNode",
+		"nonLinear","normalConstraint","nucleus","nurbsCurve","nurbsDimShape","nurbsSurface","nurbsTessellate","nurbsToSubdiv","nurbsToSubdivProc",
+		"objectAttrFilter","objectBinFilter","objectFilter","objectMultiFilter","objectNameFilter","objectRenderFilter","objectScriptFilter",
+		"objectSet","objectTypeFilter","ocean","oceanShader","offsetCos","offsetCurve","offsetSurface","oldBlindDataBase","opticalFX",
+		"orientConstraint","orientationMarker","pairBlend","paramDimension","parentConstraint","parentTessellate","particle","particleAgeMapper",
+		"particleCloud","particleColorMapper","particleIncandMapper","particleSamplerInfo","particleTranspMapper","partition","passMatrix",
+		"pfxGeometry","pfxHair","pfxToon","phong","phongE","place2dTexture","place3dTexture","planarTrimSurface","plane","plusMinusAverage",
+		"pointConstraint","pointEmitter","pointLight","pointMatrixMult","pointOnCurveInfo","pointOnSurfaceInfo","poleVectorConstraint",
+		"polyAppend","polyAppendVertex","polyAutoProj","polyAverageVertex","polyBase","polyBevel","polyBlindData","polyBoolOp","polyBridgeEdge",
+		"polyChipOff","polyCloseBorder","polyCollapseEdge","polyCollapseF","polyColorPerVertex","polyColorMod","polyCone","polyCopyUV",
+		"polyCreaseEdge","polyCreateFace","polyCreator","polyCube","polyCut","polyCutManip","polyCutManipContainer","polyCylProj","polyCylinder",
+		"polyDelEdge","polyDelFacet","polyDelVertex","polyDuplicateEdge","polyExtrudeEdge","polyExtrudeFace","polyExtrudeVertex","polyFlipEdge",
+		"polyFlipUV","polyHelix","polyLayoutUV","polyMapCut","polyMapDel","polyMapSew","polyMapSewMove","polyMergeEdge","polyMergeFace",
+		"polyMergeUV","polyMergeVert","polyMirror","polyModifier","polyModifierUV","polyModifierWorld","polyMoveEdge","polyMoveFace",
+		"polyMoveFacetUV","polyMoveUV","polyMoveVertex","polyNormal","polyNormalPerVertex","polyNormalizeUV","polyOptUvs","polyPipe",
+		"polyPlanarProj","polyPlane","polyPlatonicSolid","polyPoke","polyPrimitive","polyPrimitiveMisc","polyPrism","polyProj","polyPyramid",
+		"polyQuad","polyReduce","polySeparate","polySewEdge","polySmooth","polySmoothFace","polySmoothProxy","polySoftEdge","polySphProj",
+		"polySphere","polySplit","polySplitEdge","polySplitRing","polySplitVert","polyStraightenUVBorder","polySubdEdge","polySubdFace",
+		"polyToSubdiv","polyTorus","polyTransfer","polyTriangulate","polyTweak","polyTweakUV","polyUnite","polyWedgeFace","positionMarker",
+		"postProcessList","primitive","projectCurve","projectTangent","projection","proxyManager","psdFileTex","quadShadingSwitch","radialField",
+		"ramp","rampShader","rbfSrf","rebuildCurve","rebuildSurface","record","reference","reflect","remapColor","remapHsv","remapValue",
+		"renderBox","renderCone","renderGlobals","renderGlobalsList","renderLayer","renderLayerManager","renderLight","renderQuality",
+		"renderRect","renderSphere","resolution","resultCurve","resultCurveTimeToAngular","resultCurveTimeToLinear","resultCurveTimeToTime",
+		"resultCurveTimeToUnitless","reverse","reverseCurve","reverseSurface","revolve","revolvedPrimitive","rgbToHsv","rigidBody",
+		"rigidConstraint","rigidSolver","rock","roundConstantRadius","sampler","samplerInfo","scaleConstraint","script","sculpt",
+		"selectionListOperator","setRange","shaderGlow","shadingEngine","shadingMap","shape","shellTessellate","simpleVolumeShader",
+		"singleShadingSwitch","sketchPlane","skinCluster","smear","smoothCurve","smoothTangentSrf","snapshot","snapshotShape","snow",
+		"softMod","softModHandle","solidFractal","spBirailSrf","spotLight","spring","squareSrf","stencil","stitchAsNurbsShell","stitchSrf",
+		"stroke","strokeGlobals","stucco","studioClearCoat","styleCurve","subCurve","subSurface","subdAddTopology","subdAutoProj","subdBase",
+		"subdBlindData","subdCleanTopology","subdHierBlind","subdLayoutUV","subdMapCut","subdMapSewMove","subdModifier","subdModifierUV",
+		"subdModifierWorld","subdPlanarProj","subdTweak","subdTweakUV","subdiv","subdivCollapse","subdivComponentId","subdivReverseFaces",
+		"subdivSurfaceVarGroup","subdivToNurbs","subdivToPoly","surfaceInfo","surfaceLuminance","surfaceSampler","surfaceShader",
+		"surfaceShape","surfaceVarGroup","tangentConstraint","texture2d","texture3d","textureBakeSet","textureEnv","textureToGeom",
+		"time","timeFunction","timeToUnitConversion","toonLineAttributes","transferAttributes","transform","transformGeometry",
+		"trim","trimWithBoundaries","tripleShadingSwitch","turbulenceField","tweak","uniformField","unitConversion",
+		"unitToTimeConversion","unknown","unknownDag","unknownTransform","untrim","useBackground","uvChooser","vectorProduct",
+		"vectorRenderGlobals","vertexBakeSet","volumeAxisField","volumeFog","volumeLight","volumeNoise","volumeShader","vortexField",
+		"water","weightGeometryFilter","wire","wood","wrap","wtAddMatrix"};
+	
+	for ($node in $nodes)
+		menuItem -l $node ($node + "MI");
+	
+	window -e -tlb 1 -s 0 -w 400 craSelectionFilterWin;
+	showWindow craSelectionFilterWin;
+	
+}
+global proc string craGetNodeType(int $shape){
+	
+	
+	string $nodeSel[] = `ls -sl -l`;
+	if (!size($nodeSel))
+		error "Select some object/node";
+	
+	if($shape == 1){
+		string $shapes[] = `listRelatives -f -s -ni $nodeSel[0]`;
+		return `nodeType $shapes[0]`;
+	}
+	
+	else if($shape == 2){
+		string $mySel[] = `ls -sl`;
+		return $mySel[0];
+	}
+	else
+		return `nodeType $nodeSel[0]`;
+	
+}
+global proc craSelectNodes(){
+	
+	if(`textField -q -text craNodeTypeTF` == "*")
+		select("-r",ls(`textField -q -text craStringSearchTF`));
+	else
+		select("-r",ls("-type", `textField -q -text craNodeTypeTF`,`textField -q -text craStringSearchTF`));
+	
+}
+global proc craDeselectNodes(){
+	
+	if(`textField -q -text craNodeTypeTF` == "*")
+		select("-d",ls(`textField -q -text craStringSearchTF`));
+	else
+		select("-d",ls("-type", `textField -q -text craNodeTypeTF`,`textField -q -text craStringSearchTF`));
+	
+}
+global proc craFilterNodes(int $mode){
+	
+	
+	if(`textField -q -text craNodeTypeTF` == "*")
+		select("-r",ls("-sl", `textField -q -text craStringSearchTF`));
+	else
+		select("-r",ls("-sl", "-type", `textField -q -text craNodeTypeTF`,`textField -q -text craStringSearchTF`));
+}
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+// Selection Filter end
+global proc craSetRenderResolution(int $width, int $height, float $aspectRatio){
+	setAttr "defaultResolution.width" $width;
+	setAttr "defaultResolution.height" $height;
+	setAttr "defaultResolution.deviceAspectRatio" $aspectRatio;
+}
+global proc craCreateShotCamera( int $lookThrough){
+	
+	float $perspPos[] = `xform -q -ws -t persp`;
+	float $perspRot[] = `xform -q -ws -ro persp`;
+	string $cameraNodes[] = `camera -n shotCamera`;
+	string $camera = $cameraNodes[0];
+	
+	if(!`objExists "shotCamera"`)
+	{
+		rename $cameraNodes[0] shotCamera;
+		$camera = "shotCamera";
+	}
+	
+	xform -ws -t $perspPos[0] $perspPos[1] $perspPos[2] $camera; 
+	xform -ws -ro $perspRot[0] $perspRot[1] $perspRot[2] $camera; 
+	
+	if($lookThrough)
+		modelPanel -e -cam $camera `getPanel -wf`;
+	
+}
+global proc craPlaybackOptions(int $mode){
+	
+	if($mode == 0)
+	{
+		playbackOptions -e -playbackSpeed 1 -maxPlaybackSpeed 0;
+		print "Real-Time Playback speed.";
+		headsUpMessage -t 0.1  "Real-Time";
+	}
+	if($mode == 1)
+	{
+		playbackOptions -e -playbackSpeed 0 -maxPlaybackSpeed 0;
+		print "Play Every Frame Playback speed.";
+		headsUpMessage -t 0.1  "Play Every Frame";
+	}
+	if($mode == 2)
+	{
+		playbackOptions -e -playbackSpeed 0 -maxPlaybackSpeed 1;
+		print "Play Every Frame Playback speed, Max Real-Time.";
+		headsUpMessage -t 0.1  "Play Every Frame, Max Real-Time";
+	}
+	
+	if($mode == 3)
+	{
+		playbackOptions -l "once";
+		print "Playback Once."; 
+		headsUpMessage -t 0.1  "Playback Once.";
+	}
+	
+	if($mode == 4)
+	{
+		playbackOptions -l "oscillate";
+		print "Playback Oscillate";
+		headsUpMessage -t 0.1 "Playback Oscillate";
+	}
+	
+	if($mode == 5)
+	{
+		playbackOptions -l "continuous";
+		print "Continuous Playback.";	
+		headsUpMessage -t 0.1 "Continuous Playback.";
+	}
+	
+	if($mode == 6)
+	{
+		playbackOptions -v "all";
+		print "Update All Views.";	
+		headsUpMessage -t 0.1 "Update All Views";
+	}
+	
+	if($mode == 7)
+	{
+		playbackOptions -v "active";
+		print "Update Active View.";	
+		headsUpMessage -t 0.1 "Update Active View";
+	}
+	
+}
+global proc int craCheckPlayblast(){
+	
+	if(`file -q -loc` == "unknown")
+		return 0;
+	
+	string $fileExt = "avi";	
+		
+	if(`about -macOS`)
+		$fileExt = "mov";
+		
+	if(file("-q", "-exists", (`workspace -q -rd` + "playblast/" +(basenameEx(`file -q -shortName -sn`) + "." + $fileExt))))
+		return 1;
+	else
+		return 0;
+		
+		
+}
+global proc craDeleteScenePlayblast(){
+	
+	//check for playblast
+	string $playblastFileExt = "avi";	
+	
+	if ( `file -q -loc` == "unknown")
+		error "Save you scene.";
+	
+	if(`about -macOS`)
+		$playblastFileExt = "mov";
+	
+	if(file("-q", "-exists", (`workspace -q -rd` + "playblast/" +(basenameEx(`file -q -shortName -sn`) + "." + $playblastFileExt)))){
+		if(`confirmDialog -title "Delete Playblast" -defaultButton "OK" -message "         Are you sure?" -cancelButton "Cancel" -dismissString "Cancel" -button "OK" -button "Cancel"` == "OK"){
+			string $file = (`workspace -q -rd` + "playblast/" + basenameEx(`file -q -shortName -sn`) + "." + $playblastFileExt);
+			sysFile -delete $file;
+			print ($file + " deleted.");
+		}
+	} else
+		error "No scene playblast.";
+		
+	craRefreshSceneInfo;
+	craRefreshPlaybastItems;
+	craSceneUtilsInitMenuItems;
+}
+global proc craSaveSceneVersion()
+{
+			
+	string $craArrayPathName[] =  `file -q -l`;
+	string $craArrayFileName[] =  stringToStringArray($craArrayPathName[0], "." );
+
+	$craExistFile = eval("file -q -ex \""+$craArrayPathName[0]+"\"");
+	
+	if($craExistFile && size($craArrayFileName)>1)
+	{
+		
+		string $extension, $overWrite, $version[], $filePrefix[], $SofixFileName, $PREFIXfileName, $newFileName, $remove[], $pathString;
+		int $endString, $in = 0, $flag = 0, $count = 0, $existFile, $offset;
+
+		clear $filePrefix;
+		clear $version;
+		
+		switch ($craArrayFileName[size($craArrayFileName)-1]) 
+		  {
+		      case "ma":
+			  $extension =  "mayaAscii";
+			  break;
+		      case "mb":
+			  $extension =  "mayaBinary";
+			  break;
+		  }
+		
+		for($i=0;$i<size($craArrayFileName[size($craArrayFileName)-2]);$i++)
+		{
+			string $craTemp1 =  eval("endString(\""+$craArrayFileName[size($craArrayFileName)-2]+"\","+($i+1)+")");
+			string $craTemp =  eval("startString(\""+$craTemp1+"\", 1)");
+			if(`gmatch $craTemp "[0-9]"`)
+				{$version[$count] = $craTemp;$count++;$endString = $i;}
+			else
+			{
+				$i = size($craArrayFileName[size($craArrayFileName)-2]);
+			}
+		}	
+
+		if(size($version))
+		{
+			string $revVersion[];
+			clear  $revVersion;
+
+			for($i=0;$i<size($version);$i++)
+				$revVersion[$i] = $version[size($version)-$i-1]; 
+
+			int $Fversion = stringArrayToString($revVersion, "");
+			$Fversion = $Fversion+1;
+			
+			if($Fversion<10)
+				$SofixFileName = "0"+$Fversion;
+			else
+				$SofixFileName = $Fversion;
+		}
+		else
+		{
+			$SofixFileName = "_v01";
+			$endString = -1;	
+		}
+		
+		
+		$remove[0] = $craArrayFileName[size($craArrayFileName)-1];
+		string $pathArray[] = stringArrayRemove($remove, $craArrayFileName);
+		$pathString = stringArrayToString($pathArray, ".");
+		
+
+		$PREFIXfileName = startString($pathString,size($pathString)-$endString-1);
+		$newFileName = $PREFIXfileName + $SofixFileName + "." + $craArrayFileName[size($craArrayFileName)-1];	
+		
+		
+		$existFile = eval("file -q -ex \""+$newFileName+"\"");
+		
+		if($existFile)
+		{	
+			string $message = $PREFIXfileName+$SofixFileName + "." + $craArrayFileName[1]+"\n\n\tOverwrite?";
+			$overWrite = `confirmDialog -title "File Already Exist" -message $message
+						-button "Yes" -button "No" -defaultButton "Yes"
+						-cancelButton "No" -dismissString "No"`;
+		
+			if($overWrite=="Yes")
+			{
+				eval("file -rename \""+$newFileName+"\"");
+				eval("file -save -type \""+$extension+"\"");
+				addRecentFile($newFileName,$extension);
+				print ("Saved: "+$newFileName+"\n");
+			}
+		}
+
+		else
+		{
+			eval("file -rename \""+$newFileName+"\"");
+			eval("file -save -type \""+$extension+"\"");
+			addRecentFile($newFileName,$extension);
+			print ("Saved: "+$newFileName+"\n");
+		}
+		
+		craRefreshSceneInfo;
+		craRefreshPlaybastItems;
+		craSceneUtilsInitMenuItems;
+	}
+	else
+	{
+		SaveSceneAs;
+	}
+	
+	string $craThumbnail = "craThumbnail";
+	string $craData = "/.craData";
+	string $filename = `file -q -ns`;
+	string $filenameDir = `file -q -loc`;
+	string $fileDir = `dirname($filenameDir)`;
+	string $finalPath = ( $fileDir + "/" + $craData + "/" + $craThumbnail + "/" + $filename +"/" );
+	
+	if(!`file -q -exists ( $finalPath + "/" + $filename + "_T0.png" )`)
+	{
+		 
+		craSaveSceneThumbDoIt 0;
+	}
+	
+	craRefreshSceneInfo;
+	craRefreshPlaybastItems;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+// auto load, unload craSceneUtils start
+
+global proc craAutoLoadSceneTools(int $state)
+{
+	if($state){
+		if(!file("-q", "-exists", (`internalVar -usd` + "userSetup.mel")))
+		{
+			if(!filetest("-w", (`internalVar -usd` + "userSetup.mel")))
+			{
+				string $userSetup = (`internalVar -usd` + "userSetup.mel");
+				$fileId = `fopen $userSetup "w"`;		
+				fprint $fileId "//craSceneTools auto load, Carlos Rico Adega 2013";	
+				fprint $fileId "\n";	
+				fprint $fileId "evalDeferred -lp (\"craSceneTools\");";	
+				fprint $fileId "\n";	
+				fprint $fileId "\n";	
+				fclose $fileId;  
+				print ( `internalVar -usd` + "userSetup.mel has been created!" );
+			}
+			else
+			{
+				error ( `internalVar -usd` + "userSetup.mel cannot be modified!" );
+			}
+				
+		}
+		else
+		{
+			if(filetest("-w", (`internalVar -usd` + "userSetup.mel")) == 1)
+			{
+				string $file = (`internalVar -usd` + "userSetup.mel");
+				$fileId=`fopen $file "a"`;
+				if( !$fileId )
+					error( "Could not read existing user setup file \n\"" + $file + "\"\n" );
+				
+				fprint $fileId "\n//craSceneTools auto load, Carlos Rico Adega 2013\nevalDeferred -lp (\"craSceneTools\");\n";		
+				
+				fclose $fileId ;
+				print ( `internalVar -usd` + "userSetup.mel has been modified!" );
+			}
+			else
+			{
+				menuItem -e -cb 0 craAutoloadSceneToolsCB;
+				optionVar -iv craAutoLoadSceneToolsOV 0;
+				error ( `internalVar -usd` + "userSetup.mel cannot be modified!" );
+			}
+		}
+	}
+	else
+	{
+		if(filetest("-w", (`internalVar -usd` + "userSetup.mel")))
+		{
+			//read file
+			string $userSetup = (`internalVar -usd` + "userSetup.mel");
+			string $newText[] = {};
+			$fileId = `fopen $userSetup "r"`;		
+			
+			while(!`feof $fileId`)
+			{
+				string $line = `fgetline $fileId`;
+				if ( $line == "//craSceneTools auto load, Carlos Rico Adega 2013\n" || $line == "evalDeferred -lp (\"craSceneTools\");\n")
+					continue;
+				$newText[size($newText)] = $line;
+			}
+			
+			fclose $fileId;  
+			
+			//rewrite userSetup.mel
+			$fileId = `fopen $userSetup "w"`;		
+			for($line in $newText)
+				fprint $fileId $line;
+			fclose $fileId;
+			
+			print ( `internalVar -usd` + "userSetup.mel has been modified!" );
+		}
+		else
+		{
+			menuItem -e -cb 1 craAutoloadSceneToolsCB;
+			optionVar -iv craAutoLoadSceneToolsOV 1;
+			error ( `internalVar -usd` + "userSetup.mel cannot be modified!" );
+		}
+	}
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+// auto load craSceneUtils end
+global proc craAddChannelBoxSceneToolButtons(int $state)
+{
+	global string $gChannelButtonForm;
+	
+	if($state)
+	{
+		
+		$butline = `formLayout -query -childArray $gChannelButtonForm`;
+		setParent $gChannelButtonForm;
+		$array=`layout -q -ca $gChannelButtonForm`;
+		int $topSpacing = 0;
+		int $botSpacing = 1;
+		
+		if(`rowLayout -exists craSceneToolButtonsRL`)
+			deleteUI craSceneToolButtonsRL;
+		
+		rowLayout -nc 9 craSceneToolButtonsRL;
+			symbolButton -w 23 -h 23 -i "fileOpen.png" -c "OpenScene" -ann "Open Scene" craOpenSceneCBBTN;
+			popupMenu -p "craOpenSceneCBBTN" -mm 1 -b 3 -postMenuCommand "buildRecentFileMenu craSceneFileItemsPUM;menuItem -rp \"S\" -p \"craSceneFileItemsPUM\" -l \"Open Scene Options\" -c \"OpenSceneOptions\";" craSceneFileItemsPUM;
+			setParent -m ..;
+			symbolButton -w 23 -h 23 -i "save.png" -c "craSaveSceneVersion" -ann "Save Scene Version";
+			symbolButton -w 23 -h 23 -i "autoload.png" -c "craReloadScene" -ann "Reload Scene";
+			symbolButton -w 23 -h 23 -i "info.png" -c "craSceneFileInfo" -ann "Scene Info";
+			symbolButton -w 23 -h 23 -i "LearningMovies.png" -c "craCreateScenePlayblast" -ann "Playblast Window" craPlayblastWinViewPlayblastCBBTN;
+			popupMenu -pmc "craRefreshPlaybastItems" -p "craPlayblastWinViewPlayblastCBBTN";
+				menuItem -l "View Playblast" -en `craCheckPlayblast` -c "craViewScenePlayblast" craPlayblastWinViewPlayblastCBMI;
+				menuItem -d 1;
+				menuItem -l "Delete Playblast" -en `craCheckPlayblast` -c "craDeleteScenePlayblast" craPlayblastWinDeletePlayblastCBMI;
+				menuItem -d 1;
+				menuItem -l "Playblast/Shot Window" -c "craCreateScenePlayblastWindow";
+				setParent -m ..;
+			symbolButton -w 23 -h 23 -i "refEdFileList.png" -c "craReferenceFileEditor" -ann "Reference File Editor";
+			symbolButton -w 23 -h 23 -i "Lock_ON.png" -c "craChannelControl" -ann "Channel/Node Control";
+			popupMenu -mm 1;
+				menuItem -rp "W" -l "Unlock/Unhide Xform" -c "craChannelControlProc {\"tx\", \"ty\",\"tz\",\"rx\",\"ry\",\"rz\",\"sx\",\"sy\",\"sz\",\"v\"} 0 1";
+				menuItem -rp "E" -l "Lock/Hide Xform" -c "craChannelControlProc {\"tx\", \"ty\",\"tz\",\"rx\",\"ry\",\"rz\",\"sx\",\"sy\",\"sz\",\"v\"} 1 0";
+				menuItem -rp "N" -l "Unlock Xform" -c "craLockAttrs {\"tx\", \"ty\",\"tz\",\"rx\",\"ry\",\"rz\",\"sx\",\"sy\",\"sz\",\"v\"} 0";
+				menuItem -rp "S" -l "Lock Xform" -c "craLockAttrs {\"tx\", \"ty\",\"tz\",\"rx\",\"ry\",\"rz\",\"sx\",\"sy\",\"sz\",\"v\"} 1";
+			setParent -m ..;
+			symbolButton -w 23 -h 23 -i "levelOfDetailRebuild.png" -c "craReloadTextures" -ann "Reload Textures";
+			symbolButton -w 23 -h 23 -i "IsolateSelected.png" -c "craSelectionFilter" -ann "Filter/Select Nodes";
+		setParent ..;
+		
+		formLayout -edit 
+				-attachNone	    craSceneToolButtonsRL	"left"
+					($gChannelButtonForm);
+		craRefreshPlaybastItems;
+	}
+	else 
+	{
+		if(`rowLayout -exists craSceneToolButtonsRL`)
+			deleteUI craSceneToolButtonsRL;
+	}
+}
+global proc craAboutScript()
+{
+	if (`window -exists craChannelControlAboutWin`)
+		deleteUI craChannelControlAboutWin;
+	
+	window -t  " About this script" -s 0 -tlb 1 craChannelControlAboutWin;
+	frameLayout -mw 5-mh 5 -lv 0;
+		columnLayout -adj 1;
+			text -l "";
+			text -l  "Carlos Rico Adega 2013";
+			text -l "";
+			textField -ed 0 -text "   carlos.rico.3d@gmail.com";
+			text -l "";
+			button -w 150 -l "Linked[In] Profile" -c "showHelp -absolute \"http://www.linkedin.com/pub/carlos-rico/6/58/325\"";
+			separator -h 5 -st "none";
+			button -w 150 -l "Free Downloads" -ann "Free downloads from CreativeCrash.com" -c "showHelp -absolute \"http://www.creativecrash.com/users/charliewales/contributions?tab=free_downloads\"";    
+		setParent ..;
+		
+	showWindow craChannelControlAboutWin;
+}

@@ -1,0 +1,3496 @@
+////////////////////////////////////////
+//
+// CVSH_Tool.mel (08/2011)
+//
+// Author: Ricardo Münch
+// Version: v1.4
+// Completion Date: 27.09.2012
+//
+// Function: The "CVSH_Tool.mel" script let you create Spiral / Helix nurbs curves with several settings.
+// 			 In addition, you can create extrusions along the Spiral / Helix nurbs curves, create duplications along them and animate your extrusions.
+//
+// Version History: v1.0 - Completed first basic functionality with simple GUI
+//						 - Added extrude along path curve(Helix or Spiral) with any curve type(just curve types only)
+//						 - GUI (re)"Design"
+// 				 	v1.1 - Added Revolution Distance decrease/increase
+// 						 - Save and load curve parameters
+// 					v1.2 - New GUI/New Section "Duplication"
+// 						 - Duplicate objects along Spiral/Helix
+// 						 - No selection between elliptic and circular Spiral/Helix, now controlled by Radius parameters
+// 						 - The number of actual curve points in a Spiral/Helix was not correct. Sorry^^ But works now.
+// 						 - Fixed Bug #1: Filedialog abortion saved a noname file
+// 					v1.3 - Duplicated objects now scalable(taper effect)
+// 						 - Added a button to calculate the height of a Spiral/Helix
+// 						 - Duplicate or Instance objects along Spiral/Helix
+// 						 - Fixed Bug #2: Just the last selected object is duplicated
+// 						 - Animate extrusion along path curve
+// 						 - Fixed Bug #3: Error "object not found" (GUI problem)
+// 					v1.4 - Random translation, rotation, scale for duplicated objects
+// 						 - Save all Parameters not just Spiral/Helix settings
+// 						 - Created new file specification for saving files >> is now upward compatible
+// 						 - 2 presets were added to the menu
+//
+// Bugs: v1.1 - 1. Filedialog abortion saves a noname file
+// 		 v1.2 - 2. Just the last selected object is duplicated
+// 		 v1.0 - 3. Error "object not found" (GUI problem)
+//
+// Fixed Bugs: v1.1 - 1. Filedialog abortion saved a noname file
+// 			   v1.2 - 2. Just the last selected object is duplicated
+// 			   v1.0 - 3. Error "object not found" (GUI problem)
+//
+// Future Plans: - Create Spiral/Helix along a curve
+// 				 - Convert extruded profile to polygons, ...
+// 				 - Set origin for path and profile via user input or move curve to selection
+// 				 - Extrude along other types (not only curves)
+// 				 - Animation tab ... let duplicated objects appear/animate duplicated objects
+// 				 - Rebuild/Redesign GUI
+// 				 - Add new preset bank system
+//				 - Boring but big TODO: optimizing and cleaning up the code -_-
+//
+////////////////////////////////////////
+
+
+//////////////////////////////////////////
+// Start/standard/reset value variables //
+//////////////////////////////////////////
+
+string $sPathName = "CurvePath";
+float $sRadiusA = 1.000;
+float $sRadiusB = 0.500;
+int $sPointsPerRevolution = 10;
+int $sRevolutions = 5;
+float $sPitch = 0.500;
+float $sPitchDelay = 0.000000;
+float $sSpiralDecrease = 0.500;
+string $sCalculateHeightButtonLabel = "Spiral / Helix Height: ";
+
+string $sProfileName = "CurveProfile";
+int $sProfileSections = 12;
+float $sProfileRadius = 0.100;
+float $sExtrusionScale = 1.000;
+
+int $sNumberOfDuplicates = 10;
+int $sRotationStyle = 1;
+int $sDuplicationStyle = 1;
+float $sDupliScaleFactor = 1.000;
+int $sRandomTranslation = 2;
+float $sMinTranslation = -0.200000;
+float $sMaxTranslation = 0.200000;
+int $sRandomRotation = 2;
+float $sMinRotation = -40.000000;
+float $sMaxRotation = 40.000000;
+int $sRandomScale = 2;
+float $sMinScale = -0.800000;
+float $sMaxScale = 0.800000;
+
+int $sAnimationStart = 1;
+float $sAnimationStartValue = 0.000;
+int $sAnimationEnd = 50;
+float $sAnimationEndValue = 1.000;
+int $sAnimationCreationStyle = 1;
+
+
+//////////////////////
+// Preset Variables //
+//////////////////////
+
+/* 
+*.cvshpb file specification
+Header:
+	-Information on file type:
+		CVSH Tool Preset Bank File
+	-Information on number of presets
+		#NumberOfPresets
+		16
+Data structure:
+	#PresetID"presetid"Start		ex.: #PresetID1Start, ...
+	#PresetName
+		ex.: Spiralizer247
+	Two lines for 	#"descriptive name"
+					"value"
+		ex.:
+			#Pitch
+			0.5
+			...
+	#PresetID"presetid"End		ex.: #PresetID1End, ...
+	
+	in *.cvshpb file the preset id is always bigger than 0(zero)
+*/
+
+/* 
+*.cvsh file specification
+Header:
+		#HEADER
+	-Information on file type:
+		CVSH Tool Preset File v1.4 and above
+	-Information on number of presets
+		#NumberOfPresets
+		always 1
+Data structure:
+	#PresetID"presetid"Start		ex.: #PresetID0Start, ...
+	#PresetName
+		ex.: Spiralizer247
+	Two lines for 	#"descriptive name"
+					"value"
+		ex.:
+			#Pitch
+			0.5
+			...
+	#PresetID"presetid"End		ex.: #PresetID0End, ...
+	
+	in *.cvsh file the preset id is always 0 (zero)
+*/
+
+// Possible Values (descriptive name = DN)
+// Header
+string $DNHeader = "#HEADER";
+string $DNFileInformationBank = "CVSH Tool Preset Bank File";
+string $DNFileInformationFile = "CVSH Tool Preset File v1.4 and above";
+string $DNNumberOfPresets = "#NumberOfPresets";
+
+// Data
+string $DNData = "#DATA";
+string $DNPresetEntryID = "#PresetID";
+string $DNPresetEntryEnd = "Start";
+string $DNPresetName = "#PresetName";
+string $DNPresetTailID = "#PresetID";
+string $DNPresetTailEnd = "End";
+
+// Possible Values extendable
+string $DNPathName = "#PathName";
+string $DNRadiusA = "#RadiusA";
+string $DNRadiusB = "#RadiusB";
+string $DNPointsPerRevolution = "#PointsPerRevolution";
+string $DNRevolutions = "#Revolutions";
+string $DNPitch = "#Pitch"; // old: RevolutionDistance
+string $DNPitchDelay = "#PitchDelay"; // old: DecreaseRevolution
+string $DNSpiralDecrease = "#SpiralDecrease";
+
+string $DNProfileName = "#ProfileName";
+string $DNProfileSections = "#ProfileSections";
+string $DNProfileRadius = "#ProfileRadius";
+string $DNExtrusionScale = "#ExtrusionScale";	// old: ScaleFactor
+
+string $DNNumberOfDuplicates = "#NumberOfDuplicates";
+string $DNRotationStyle = "#RotationStyle";
+string $DNDuplicationStyle = "#DuplicationStyle";
+string $DNDupliScaleFactor = "#DupliScaleFactor";
+string $DNRandomTranslation = "#RandomTranslation";
+string $DNMinXTranslation = "#MinXTranslation";
+string $DNMaxXTranslation = "#MaxXTranslation";
+string $DNMinYTranslation = "#MinYTranslation";
+string $DNMaxYTranslation = "#MaxYTranslation";
+string $DNMinZTranslation = "#MinZTranslation";
+string $DNMaxZTranslation = "#MaxZTranslation";
+string $DNRandomRotation = "#RandomRotation";
+string $DNMinXRotation = "#MinXRotation";
+string $DNMaxXRotation = "#MaxXRotation";
+string $DNMinYRotation = "#MinYRotation";
+string $DNMaxYRotation = "#MaxYRotation";
+string $DNMinZRotation = "#MinZRotation";
+string $DNMaxZRotation = "#MaxZRotation";
+string $DNRandomScale = "#RandomScale";
+string $DNMinScale = "#MinScale";
+string $DNMaxScale = "#MaxScale";
+
+string $DNAnimationStart = "#AnimationStart";
+string $DNAnimationStartValue = "#AnimationStartValue";
+string $DNAnimationEnd = "#AnimationEnd";
+string $DNAnimationEndValue = "#AnimationEndValue";
+string $DNAnimationCreationStyle = "#AnimationCreationStyle";
+
+
+//////////////////
+// UI functions //
+//////////////////
+
+// GetIntSliderValue function
+
+global proc int GetIntSliderValue (string $IntName)
+{
+	int $tempint = `intSliderGrp -query -value $IntName`;
+	return $tempint;
+}
+
+
+// GetFloatSliderValue function
+
+global proc float GetFloatSliderValue (string $FloatName)
+{
+	float $tempfloat = `floatSliderGrp -query -value $FloatName`;
+	return $tempfloat;
+}
+
+
+// GetFloatFieldValue function
+
+global proc float GetFloatFieldValue (string $FloatName)
+{
+	float $tempfloat = `floatField -query -value $FloatName`;
+	return $tempfloat;
+}
+
+
+// GetStringTextValue function
+
+global proc string GetStringTextValue (string $StringName)
+{
+	string $tempstring = `textFieldGrp -query -text $StringName`;
+	return $tempstring;
+}
+
+
+// GetCheckBoxValue function
+
+global proc int GetCheckBoxValue (string $CheckBoxName)
+{
+	int $tempint = `checkBox -query -value $CheckBoxName`;
+	return $tempint;
+}
+
+
+// GetCheckBoxGroupValue function
+
+global proc int GetCheckBoxGroupValue (string $CheckBoxName)
+{
+	int $tempint = `checkBoxGrp -query -value $CheckBoxName`;
+	return $tempint;
+}
+
+
+// GetRadioButton2Value function
+
+global proc int GetRadioButton2Value (string $RadioName)
+{
+	if (`radioButtonGrp -query -select $RadioName` == 1)
+	{
+		// First selection
+		return 0;
+	}
+	
+	// Second selection
+	return 1;
+}
+
+
+// CopyFloatValue function
+
+global proc CopyFloatValue (string $GUIElement, float $Value)
+{
+	floatSliderGrp -edit -value $Value $GUIElement;
+}
+
+
+// ChangeButtonLabel function
+
+global proc ChangeButtonLabel (string $ButtonName, string $NewLabelValue)
+{
+	button -edit -label $NewLabelValue $ButtonName;
+}
+
+
+// CalculateHeightStr function
+
+global proc string CalculateHeightStr (int $PointsPerRevolution, int $Revolutions, float $RevolutionDistance, float $RevolutionDistanceDecrease)
+{
+	float $TempHeight = $Revolutions * $RevolutionDistance;
+	
+	int $TotalCurvePoints = $PointsPerRevolution * $Revolutions;
+	
+	$TempHeight = $TempHeight + ($TotalCurvePoints * $RevolutionDistanceDecrease);
+	
+	string $FinalHeight = $TempHeight;
+	
+	return $FinalHeight;
+}
+
+
+// Combine2Strings function
+
+global proc string Combine2Strings (string $One, string $Two)
+{
+	string $TempString = $One + $Two;
+	
+	return $TempString;
+}
+
+
+// PrintStringArray function
+
+global proc PrintStringArray (string $Array [])
+{
+	// Size of the array
+	int $ArraySize = size ($Array);
+	
+	// Print size of the array
+	print ("Size: " + $ArraySize + "\n");
+	
+	// Print every field
+	int $PIterator = 0;
+	
+	while ($PIterator < $ArraySize)
+	{
+		print ($Array [$PIterator] + "\n");
+		
+		++$PIterator;
+	}
+}
+
+
+// CreateGroup function
+
+global proc string CreateGroup (string $ObjectList [])
+{
+	// Group name
+	string $GroupName = "Group";
+	string $GroupObjectList = "";
+	
+	int $ObjectCount = size ($ObjectList);
+	
+	int $GIterator = 0;
+	
+	if ($ObjectCount == 0)
+	{
+		error "No objects for group selected.";
+	}
+	
+	else
+	{
+		for ($GIterator = 0; $GIterator < $ObjectCount; ++$GIterator)
+		{
+			$GroupObjectList = $GroupObjectList + " " + $ObjectList [$GIterator];
+		}
+		
+		string $Group = `group -name ($GroupName + $GroupObjectList)`;
+		
+		return $Group;
+	}
+}
+
+
+// InitRandom function
+
+global proc InitRandom (int $Seed)
+{
+	seed $Seed;
+}
+
+
+// RandomFloatRange function
+
+global proc float RandomFloatRange (float $Start, float $End)
+{
+	return `rand $Start $End`;
+}
+
+
+// Reset function
+
+global proc Reset (string $PathName, string $sPathName,
+			string $RadiusA, float $sRadiusA,
+			string $RadiusB, float $sRadiusB,
+			string $PointsPerRevolution, int $sPointsPerRevolution,
+			string $Revolutions, int $sRevolutions,
+			string $Pitch, float $sPitch,
+			string $PitchDelay, float $sPitchDelay,
+			string $SpiralDecrease, float $sSpiralDecrease,
+			string $CalculateHeightButton, string $sCalculateHeightButtonLabel,
+			string $ProfileName, string $sProfileName,
+			string $ProfileSections, int $sProfileSections,
+			string $ProfileRadius, float $sProfileRadius,
+			string $ScaleFactor, float $sScaleFactor,
+			string $NumberOfDuplicates, int $sNumberOfDuplicates,
+			string $RotationStyle, int $sRotationStyle,
+			string $DuplicationStyle, int $sDuplicationStyle,
+			string $DupliScaleFactor, float $sDupliScaleFactor,
+			string $RandomTranslation, int $sRandomTranslation,
+			string $MinXTranslation, float $sMinXTranslation,
+			string $MinYTranslation, float $sMinYTranslation,
+			string $MinZTranslation, float $sMinZTranslation,
+			string $MaxXTranslation, float $sMaxXTranslation,
+			string $MaxYTranslation, float $sMaxYTranslation,
+			string $MaxZTranslation, float $sMaxZTranslation,
+			string $RandomRotation, int $sRandomRotation,
+			string $MinXRotation, float $sMinXRotation,
+			string $MinYRotation, float $sMinYRotation,
+			string $MinZRotation, float $sMinZRotation,
+			string $MaxXRotation, float $sMaxXRotation,
+			string $MaxYRotation, float $sMaxYRotation,
+			string $MaxZRotation, float $sMaxZRotation,
+			string $RandomScale, int $sRandomScale,
+			string $MinScale, float $sMinScale,
+			string $MaxScale, float $sMaxScale,
+			string $AnimationStart, int $sAnimationStart,
+			string $AnimationStartValue, float $sAnimationStartValue,
+			string $AnimationEnd, int $sAnimationEnd,
+			string $AnimationEndValue, float $sAnimationEndValue,
+			string $AnimExtOption, int $sAnimExtOption)
+{
+	textFieldGrp -edit -text $sPathName $PathName;
+	floatSliderGrp -edit -value $sRadiusA $RadiusA;
+	floatSliderGrp -edit -value $sRadiusB $RadiusB;
+	intSliderGrp -edit -value $sPointsPerRevolution $PointsPerRevolution;
+	intSliderGrp -edit -value $sRevolutions $Revolutions;
+	floatSliderGrp -edit -value $sPitch $Pitch;
+	floatSliderGrp -edit -value $sPitchDelay $PitchDelay;
+	floatSliderGrp -edit -value $sSpiralDecrease $SpiralDecrease;
+	button -edit -label $sCalculateHeightButtonLabel $CalculateHeightButton;
+	textFieldGrp -edit -text $sProfileName $ProfileName;
+	intSliderGrp -edit -value $sProfileSections $ProfileSections;
+	floatSliderGrp -edit -value $sProfileRadius $ProfileRadius;
+	floatSliderGrp -edit -value $sScaleFactor $ScaleFactor;
+	intSliderGrp -edit -value $sNumberOfDuplicates $NumberOfDuplicates;
+	radioButtonGrp -edit -select $sRotationStyle $RotationStyle;
+	radioButtonGrp -edit -select $sDuplicationStyle $DuplicationStyle;
+	floatSliderGrp -edit -value $sDupliScaleFactor $DupliScaleFactor;
+	radioButtonGrp -edit -select $sRandomTranslation $RandomTranslation;
+	floatField -edit -value $sMinXTranslation $MinXTranslation;
+	floatField -edit -value $sMinYTranslation $MinYTranslation;
+	floatField -edit -value $sMinZTranslation $MinZTranslation;
+	floatField -edit -value $sMaxXTranslation $MaxXTranslation;
+	floatField -edit -value $sMaxYTranslation $MaxYTranslation;
+	floatField -edit -value $sMaxZTranslation $MaxZTranslation;
+	radioButtonGrp -edit -select $sRandomRotation $RandomRotation;
+	floatField -edit -value $sMinXRotation $MinXRotation;
+	floatField -edit -value $sMinYRotation $MinYRotation;
+	floatField -edit -value $sMinZRotation $MinZRotation;
+	floatField -edit -value $sMaxXRotation $MaxXRotation;
+	floatField -edit -value $sMaxYRotation $MaxYRotation;
+	floatField -edit -value $sMaxZRotation $MaxZRotation;
+	radioButtonGrp -edit -select $sRandomScale $RandomScale;
+	floatField -edit -value $sMinScale $MinScale;
+	floatField -edit -value $sMaxScale $MaxScale;
+	intSliderGrp -edit -value $sAnimationStart $AnimationStart;
+	floatSliderGrp -edit -value $sAnimationStartValue $AnimationStartValue;
+	intSliderGrp -edit -value $sAnimationEnd $AnimationEnd;
+	floatSliderGrp -edit -value $sAnimationEndValue $AnimationEndValue;
+	radioButtonGrp -edit -select $sAnimExtOption $AnimExtOption;
+}
+
+
+// CloseWindow function
+
+global proc CloseWindow (string $WindowName)
+{
+	deleteUI -window $WindowName;
+}
+
+
+////////////////////////////////
+// Preset save/load functions //
+////////////////////////////////
+
+
+// PresetToFile function
+
+/*
+*.cvsh file specification
+Header:
+		#HEADER
+	-Information on file type:
+		CVSH Tool Preset File v1.4 and above
+	-Information on number of presets
+		#NumberOfPresets
+		always 1
+Data structure:
+	#PresetID"presetid"Start		ex.: #PresetID0Start, ...
+	#PresetName
+		ex.: Spiralizer247
+	Two lines for 	#"descriptive name"
+					"value"
+		ex.:
+			#Pitch
+			0.5
+			...
+	#PresetID"presetid"End		ex.: #PresetID0End, ...
+	
+	in *.cvsh file the preset id is always 0 (zero)
+*/
+
+global proc PresetToFile (string $DNHeader, string $DNFileInformationFile, string $DNNumberOfPresets, 
+					string $DNData, string $DNPresetEntryID, int $ID,
+					string $DNPresetEntryEnd, string $DNPresetName,
+					string $DNPresetTailID, string $DNPresetTailEnd,					
+					string $PathName, string $DNPathName,
+					float $RadiusA, string $DNRadiusA,
+					float $RadiusB, string $DNRadiusB,
+					int $PointsPerRevolution, string $DNPointsPerRevolution,
+					int $Revolutions, string $DNRevolutions,
+					float $Pitch, string $DNPitch,
+					float $PitchDelay, string $DNPitchDelay,
+					float $SpiralDecrease, string $DNSpiralDecrease,
+					string $ProfileName, string $DNProfileName,
+					int $ProfileSections, string $DNProfileSections,
+					float $ProfileRadius, string $DNProfileRadius,
+					float $ExtrusionScale, string $DNExtrusionScale,
+					int $NumberOfDuplicates, string $DNNumberOfDuplicates,
+					int $RotationStyle, string $DNRotationStyle,
+					int $DuplicationStyle, string $DNDuplicationStyle,
+					float $DupliScaleFactor, string $DNDupliScaleFactor,
+					int $RandomTranslation, string $DNRandomTranslation,
+					float $MinXTranslation, string $DNMinXTranslation,
+					float $MaxXTranslation, string $DNMaxXTranslation,
+					float $MinYTranslation, string $DNMinYTranslation,
+					float $MaxYTranslation, string $DNMaxYTranslation,
+					float $MinZTranslation, string $DNMinZTranslation,
+					float $MaxZTranslation, string $DNMaxZTranslation,
+					int $RandomRotation, string $DNRandomRotation,
+					float $MinXRotation, string $DNMinXRotation,
+					float $MaxXRotation, string $DNMaxXRotation,
+					float $MinYRotation, string $DNMinYRotation,
+					float $MaxYRotation, string $DNMaxYRotation,
+					float $MinZRotation, string $DNMinZRotation,
+					float $MaxZRotation, string $DNMaxZRotation,
+					int $RandomScale, string $DNRandomScale,
+					float $MinScale, string $DNMinScale,
+					float $MaxScale, string $DNMaxScale,
+					int $AnimationStart, string $DNAnimationStart,
+					float $AnimationStartValue, string $DNAnimationStartValue,
+					int $AnimationEnd, string $DNAnimationEnd,
+					float $AnimationEndValue, string $DNAnimationEndValue,
+					int $AnimationCreationStyle, string $DNAnimationCreationStyle)
+{
+	string $FileName = `fileDialog -mode 1 -defaultFileName "Preset" -directoryMask "*.cvsh"`;
+	
+	string $FileNameExtension = ".cvsh";
+	
+	// ID is always zero
+	$ID = 0;
+	
+	// Only one preset per file
+	string $NumberOfPresets = "1";
+	
+	// Check filename whether empty or not
+	
+	if (size ($FileName) != 0)
+	{
+		$FileID = `fopen ($FileName + $FileNameExtension) "w"`;
+		
+		// Write header information
+		fprint $FileID ($DNHeader + "\n");
+		fprint $FileID ($DNFileInformationFile + "\n");
+		
+		fprint $FileID ($DNNumberOfPresets + "\n");
+		fprint $FileID ($NumberOfPresets + "\n");
+		
+		// Write data information
+		fprint $FileID ($DNData + "\n");
+		fprint $FileID ($DNPresetEntryID + $ID + $DNPresetEntryEnd + "\n");
+		
+		fprint $FileID ($DNPresetName + "\n");
+		fprint $FileID ($FileName + "\n");
+		
+		fprint $FileID ($DNPathName + "\n");
+		fprint $FileID ($PathName + "\n");
+		
+		fprint $FileID ($DNRadiusA + "\n");
+		fprint $FileID ($RadiusA + "\n");
+		
+		fprint $FileID ($DNRadiusB + "\n");
+		fprint $FileID ($RadiusB + "\n");
+		
+		fprint $FileID ($DNPointsPerRevolution + "\n");
+		fprint $FileID ($PointsPerRevolution + "\n");
+		
+		fprint $FileID ($DNRevolutions + "\n");
+		fprint $FileID ($Revolutions + "\n");
+		
+		fprint $FileID ($DNPitch + "\n");
+		fprint $FileID ($Pitch + "\n");
+		
+		fprint $FileID ($DNPitchDelay + "\n");
+		fprint $FileID ($PitchDelay + "\n");
+		
+		fprint $FileID ($DNSpiralDecrease + "\n");
+		fprint $FileID ($SpiralDecrease + "\n");
+		
+		fprint $FileID ($DNProfileName + "\n");
+		fprint $FileID ($ProfileName + "\n");
+		
+		fprint $FileID ($DNProfileSections + "\n");
+		fprint $FileID ($ProfileSections + "\n");
+		
+		fprint $FileID ($DNProfileRadius + "\n");
+		fprint $FileID ($ProfileRadius + "\n");
+		
+		fprint $FileID ($DNExtrusionScale + "\n");
+		fprint $FileID ($ExtrusionScale + "\n");
+		
+		fprint $FileID ($DNNumberOfDuplicates + "\n");
+		fprint $FileID ($NumberOfDuplicates + "\n");
+		
+		fprint $FileID ($DNRotationStyle + "\n");
+		fprint $FileID ($RotationStyle + "\n");
+		
+		fprint $FileID ($DNDuplicationStyle + "\n");
+		fprint $FileID ($DuplicationStyle + "\n");
+		
+		fprint $FileID ($DNDupliScaleFactor + "\n");
+		fprint $FileID ($DupliScaleFactor + "\n");
+		
+		fprint $FileID ($DNRandomTranslation + "\n");
+		fprint $FileID ($RandomTranslation + "\n");
+		
+		fprint $FileID ($DNMinXTranslation + "\n");
+		fprint $FileID ($MinXTranslation + "\n");
+		
+		fprint $FileID ($DNMaxXTranslation + "\n");
+		fprint $FileID ($MaxXTranslation + "\n");
+		
+		fprint $FileID ($DNMinYTranslation + "\n");
+		fprint $FileID ($MinYTranslation + "\n");
+		
+		fprint $FileID ($DNMaxYTranslation + "\n");
+		fprint $FileID ($MaxYTranslation + "\n");
+		
+		fprint $FileID ($DNMinZTranslation + "\n");
+		fprint $FileID ($MinZTranslation + "\n");
+		
+		fprint $FileID ($DNMaxZTranslation + "\n");
+		fprint $FileID ($MaxZTranslation + "\n");
+		
+		fprint $FileID ($DNRandomRotation + "\n");
+		fprint $FileID ($RandomRotation + "\n");
+		
+		fprint $FileID ($DNMinXRotation + "\n");
+		fprint $FileID ($MinXRotation + "\n");
+		
+		fprint $FileID ($DNMaxXRotation + "\n");
+		fprint $FileID ($MaxXRotation + "\n");
+		
+		fprint $FileID ($DNMinYRotation + "\n");
+		fprint $FileID ($MinYRotation + "\n");
+		
+		fprint $FileID ($DNMaxYRotation + "\n");
+		fprint $FileID ($MaxYRotation + "\n");
+		
+		fprint $FileID ($DNMinZRotation + "\n");
+		fprint $FileID ($MinZRotation + "\n");
+		
+		fprint $FileID ($DNMaxZRotation + "\n");
+		fprint $FileID ($MaxZRotation + "\n");
+		
+		fprint $FileID ($DNRandomScale + "\n");
+		fprint $FileID ($RandomScale + "\n");
+		
+		fprint $FileID ($DNMinScale + "\n");
+		fprint $FileID ($MinScale + "\n");
+		
+		fprint $FileID ($DNMaxScale + "\n");
+		fprint $FileID ($MaxScale + "\n");
+		
+		fprint $FileID ($DNAnimationStart + "\n");
+		fprint $FileID ($AnimationStart + "\n");
+		
+		fprint $FileID ($DNAnimationStartValue + "\n");
+		fprint $FileID ($AnimationStartValue + "\n");
+		
+		fprint $FileID ($DNAnimationEnd + "\n");
+		fprint $FileID ($AnimationEnd + "\n");
+		
+		fprint $FileID ($DNAnimationEndValue + "\n");
+		fprint $FileID ($AnimationEndValue + "\n");
+		
+		fprint $FileID ($DNAnimationCreationStyle + "\n");
+		fprint $FileID ($AnimationCreationStyle + "\n");
+		
+		fprint $FileID ($DNPresetTailID + $ID + $DNPresetTailEnd + "\n");
+		
+		// Close file
+		fclose $FileID;
+		
+		print ("File saved to: " + $FileName + $FileNameExtension + "\n");
+	}
+	
+	else
+	{
+		print ("Saving aborted. File not saved" + "\n");
+	}
+}
+
+
+// ReadPresetFile function
+
+global proc ReadPresetFile (string $PathName,
+						string $RadiusA,
+						string $RadiusB,
+						string $PointsPerRevolution,
+						string $Revolutions,
+						string $RevolutionDistance,
+						string $DecRevolution,
+						string $SpiralDecrease)
+{
+	string $FileName = `fileDialog -mode 0 -directoryMask "*.cvsh"`;
+	
+	string $FileNameExtension = ".cvsh";
+	
+	// string $HeaderCheck = "CVSH Tool File";
+	
+	$FileID = `fopen ($FileName) "r"`;
+	
+	// Saves all information line by line in an array
+	string $FileContent [] = {};
+	
+	// Iterator for content array
+	int $Iterator = 0;
+	
+	// Get first line
+	string $NextLine = `fgetline $FileID`;
+	
+	// First line = header information
+	
+	// Loop until the end of file and read line by line and save it in array
+	while (size ($NextLine) > 0)
+	{
+		// Cap whitespaces
+		string $StrippedLine = strip($NextLine);
+		
+		// Save line in array field
+		$FileContent [$Iterator] = $NextLine;
+		
+		// Raise iterator by one to go in next field in array
+		++$Iterator;
+		
+		// Get next line
+		$NextLine = `fgetline $FileID`;
+	}
+	
+	/*
+	// Check header(first line must be: ""CVSH Tool File""):
+	if ($HeaderCheck == $FileContent [0])
+	{
+		print ("It is a cvsh file");
+	}
+	
+	else
+	{
+		// Load a new one
+	}
+	*/
+	
+	// Convert content to respective values(int's, float's)
+	string $TempPathName = $FileContent [1];
+	float $TempRadiusA = $FileContent [2];
+	float $TempRadiusB = $FileContent [3];
+	int $TempPointsPerRevolution = $FileContent [4];
+	int $TempRevolutions = $FileContent [5];
+	float $TempRevolutionDistance = $FileContent [6];
+	float $TempDecRevolution = $FileContent [7];
+	float $TempSpiralDecrease = $FileContent [8];
+	
+	// Set loaded values
+	textFieldGrp -edit -text $TempPathName $PathName;
+	floatSliderGrp -edit -value $TempRadiusA $RadiusA;
+	floatSliderGrp -edit -value $TempRadiusB $RadiusB;
+	intSliderGrp -edit -value $TempPointsPerRevolution $PointsPerRevolution;
+	intSliderGrp -edit -value $TempRevolutions $Revolutions;
+	floatSliderGrp -edit -value $TempRevolutionDistance $RevolutionDistance;
+	floatSliderGrp -edit -value $TempDecRevolution $DecRevolution;
+	floatSliderGrp -edit -value $TempSpiralDecrease $SpiralDecrease;
+	
+	// Close file
+	fclose $FileID;
+}
+
+
+// LoadPresetFromFile function
+
+/*
+*.cvsh file specification
+Header:
+		#HEADER
+	-Information on file type:
+		CVSH Tool Preset File v1.4 and above
+	-Information on number of presets
+		#NumberOfPresets
+		always 1
+Data structure:
+	#PresetID"presetid"Start		ex.: #PresetID0Start, ...
+	#PresetName
+		ex.: Spiralizer247
+	Two lines for 	#"descriptive name"
+					"value"
+		ex.:
+			#Pitch
+			0.5
+			...
+	#PresetID"presetid"End		ex.: #PresetID0End, ...
+	
+	in *.cvsh file the preset id is always 0 (zero)
+*/
+
+global proc LoadPresetFromFile (string $DNHeader, string $DNFileInformationFile, string $DNNumberOfPresets, 
+							string $DNData, string $DNPresetEntryID, int $ID,
+							string $DNPresetEntryEnd, string $DNPresetName,
+							string $DNPresetTailID, string $DNPresetTailEnd,
+							string $PathName, string $DNPathName,
+							string $RadiusA, string $DNRadiusA,
+							string $RadiusB, string $DNRadiusB,
+							string $PointsPerRevolution, string $DNPointsPerRevolution,
+							string $Revolutions, string $DNRevolutions,
+							string $Pitch, string $DNPitch,
+							string $PitchDelay, string $DNPitchDelay,
+							string $SpiralDecrease, string $DNSpiralDecrease,
+							string $ProfileName, string $DNProfileName,
+							string $ProfileSections, string $DNProfileSections,
+							string $ProfileRadius, string $DNProfileRadius,
+							string $ExtrusionScale, string $DNExtrusionScale,
+							string $NumberOfDuplicates, string $DNNumberOfDuplicates,
+							string $RotationStyle, string $DNRotationStyle,
+							string $DuplicationStyle, string $DNDuplicationStyle,
+							string $DupliScaleFactor, string $DNDupliScaleFactor,
+							string $RandomTranslation, string $DNRandomTranslation,
+							string $MinXTranslation, string $DNMinXTranslation,
+							string $MaxXTranslation, string $DNMaxXTranslation,
+							string $MinYTranslation, string $DNMinYTranslation,
+							string $MaxYTranslation, string $DNMaxYTranslation,
+							string $MinZTranslation, string $DNMinZTranslation,
+							string $MaxZTranslation, string $DNMaxZTranslation,
+							string $RandomRotation, string $DNRandomRotation,
+							string $MinXRotation, string $DNMinXRotation,
+							string $MaxXRotation, string $DNMaxXRotation,
+							string $MinYRotation, string $DNMinYRotation,
+							string $MaxYRotation, string $DNMaxYRotation,
+							string $MinZRotation, string $DNMinZRotation,
+							string $MaxZRotation, string $DNMaxZRotation,
+							string $RandomScale, string $DNRandomScale,
+							string $MinScale, string $DNMinScale,
+							string $MaxScale, string $DNMaxScale,
+							string $AnimationStart, string $DNAnimationStart,
+							string $AnimationStartValue, string $DNAnimationStartValue,
+							string $AnimationEnd, string $DNAnimationEnd,
+							string $AnimationEndValue, string $DNAnimationEndValue,
+							string $AnimationCreationStyle, string $DNAnimationCreationStyle)
+{	
+	// Open file for reading
+	string $FileName = `fileDialog -mode 0 -directoryMask "*.cvsh"`;
+	
+	$FileID = `fopen ($FileName) "r"`;
+	
+	// ID is always zero
+	$ID = 0;
+	
+	// Entry point for preset
+	string $DNPresetEntry = $DNPresetEntryID + $ID + $DNPresetEntryEnd;
+	
+	// End point for preset
+	string $DNPresetEnd = $DNPresetTailID + $ID + $DNPresetTailEnd;
+	
+	// Something went wrong
+	if($FileID == 0)
+	{
+		// Close File
+		fclose $FileID;
+		error ("Load Preset From File: Error opening it.");
+	}
+	
+	// Opening file was successful
+	else
+	{
+		// Get first line
+		string $NextLine = `fgetline $FileID`;
+		
+		// Save File in string array line by line
+		
+		int $PresetFileArraySize = 0;	// Not known at this time
+		string $PresetFileContent [] = {};
+		int $FileIterator = 0;
+		
+		// Go file line by line and savve each line in one field
+		while (size ($NextLine) > 0)
+		{
+			// Cap whitespaces
+			string $StrippedLine = strip($NextLine);
+			
+			// Remove CR
+			string $NoRCLine = `match "^[^(\r\n)]*" $StrippedLine`;
+			
+			// Save line in array field
+			$PresetFileContent [$FileIterator] = $NoRCLine;
+			
+			// Raise iterator by one to go in next field in array
+			++$FileIterator;
+			
+			// Get next line
+			$NextLine = `fgetline $FileID`;
+		}
+		
+		// Close file
+		fclose $FileID;
+		
+		// Get actual size of array
+		$PresetFileArraySize = size ($PresetFileContent);
+		
+		// Print filecontent for control purpose only
+		// PrintStringArray ($PresetFileContent);
+		
+		
+		int $ArrayIterator = 0;
+		
+		int $HeaderCheckSum = 0;
+		
+		// Extract/Check Header information
+		// Go field by field until reached the Data section
+		while ($PresetFileContent [$ArrayIterator] != $DNData)
+		{
+			// First line: "#HEADER"
+			if (($PresetFileContent [$ArrayIterator] == $DNHeader))
+			{
+				print ("Load Preset From File: Found header statement." + "\n");
+				$HeaderCheckSum += 1;
+			}
+			
+			// Second line: "CVSH Tool Preset File v1.4 and above"
+			if (($PresetFileContent [$ArrayIterator] == $DNFileInformationFile))
+			{
+				print ("Load Preset From File: Found header information." + "\n");
+				$HeaderCheckSum += 1;
+			}
+			
+			// Third line: "#NumberOfPresets"
+			if (($PresetFileContent [$ArrayIterator] == $DNNumberOfPresets))
+			{
+				// Fourth line: the number of presets have to be 1
+				if (($PresetFileContent [$ArrayIterator + 1] == "1"))
+				{
+					print ("Load Preset From File: Number of presets is 1." + "\n");
+					$HeaderCheckSum += 1;
+				}
+				
+				print ("Load Preset From File: Found number of presets information." + "\n");
+				$HeaderCheckSum += 1;
+			}
+			
+			// Go to next field
+			++$ArrayIterator;
+		}
+		
+		// Check the Header Check Sum
+		if ($HeaderCheckSum < 4)
+		{
+			error ("Load Preset From File: Header is not correct." + "\n");
+		}
+		
+		// Header is correct
+		print ("Load Preset From File: Header is correct." + "\n");
+		
+		// $ArrayIterator is now "#DATA"		
+		
+		// Variable for preset entry point
+		int $PresetExists = 0;
+		
+		// Search for preset entry point
+		// Loop until the end of array
+		while ($PresetFileContent [$ArrayIterator - 1] != $DNPresetEntry)
+		{
+			// Found preset
+			if ($PresetFileContent [$ArrayIterator] == $DNPresetEntry)
+			{
+				print ("Load Preset From File: A preset exists." + "\n");
+				$PresetExists = 1;
+			}
+			
+			++$ArrayIterator;
+		}
+		
+		// Preset does not exist >> error
+		if($PresetExists == 0)
+		{
+			error ("Load Preset From File: A preset does not exist." + "\n");
+		}
+
+		// Preset Exists
+		else
+		{		
+			// Get field by field until reaching end of array
+			while ($PresetFileContent [$ArrayIterator - 1] != $DNPresetEnd)
+			{
+				// Try every line and write data directly in gui elements
+				
+				// Change PathName
+				if ($PresetFileContent [$ArrayIterator] == $DNPathName)
+				{
+					// Get next field
+					++$ArrayIterator;
+					string $TempPathName = $PresetFileContent [$ArrayIterator];
+					textFieldGrp -edit -text $TempPathName $PathName;
+				}
+				
+				// Change RadiusA
+				if ($PresetFileContent [$ArrayIterator] == $DNRadiusA)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempRadiusA = $PresetFileContent [$ArrayIterator];
+					floatSliderGrp -edit -value $TempRadiusA $RadiusA;
+				}
+				
+				// Change RadiusB
+				if ($PresetFileContent [$ArrayIterator] == $DNRadiusB)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempRadiusB = $PresetFileContent [$ArrayIterator];
+					floatSliderGrp -edit -value $TempRadiusB $RadiusB;
+				}
+				
+				// Change PointsPerRevolution
+				if ($PresetFileContent [$ArrayIterator] == $DNPointsPerRevolution)
+				{
+					// Get next field
+					++$ArrayIterator;
+					int $TempPointsPerRevolution = $PresetFileContent [$ArrayIterator];
+					intSliderGrp -edit -value $TempPointsPerRevolution $PointsPerRevolution;
+				}
+				
+				// Change Revolutions
+				if ($PresetFileContent [$ArrayIterator] == $DNRevolutions)
+				{
+					// Get next field
+					++$ArrayIterator;
+					int $TempRevolutions = $PresetFileContent [$ArrayIterator];
+					intSliderGrp -edit -value $TempRevolutions $Revolutions;
+				}
+				
+				// Change Pitch
+				if ($PresetFileContent [$ArrayIterator] == $DNPitch)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempPitch = $PresetFileContent [$ArrayIterator];
+					floatSliderGrp -edit -value $TempPitch $Pitch;
+				}
+				
+				// Change PitchDelay
+				if ($PresetFileContent [$ArrayIterator] == $DNPitchDelay)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempPitchDelay = $PresetFileContent [$ArrayIterator];
+					floatSliderGrp -edit -value $TempPitchDelay $PitchDelay;
+				}
+
+				// Change SpiralDecrease
+				if ($PresetFileContent [$ArrayIterator] == $DNSpiralDecrease)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempSpiralDecrease = $PresetFileContent [$ArrayIterator];
+					floatSliderGrp -edit -value $TempSpiralDecrease $SpiralDecrease;
+				}
+
+				// Change ProfileName
+				if ($PresetFileContent [$ArrayIterator] == $DNProfileName)
+				{
+					// Get next field
+					++$ArrayIterator;
+					string $TempProfileName = $PresetFileContent [$ArrayIterator];
+					textFieldGrp -edit -text $TempProfileName $ProfileName;
+				}
+
+				// Change ProfileSections
+				if ($PresetFileContent [$ArrayIterator] == $DNProfileSections)
+				{
+					// Get next field
+					++$ArrayIterator;
+					int $TempProfileSections = $PresetFileContent [$ArrayIterator];
+					intSliderGrp -edit -value $TempProfileSections $ProfileSections;
+				}
+				
+				// Change ProfileRadius
+				if ($PresetFileContent [$ArrayIterator] == $DNProfileRadius)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempProfileRadius = $PresetFileContent [$ArrayIterator];
+					floatSliderGrp -edit -value $TempProfileRadius $ProfileRadius;
+				}
+				
+				// Change ExtrusionScale
+				if ($PresetFileContent [$ArrayIterator] == $DNExtrusionScale)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempExtrusionScale = $PresetFileContent [$ArrayIterator];
+					floatSliderGrp -edit -value $TempExtrusionScale $ExtrusionScale;
+				}
+				
+				// Change NumberOfDuplicates
+				if ($PresetFileContent [$ArrayIterator] == $DNNumberOfDuplicates)
+				{
+					// Get next field
+					++$ArrayIterator;
+					int $TempNumberOfDuplicates = $PresetFileContent [$ArrayIterator];
+					intSliderGrp -edit -value $TempNumberOfDuplicates $NumberOfDuplicates;
+				}
+				
+				// Change RotationStyle
+				if ($PresetFileContent [$ArrayIterator] == $DNRotationStyle)
+				{
+					// Get next field
+					++$ArrayIterator;
+					int $TempRotationStyle = $PresetFileContent [$ArrayIterator];
+					radioButtonGrp -edit -select $TempRotationStyle $RotationStyle;
+				}
+				
+				// Change DuplicationStyle
+				if ($PresetFileContent [$ArrayIterator] == $DNDuplicationStyle)
+				{
+					// Get next field
+					++$ArrayIterator;
+					int $TempDuplicationStyle = $PresetFileContent [$ArrayIterator];
+					radioButtonGrp -edit -select $TempDuplicationStyle $DuplicationStyle;
+				}
+
+				// Change DupliScaleFactor
+				if ($PresetFileContent [$ArrayIterator] == $DNDupliScaleFactor)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempDupliScaleFactor = $PresetFileContent [$ArrayIterator];
+					floatSliderGrp -edit -value $TempDupliScaleFactor $DupliScaleFactor;
+				}
+				
+				// Change RandomTranslation
+				if ($PresetFileContent [$ArrayIterator] == $DNRandomTranslation)
+				{
+					// Get next field
+					++$ArrayIterator;
+					int $TempRandomTranslation = $PresetFileContent [$ArrayIterator];
+					radioButtonGrp -edit -select $TempRandomTranslation $RandomTranslation;
+				}
+				
+				// Change MinXTranslation
+				if ($PresetFileContent [$ArrayIterator] == $DNMinXTranslation)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempMinXTranslation = $PresetFileContent [$ArrayIterator];
+					floatField -edit -value $TempMinXTranslation $MinXTranslation;
+				}
+				
+				// Change MaxXTranslation
+				if ($PresetFileContent [$ArrayIterator] == $DNMaxXTranslation)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempMaxXTranslation = $PresetFileContent [$ArrayIterator];
+					floatField -edit -value $TempMaxXTranslation $MaxXTranslation;
+				}
+				
+				// Change MinYTranslation
+				if ($PresetFileContent [$ArrayIterator] == $DNMinYTranslation)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempMinYTranslation = $PresetFileContent [$ArrayIterator];
+					floatField -edit -value $TempMinYTranslation $MinYTranslation;
+				}
+				
+				// Change MaxYTranslation
+				if ($PresetFileContent [$ArrayIterator] == $DNMaxYTranslation)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempMaxYTranslation = $PresetFileContent [$ArrayIterator];
+					floatField -edit -value $TempMaxYTranslation $MaxYTranslation;
+				}
+				
+				// Change MinZTranslation
+				if ($PresetFileContent [$ArrayIterator] == $DNMinZTranslation)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempMinZTranslation = $PresetFileContent [$ArrayIterator];
+					floatField -edit -value $TempMinZTranslation $MinZTranslation;
+				}
+				
+				// Change MaxZTranslation
+				if ($PresetFileContent [$ArrayIterator] == $DNMaxZTranslation)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempMaxZTranslation = $PresetFileContent [$ArrayIterator];
+					floatField -edit -value $TempMaxZTranslation $MaxZTranslation;
+				}
+				
+				// Change RandomRotation
+				if ($PresetFileContent [$ArrayIterator] == $DNRandomRotation)
+				{
+					// Get next field
+					++$ArrayIterator;
+					int $TempRandomRotation = $PresetFileContent [$ArrayIterator];
+					radioButtonGrp -edit -select $TempRandomRotation $RandomRotation;
+				}
+				
+				// Change MinXRotation
+				if ($PresetFileContent [$ArrayIterator] == $DNMinXRotation)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempMinXRotation = $PresetFileContent [$ArrayIterator];
+					floatField -edit -value $TempMinXRotation $MinXRotation;
+				}
+				
+				// Change MaxXRotation
+				if ($PresetFileContent [$ArrayIterator] == $DNMaxXRotation)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempMaxXRotation = $PresetFileContent [$ArrayIterator];
+					floatField -edit -value $TempMaxXRotation $MaxXRotation;
+				}
+
+				// Change MinYRotation
+				if ($PresetFileContent [$ArrayIterator] == $DNMinYRotation)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempMinYRotation = $PresetFileContent [$ArrayIterator];
+					floatField -edit -value $TempMinYRotation $MinYRotation;
+				}
+				
+				// Change MaxYRotation
+				if ($PresetFileContent [$ArrayIterator] == $DNMaxYRotation)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempMaxYRotation = $PresetFileContent [$ArrayIterator];
+					floatField -edit -value $TempMaxYRotation $MaxYRotation;
+				}
+				
+				// Change MinZRotation
+				if ($PresetFileContent [$ArrayIterator] == $DNMinZRotation)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempMinZRotation = $PresetFileContent [$ArrayIterator];
+					floatField -edit -value $TempMinZRotation $MinZRotation;
+				}
+				
+				// Change MaxZRotation
+				if ($PresetFileContent [$ArrayIterator] == $DNMaxZRotation)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempMaxZRotation = $PresetFileContent [$ArrayIterator];
+					floatField -edit -value $TempMaxZRotation $MaxZRotation;
+				}
+
+				// Change RandomScale
+				if ($PresetFileContent [$ArrayIterator] == $DNRandomScale)
+				{
+					// Get next field
+					++$ArrayIterator;
+					int $TempRandomScale = $PresetFileContent [$ArrayIterator];
+					radioButtonGrp -edit -select $TempRandomScale $RandomScale;
+				}
+				
+				// Change MinScale
+				if ($PresetFileContent [$ArrayIterator] == $DNMinScale)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempMinScale = $PresetFileContent [$ArrayIterator];
+					floatField -edit -value $TempMinScale $MinScale;
+				}
+				
+				// Change MaxScale
+				if ($PresetFileContent [$ArrayIterator] == $DNMaxScale)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempMaxScale = $PresetFileContent [$ArrayIterator];
+					floatField -edit -value $TempMaxScale $MaxScale;
+				}
+				
+				// Change AnimationStart
+				if ($PresetFileContent [$ArrayIterator] == $DNAnimationStart)
+				{
+					// Get next field
+					++$ArrayIterator;
+					int $TempAnimationStart = $PresetFileContent [$ArrayIterator];
+					intSliderGrp -edit -value $TempAnimationStart $AnimationStart;
+				}
+				
+				// Change AnimationStartValue
+				if ($PresetFileContent [$ArrayIterator] == $DNAnimationStartValue)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempAnimationStartValue = $PresetFileContent [$ArrayIterator];
+					floatSliderGrp -edit -value $TempAnimationStartValue $AnimationStartValue;
+				}
+
+				// Change AnimationEnd
+				if ($PresetFileContent [$ArrayIterator] == $DNAnimationEnd)
+				{
+					// Get next field
+					++$ArrayIterator;
+					int $TempAnimationEnd = $PresetFileContent [$ArrayIterator];
+					intSliderGrp -edit -value $TempAnimationEnd $AnimationEnd;
+				}
+				
+				// Change AnimationEndValue
+				if ($PresetFileContent [$ArrayIterator] == $DNAnimationEndValue)
+				{
+					// Get next field
+					++$ArrayIterator;
+					float $TempAnimationEndValue = $PresetFileContent [$ArrayIterator];
+					floatSliderGrp -edit -value $TempAnimationEndValue $AnimationEndValue;
+				}
+				
+				// Change AnimationCreationStyle
+				if ($PresetFileContent [$ArrayIterator] == $DNAnimationCreationStyle)
+				{
+					// Get next field
+					++$ArrayIterator;
+					int $TempAnimationCreationStyle = $PresetFileContent [$ArrayIterator];
+					radioButtonGrp -edit -select $TempAnimationCreationStyle $AnimationCreationStyle;
+				}
+
+				// Get next field
+				++$ArrayIterator;
+			}
+		}
+	}
+}
+
+
+/* Bank file operations
+
+	Functionality:
+	1. Open the exact file: "CVSHPresetBank.cvshpb", test file extension on "cvshpb" and #FileInformation
+	3. Get line by line and check for id string ex.: #PresetID1Start
+	4. read line by line and check in a loop for descriptive name if that name is found go to next line and copy value and change that value directly
+	5. loop number 4 until the end of that preset represented by #PresetID"presetid"End
+
+		Check header in cvshpb files
+			// Third line: "#NumberOfPresets"
+			if (($LineIterator == 3) && ($NextLine != $DNNumberOfPresets))
+			{
+				error ("Read Preset Bank: Couldn't find number of presets information.");
+			}
+			
+			// Fourth line: the number of presets must be bigger than 0
+			if (($LineIterator == 4) && ($NextLine == "0"))
+			{
+				int $Presets = $NextLine;
+				if($Presets <= 0)
+				{
+					error ("Read Preset Bank: Number of presets is zero or an invalid number(negative).");
+				}
+			}
+			
+			
+		
+		Check correct preset id in cvshpb files
+		// 0 preset does not exist / everything else preset exists
+		int $FoundPreset = 0;
+		
+		// Search for preset id
+		// Loop until the end of file(couldn't find any named preset) and try finding the preset
+		while ((size ($NextLine) > 0) || ($NextLine == $DNPresetEntry))
+		{
+			// Found preset
+			if ($NextLine == $DNPresetEntry)
+			{
+				print ("Read Preset Bank: Preset exists." + "\n");
+				$FoundPreset = 1;
+			}
+			
+			// Get next line
+			$NextLine = `fgetline $FileID`;
+		}
+		
+		// Prest does not exist >> close file
+		if($FoundPreset == 0)
+		{
+			// Close file
+			fclose $FileID;
+		}
+*/
+
+
+//////////////////////
+// Preset functions //
+//////////////////////
+
+
+// FlatSpiralPreset function
+
+global proc FlatSpiralPreset (string $RadiusA, string $RadiusB, string $PointsPerRevolution, string $Revolutions, string $Pitch, string $PitchDelay, string $SpiralDecrease)
+{
+	floatSliderGrp -edit -value 1.000 $RadiusA;
+	floatSliderGrp -edit -value 1.000 $RadiusB;
+	intSliderGrp -edit -value 10 $PointsPerRevolution;
+	intSliderGrp -edit -value 8 $Revolutions;
+	floatSliderGrp -edit -value 0.000 $Pitch;
+	floatSliderGrp -edit -value 0.000000 $PitchDelay;
+	floatSliderGrp -edit -value 0.900 $SpiralDecrease;
+
+}
+
+
+// ArtSpiralPreset function
+
+global proc ArtSpiralPreset (string $RadiusA, string $RadiusB, string $PointsPerRevolution, string $Revolutions, string $Pitch, string $PitchDelay, string $SpiralDecrease)
+{
+	floatSliderGrp -edit -value 1.000 $RadiusA;
+	floatSliderGrp -edit -value 1.000 $RadiusB;
+	intSliderGrp -edit -value 10 $PointsPerRevolution;
+	intSliderGrp -edit -value 10 $Revolutions;
+	floatSliderGrp -edit -value 0.500 $Pitch;
+	floatSliderGrp -edit -value 0.000000 $PitchDelay;
+	floatSliderGrp -edit -value 2.000 $SpiralDecrease;
+}
+
+
+///////////////////////////
+// Script info functions //
+///////////////////////////
+
+// CreationExplanation function
+
+global proc CreationExplanation ()
+{
+	string $ExplanationText = 
+							"Creation Tab Settings:" + "\n" +
+							"1. Name:" + "\n" +
+							"You can set a new name for the path or leave the given name in the Textbox." + "\n" +
+							"If you use the same name multiple times maya will increase the number automatically." + "\n" + "\n" +
+							"2. Radius:" + "\n" +
+							"For circular style Spiral/Helix curve Radius A and Radius B have to be equal." + "\n" +
+							"For faster Workflow you just have to type your desired number in Radius A and push the button Set Radius Equal." + "\n" +
+							"For elliptic style Radius A and Radius B should have different values." + "\n" + "\n" +
+							"3. Points Per Revolution:" + "\n" +
+							"Here you can define the number of created points in one single revolution." + "\n" +
+							"Total points in path curve:  Points Per Revolutions * Revolutions" + "\n" + "\n" +
+							"4. Revolutions:" + "\n" +
+							"This is the number of rotations around the origin(0,0,0)." + "\n" + "\n" +
+							"5. Pitch:" + "\n" +
+							"This is the distance from the start point to the endpoint of one revolution." + "\n" +
+							"Total path curve height:  Revolution Distance * Revolutions" + "\n" +"\n" +
+							"6. Pitch Delay:" + "\n" +
+							"This value decreases the Pitch for every completed revolution." + "\n" +
+							"For good results use (very) small values." + "\n" +"\n" +
+							"7. Spiral Decrease:" + "\n" +
+							"It is the decrease in the radius for one revolution." + "\n" +
+							"The Radius is decreased by this value for a 360 degrees rotation." + "\n" +
+							"For normal results use a maximum decrease value of the smallest radius value in any direction." + "\n" +
+							"Otherwise it will change the X - Z - directions of the elliptic curve(but resulting in nice artistic curves)." + "\n" + "\n" +
+							"Presets in the menu will add just values, so it can be changed easily.";
+
+	confirmDialog
+		-title "Creation Explanation"
+		-messageAlign "left"
+		-message $ExplanationText
+		-button "Close";
+}
+
+
+// ExtrusionExplanation function
+
+global proc ExtrusionExplanation ()
+{
+	string $ExplanationText = 
+							"Extrusion Tab Settings:" + "\n" +
+							"1. Name:" + "\n" +
+							"You can set a new name for the profile or leave the given name in the Textbox." + "\n" +
+							"If you use the same name multiple times maya will increase the number automatically." + "\n" + "\n" +
+							"2. Profile Sections:" + "\n" +
+							"Here you can set the number of points in the circle." + "\n" + "\n" +
+							"3. Profile Radius:" + "\n" +
+							"Determine the radius of the circle profile." + "\n" + "\n" +
+							"4. Extrusion Scale(Taper):" + "\n" +
+							"The scale factor determines the decrease or increase of the radius of the profile along the path." + "\n" + "\n" +
+							"Some hints for extruding a profile along a path curve:" + "\n" +
+							"1. In version v1.4 just curve types are allowed for extrusion." + "\n" +
+							"2. The result of the extrusion is centered at the profile curve." + "\n" +
+							"3. Select the profile first and then the path ;D.";
+
+	confirmDialog
+		-title "Extrusion Explanation"
+		-messageAlign "left"
+		-message $ExplanationText
+		-button "Close";
+}
+
+
+// DuplicationExplanation function
+
+global proc DuplicationExplanation ()
+{
+	string $ExplanationText = 
+							"Duplication Tab Settings:" + "\n" +
+							"1. Duplicates Per Revolution:" + "\n" +
+							"This number stands for how many objects are in ONE revolution." + "\n" + "\n" +
+							"2. Rotation Style:" + "\n" +
+							"This is how the objects are duplicated along the Spiral/Helix." + "\n" +
+							"Preserve Rotation: No rotation is applied to the objects that are duplicated." + "\n" +
+							"Apply Rotation: This will add a rotation to the object according to the degree the object has on the Spiral/Helix." + "\n" + "\n" +
+							"To control the Spiral/Helix path for the objects to duplicate, the settings from Creation Tab are relevant:" + "\n" +
+							"Please have a look at Creation Explanation to find further information about these settings." + "\n" + "\n" +
+							"3. DuplicationStyle:" + "\n" +
+							"Decide which method to use for the copied object(s)." + "\n" + "\n" +
+							"4. Uniform Scale Factor:" + "\n" +
+							"This applies a taper effect to the duplicated objects." + "\n" +
+							"It is a factor (it is multiplied for every object), so it is useful to choose a value near to 1.0(for example 0.96)." + "\n" +
+							"(Values bigger than one scales it up. Values smaller than one sclaes it down)" + "\n" + "\n" +
+							"5. Random Translation:" + "\n" +
+							"By enabling the random translation all duplicated get additional translation values that are random based." + "\n" +
+							"You can define minimum and maximum values for each direction. Random values are just between those values." + "\n" + "\n" +
+							"6. Random Rotation:" + "\n" +
+							"The Same as Random Translation, but just with the rotation." + "\n" +
+							"Values are in degree." + "\n" + "\n" +
+							"7. Random Scale:" + "\n" +
+							"A uniform(in all directions) random scale is applied to the duplicated objects in the given range." + "\n" + "\n" +
+							"Settings that are relevant are:" + "\n" +
+							" - Radius A" + "\n" +
+							" - Radius B" + "\n" +
+							" - Revolutions" + "\n" +
+							" - Revolution Distance" + "\n" +
+							" - Revolution Distance Decrease" + "\n" +
+							" - Spiral Decrease" + "\n" + "\n" +
+							"VERY IMPORTANT: Just selected objects (all types of objects) are gonna duplicated." + "\n" +
+							"The selected object(s) is(are) grouped for each point on the Spiral / Helix and all groups are grouped together." + "\n" +
+							"The position of the object(s) is(are) important, because the center of the object(s) is(are) the center of" + "\n" +
+							"the Spiral / Helix. (The Object(s) is(are) just moved)";
+	confirmDialog
+		-title "Duplication Explanation"
+		-messageAlign "left"
+		-message $ExplanationText
+		-button "Close";
+}
+
+
+// AnimationExplanation function
+
+global proc AnimationExplanation ()
+{
+	string $ExplanationText = 
+							"Animation Tab Settings:" + "\n" +
+							"1.Start Frame:" + "\n" +
+							"This is the start frame of the animation." + "\n" + "\n" +
+							"2. Start Value:" + "\n" +
+							"The value(position) that the curve extrusion has on the curve at the first frame." + "\n" + "\n" +
+							"3. End Frame:" + "\n" +
+							"The last frame of the animation." + "\n" + "\n" +
+							"4. End Value:" + "\n" +
+							"The value(position) that the curve extrusion has on the curve at the last frame." + "\n" + "\n" +
+							"5. Animation Creation Style:" + "\n" +
+							"- With Extrusion:" + "\n" +
+							"   You just have to select a path on which the extrusion will be animated." + "\n" +
+							"   ALL settings from the extrusion tab are relevant." + "\n" +
+							"   You do not have to create an extra profile for the extrusion. The script create that automatically." + "\n" + "\n" +
+							"- Without Extrusion:" + "\n" +
+							"   This option creates JUST an animated curve without any extrusions." + "\n" +
+							"   You just have to select a path that is used for the animated curve." + "\n" +
+							"   This Option gives you the posibility to create that extrusion by yourself." + "\n" +
+							"   By just creating a profile and then extrude that profile along the animated curve." + "\n" + "\n" +
+							"IMPORTANT:" + "\n" +
+							"1. In version 1.4 animation works just for extrusions. Animation for duplicated objects will come in future releases." + "\n" +
+							"2. For proper animation of the extrusion don't move the automtically created profile, this would lead to strange results." + "\n" +
+							"   The profile should always be in the center of the first point of the path curve." + "\n" +
+							"3. When you have created the animation and go to the start frame of your animation there appears an error." + "\n" +
+							"   The error says that the result could not be calculated, but it should work though.";
+	confirmDialog
+		-title "Animation Explanation"
+		-messageAlign "left"
+		-message $ExplanationText
+		-button "Close";
+}
+
+
+// ShowInfo function
+
+global proc ShowInfo ()
+{
+	string $InfoText = "The " + "\`" + "CVSH_Tool.mel" + "\`" + " script let you create Spiral " + "\/" + " Helix nurbs curves with several settings." + "\n" +
+						"In addition, it can create extrusions along the Spiral " + "\/" + " Helix nurbs curves, create duplications along them and animate extrusions." + "\n" + "\n" +
+						"Author: Ricardo Münch" + "\n" +
+						"Version: v1.4" + "\n" + "\n" +
+						"For more information/comments/questions/new ideas or features send me an e-mail to:" + "\n" + "\n" +
+						"N i n r m s @ g m x . n e t" + "\n" + "\n" +
+						"Have FUN with this little tool.^^" + "\n" +
+						"(Sorry for my english it is not my native language.)";
+	
+	confirmDialog
+		-title "Info"
+		-messageAlign "left"
+		-message $InfoText
+		-button "Close";
+}
+
+
+//////////////
+// CVSH GUI //
+//////////////
+
+// Framelayout color variables
+float $FLR = 0.4; float $FLG = 0.4; float $FLB = 0.4;
+
+// Layout color variables
+float $LR = 0.84; float $LG = 0.84; float $LB = 0.84;
+
+// Button color variables
+float $BR = 1.0; float $BG = 0.744; float $BB = 0.323;	// Yellow - orange
+
+	// Alternative color set for buttons
+	// float $BR = 0.77; float $BG = 0.75; float $BB = 0.87;	// Violet
+	// float $BR = 0.564; float $BG = 0.815; float $BB = 0.860;	// Blue
+
+// Window name
+string $CVSHWindow = "CVSHMainWindow";
+
+// Window title
+string $CVSHTitle = "CV Spiral & Helix Creation Tool";
+
+// Window width
+int $WindowWidth = 432;
+
+// Window height
+int $WindowHeight = 408;
+
+
+// Tests if window already exists
+if (`window -exists $CVSHWindow`)
+{
+	// Window exists so delete window
+	deleteUI -window $CVSHWindow;
+}
+
+
+// IMPORTANT
+// If you get an error "object not found" then delete the following lines:
+
+// Delete all stored window data(name, size, position, ...)
+if (`windowPref -exists $CVSHWindow` == true)
+{
+	windowPref -remove $CVSHWindow;
+}
+
+
+// Create window
+
+window
+	-title $CVSHTitle
+	-menuBar true
+	-menuBarVisible true
+	-minimizeButton true
+	-maximizeButton true
+	-sizeable true
+	-width $WindowWidth
+	-height $WindowHeight
+	-visible false
+	-titleBar true
+	-backgroundColor $LR $LG $LB
+	$CVSHWindow;
+
+// Menu
+
+menu -label "Edit";
+
+	menuItem -label "Reset" -command ("Reset ($PathNameTextField, $sPathName, " +
+										"$RadiusAFloatSlider, $sRadiusA, " +
+										"$RadiusBFloatSlider, $sRadiusB, " +
+										"$PointsPerRevolutionIntSlider, $sPointsPerRevolution, " +
+										"$RevolutionsIntSlider, $sRevolutions, " +
+										"$PitchFloatSlider, $sPitch, " +
+										"$PitchDelayFloatSlider, $sPitchDelay, " +
+										"$SpiralDecreaseFloatSlider, $sSpiralDecrease, " +
+										"$CalculateHeightButton, $sCalculateHeightButtonLabel, " +
+										"$ProfileNameTextField, $sProfileName, " +
+										"$ProfileSectionsIntSlider, $sProfileSections, " +
+										"$ProfileRadiusFloatSlider, $sProfileRadius, " +
+										"$ExtrusionScaleFloatSlider, $sExtrusionScale, " +
+										"$NumberOfDuplicatesIntSlider, $sNumberOfDuplicates, " +
+										"$RotationStyleRadioButton, $sRotationStyle, " +
+										"$DuplicationStyleRadioButton, $sDuplicationStyle, " +
+										"$DupliScaleFactorFloatSlider, $sDupliScaleFactor, " +
+										"$RandomTranslationRadioButton, $sRandomTranslation, " +
+										"$MinXTranslationFloatField, $sMinTranslation, " +
+										"$MaxXTranslationFloatField, $sMaxTranslation, " +
+										"$MinYTranslationFloatField, $sMinTranslation, " +
+										"$MaxYTranslationFloatField, $sMaxTranslation, " +
+										"$MinZTranslationFloatField, $sMinTranslation, " +
+										"$MaxZTranslationFloatField, $sMaxTranslation, " +
+										"$RandomRotationRadioButton, $sRandomRotation, " +
+										"$MinXRotationFloatField, $sMinRotation, " +
+										"$MaxXRotationFloatField, $sMaxRotation, " +
+										"$MinYRotationFloatField, $sMinRotation, " +
+										"$MaxYRotationFloatField, $sMaxRotation, " +
+										"$MinZRotationFloatField, $sMinRotation, " +
+										"$MaxZRotationFloatField, $sMaxRotation, " +
+										"$RandomScaleRadioButton, $sRandomScale, " +
+										"$MinScaleFloatField, $sMinScale, " +
+										"$MaxScaleFloatField, $sMaxScale, " +
+										"$AnimationStartIntSlider, $sAnimationStart, " +
+										"$AnimationStartValueFloatSlider, $sAnimationStartValue, " +
+										"$AnimationEndIntSlider, $sAnimationEnd, " +
+										"$AnimationEndValueFloatSlider, $sAnimationEndValue, " +
+										"$AnimationCreationStyleRadioButton, $sAnimationCreationStyle)");
+										
+	menuItem -subMenu true -label "Presets";
+		menuItem -label "Preset_01_Flat_Spiral" -command "FlatSpiralPreset ($RadiusAFloatSlider, $RadiusBFloatSlider, $PointsPerRevolutionIntSlider, $RevolutionsIntSlider, $PitchFloatSlider, $PitchDelayFloatSlider, $SpiralDecreaseFloatSlider)";
+		menuItem -label "Preset_02_Art_Spiral" -command "ArtSpiralPreset ($RadiusAFloatSlider, $RadiusBFloatSlider, $PointsPerRevolutionIntSlider, $RevolutionsIntSlider, $PitchFloatSlider, $PitchDelayFloatSlider, $SpiralDecreaseFloatSlider)";
+		setParent -menu ..;
+		
+	menuItem -label "Save Preset" -command ("PresetToFile ($DNHeader, $DNFileInformationFile, $DNNumberOfPresets, " +
+												"$DNData, $DNPresetEntryID, 1," +
+												"$DNPresetEntryEnd, $DNPresetName, " +
+												"$DNPresetTailID, $DNPresetTailEnd, " +
+												"GetStringTextValue($PathNameTextField), $DNPathName, " +
+												"GetFloatSliderValue ($RadiusAFloatSlider), $DNRadiusA, " +
+												"GetFloatSliderValue ($RadiusBFloatSlider), $DNRadiusB, " +
+												"GetIntSliderValue ($PointsPerRevolutionIntSlider), $DNPointsPerRevolution, " +
+												"GetIntSliderValue ($RevolutionsIntSlider), $DNRevolutions, " +
+												"GetFloatSliderValue ($PitchFloatSlider), $DNPitch, " +
+												"GetFloatSliderValue ($PitchDelayFloatSlider), $DNPitchDelay, " +
+												"GetFloatSliderValue ($SpiralDecreaseFloatSlider), $DNSpiralDecrease, " +
+												"GetStringTextValue ($ProfileNameTextField), $DNProfileName, " +
+												"GetIntSliderValue ($ProfileSectionsIntSlider), $DNProfileSections, " +
+												"GetFloatSliderValue ($ProfileRadiusFloatSlider), $DNProfileRadius, " +
+												"GetFloatSliderValue ($ExtrusionScaleFloatSlider), $DNExtrusionScale, " +
+												"GetIntSliderValue ($NumberOfDuplicatesIntSlider), $DNNumberOfDuplicates, " +
+												"GetRadioButton2Value ($RotationStyleRadioButton) + 1, $DNRotationStyle, " +
+												"GetRadioButton2Value ($DuplicationStyleRadioButton) + 1, $DNDuplicationStyle, " +
+												"GetFloatSliderValue ($DupliScaleFactorFloatSlider), $DNDupliScaleFactor, " +
+												"GetRadioButton2Value ($RandomTranslationRadioButton) + 1, $DNRandomTranslation, " +
+												"GetFloatFieldValue ($MinXTranslationFloatField), $DNMinXTranslation, " +
+												"GetFloatFieldValue ($MaxXTranslationFloatField), $DNMaxXTranslation, " +
+												"GetFloatFieldValue ($MinYTranslationFloatField), $DNMinYTranslation, " +
+												"GetFloatFieldValue ($MaxYTranslationFloatField), $DNMaxYTranslation, " +
+												"GetFloatFieldValue ($MinZTranslationFloatField), $DNMinZTranslation, " +
+												"GetFloatFieldValue ($MaxZTranslationFloatField), $DNMaxZTranslation, " +
+												"GetRadioButton2Value ($RandomRotationRadioButton) + 1, $DNRandomRotation, " +
+												"GetFloatFieldValue ($MinXRotationFloatField), $DNMinXRotation, " +
+												"GetFloatFieldValue ($MaxXRotationFloatField), $DNMaxXRotation, " +
+												"GetFloatFieldValue ($MinYRotationFloatField), $DNMinYRotation, " +
+												"GetFloatFieldValue ($MaxYRotationFloatField), $DNMaxYRotation, " +
+												"GetFloatFieldValue ($MinZRotationFloatField), $DNMinZRotation, " +
+												"GetFloatFieldValue ($MaxZRotationFloatField), $DNMaxZRotation, " +
+												"GetRadioButton2Value ($RandomScaleRadioButton) + 1, $DNRandomScale, " +
+												"GetFloatFieldValue ($MinScaleFloatField), $DNMinScale, " +
+												"GetFloatFieldValue ($MaxScaleFloatField), $DNMaxScale, " +
+												"GetIntSliderValue ($AnimationStartIntSlider), $DNAnimationStart, " +
+												"GetFloatSliderValue ($AnimationStartValueFloatSlider), $DNAnimationStartValue, " +
+												"GetIntSliderValue ($AnimationEndIntSlider), $DNAnimationEnd, " +
+												"GetFloatSliderValue ($AnimationEndValueFloatSlider), $DNAnimationEndValue, " +
+												"GetRadioButton2Value ($AnimationCreationStyleRadioButton) + 1, $DNAnimationCreationStyle)");
+												
+	menuItem -label "Load Preset" -command ("LoadPresetFromFile ($DNHeader, $DNFileInformationFile, $DNNumberOfPresets, " +
+												"$DNData, $DNPresetEntryID, 1," +
+												"$DNPresetEntryEnd, $DNPresetName, " +
+												"$DNPresetTailID, $DNPresetTailEnd, " +
+												"$PathNameTextField, $DNPathName, " +
+												"$RadiusAFloatSlider, $DNRadiusA, " +
+												"$RadiusBFloatSlider, $DNRadiusB, " +
+												"$PointsPerRevolutionIntSlider, $DNPointsPerRevolution, " +
+												"$RevolutionsIntSlider, $DNRevolutions, " +
+												"$PitchFloatSlider, $DNPitch, " +
+												"$PitchDelayFloatSlider, $DNPitchDelay, " +
+												"$SpiralDecreaseFloatSlider, $DNSpiralDecrease, " +
+												"$ProfileNameTextField, $DNProfileName, " +
+												"$ProfileSectionsIntSlider, $DNProfileSections, " +
+												"$ProfileRadiusFloatSlider, $DNProfileRadius, " +
+												"$ExtrusionScaleFloatSlider, $DNExtrusionScale, " +
+												"$NumberOfDuplicatesIntSlider, $DNNumberOfDuplicates, " +
+												"$RotationStyleRadioButton, $DNRotationStyle, " +
+												"$DuplicationStyleRadioButton, $DNDuplicationStyle, " +
+												"$DupliScaleFactorFloatSlider, $DNDupliScaleFactor, " +
+												"$RandomTranslationRadioButton, $DNRandomTranslation, " +
+												"$MinXTranslationFloatField, $DNMinXTranslation, " +
+												"$MaxXTranslationFloatField, $DNMaxXTranslation, " +
+												"$MinYTranslationFloatField, $DNMinYTranslation, " +
+												"$MaxYTranslationFloatField, $DNMaxYTranslation, " +
+												"$MinZTranslationFloatField, $DNMinZTranslation, " +
+												"$MaxZTranslationFloatField, $DNMaxZTranslation, " +
+												"$RandomRotationRadioButton, $DNRandomRotation, " +
+												"$MinXRotationFloatField, $DNMinXRotation, " +
+												"$MaxXRotationFloatField, $DNMaxXRotation, " +
+												"$MinYRotationFloatField, $DNMinYRotation, " +
+												"$MaxYRotationFloatField, $DNMaxYRotation, " +
+												"$MinZRotationFloatField, $DNMinZRotation, " +
+												"$MaxZRotationFloatField, $DNMaxZRotation, " +
+												"$RandomScaleRadioButton, $DNRandomScale, " +
+												"$MinScaleFloatField, $DNMinScale, " +
+												"$MaxScaleFloatField, $DNMaxScale, " +
+												"$AnimationStartIntSlider, $DNAnimationStart, " +
+												"$AnimationStartValueFloatSlider, $DNAnimationStartValue, " +
+												"$AnimationEndIntSlider, $DNAnimationEnd, " +
+												"$AnimationEndValueFloatSlider, $DNAnimationEndValue, " +
+												"$AnimationCreationStyleRadioButton, $DNAnimationCreationStyle)");
+												
+	menuItem -label "Close" -command "CloseWindow ($CVSHWindow)";
+	
+menu -label "About";
+
+	menuItem -label "Creation Explanation" -command "CreationExplanation ()";
+	menuItem -label "Extrusion Explanation" -command "ExtrusionExplanation ()";
+	menuItem -label "Duplication Explanation" -command "DuplicationExplanation ()";
+	menuItem -label "Animation Explanation" -command "AnimationExplanation ()";
+	menuItem -label "Info" -command "ShowInfo ()";
+
+	
+// Layout
+
+// Tab layout names
+
+string $FirstTabName = "Creation";
+string $SecondTabName = "Extrusion";
+string $ThirdTabName = "Duplication";
+string $FourthTabName = "Animation";
+
+
+
+string $TabLayoutStyle = `tabLayout
+						-innerMarginWidth 4
+						-innerMarginHeight 4
+						-scrollable true
+						-backgroundColor $LR $LG $LB`;
+	
+	string $FirstTab = `columnLayout
+						-adjustableColumn true
+						-columnAttach "left" 0
+						-rowSpacing 5
+						-backgroundColor $LR $LG $LB`;
+	
+		// Name for path curve
+		string $PathNameTextField = `textFieldGrp
+										-label "Path Curve Name"
+										-text $sPathName
+										-backgroundColor $LR $LG $LB`;
+									
+		// Radius A for elliptic path
+		string $RadiusAFloatSlider = `floatSliderGrp
+									-label "Radius A (elliptic) (X-Dir.)"
+									-field true
+									-precision 3
+									-minValue 0.001
+									-value $sRadiusA
+									-backgroundColor $LR $LG $LB`;
+		
+		// Radius B for elliptic path
+		string $RadiusBFloatSlider = `floatSliderGrp
+									-label "Radius B (elliptic) (Z-Dir.)"
+									-field true
+									-precision 3
+									-minValue 0.001
+									-value $sRadiusB
+									-backgroundColor $LR $LG $LB`;
+									
+		// Button to set radius equal
+		string $SetRadiusEqualButton = `button
+										-label "Set Radius Equal (for circular style)"
+										-backgroundColor $BR $BG $BB
+										-height 20
+										-command "CopyFloatValue ($RadiusBFloatSlider, GetFloatSliderValue ($RadiusAFloatSlider))"`;
+		
+		// Points per revolution
+		string $PointsPerRevolutionIntSlider = `intSliderGrp
+												-label "Points Per Revolution"
+												-field true
+												-minValue 4
+												-maxValue 128
+												-value $sPointsPerRevolution
+												-backgroundColor $LR $LG $LB`;
+		
+		// Revolutions to perform
+		string $RevolutionsIntSlider = `intSliderGrp
+										-label "Revolutions"
+										-field true
+										-minValue 1
+										-maxValue 64
+										-value $sRevolutions
+										-backgroundColor $LR $LG $LB`;
+		
+		// Distance between a revolution
+		string $PitchFloatSlider = `floatSliderGrp
+									-label "Pitch"
+									-field true
+									-precision 3
+									-minValue 0.000
+									-value $sPitch
+									-backgroundColor $LR $LG $LB`;
+										
+		// Decrease for each revolution
+		string $PitchDelayFloatSlider = `floatSliderGrp
+										-label "Pitch Delay"
+										-field true
+										-precision 6
+										-minValue -10.000
+										-maxValue 10.000
+										-value $sPitchDelay
+										-backgroundColor $LR $LG $LB`;
+		
+		// Decrease for spiral
+		string $SpiralDecreaseFloatSlider = `floatSliderGrp
+											-label "Spiral Decrease"
+											-field true
+											-precision 3
+											-minValue 0.001
+											-value $sSpiralDecrease
+											-backgroundColor $LR $LG $LB`;
+					
+		// Calculate height of spiral/helix
+		string $CalculateHeightButton = `button
+										-label $sCalculateHeightButtonLabel
+										-backgroundColor $BR $BG $BB
+										-height 20
+										-command ("ChangeButtonLabel ($CalculateHeightButton, " +
+													"Combine2Strings ($sCalculateHeightButtonLabel, " +
+													"CalculateHeightStr (GetIntSliderValue ($PointsPerRevolutionIntSlider), " +
+													"GetIntSliderValue ($RevolutionsIntSlider), " +
+													"GetFloatSliderValue ($PitchFloatSlider), " +
+													"GetFloatSliderValue ($PitchDelayFloatSlider))))")`;
+
+		rowColumnLayout
+			-numberOfColumns 2
+			-columnWidth 1 200
+			-columnWidth 2 200
+			-backgroundColor $LR $LG $LB;
+			
+			// Creating a spiral
+			string $CreateSpiralButton = `button
+										-label "Create Spiral"
+										-backgroundColor $BR $BG $BB
+										-height 40
+										-command ("CreateSpiralHelix (GetStringTextValue ($PathNameTextField), " +
+													"GetFloatSliderValue ($RadiusAFloatSlider), " +
+													"GetFloatSliderValue ($RadiusBFloatSlider), " +
+													"GetIntSliderValue ($PointsPerRevolutionIntSlider), " +
+													"GetIntSliderValue ($RevolutionsIntSlider), " +
+													"GetFloatSliderValue ($PitchFloatSlider), " +
+													"GetFloatSliderValue ($PitchDelayFloatSlider), " +
+													"GetFloatSliderValue ($SpiralDecreaseFloatSlider), " +
+													"0)")`;
+			
+			// Creating a helix
+			string $CreateHelixButton = `button
+										-label "Create Helix"
+										-backgroundColor $BR $BG $BB
+										-height 40
+										-command ("CreateSpiralHelix (GetStringTextValue ($PathNameTextField), " +
+													"GetFloatSliderValue ($RadiusAFloatSlider), " +
+													"GetFloatSliderValue ($RadiusBFloatSlider), " +
+													"GetIntSliderValue ($PointsPerRevolutionIntSlider), " +
+													"GetIntSliderValue ($RevolutionsIntSlider), " +
+													"GetFloatSliderValue ($PitchFloatSlider), " +
+													"GetFloatSliderValue ($PitchDelayFloatSlider), " +
+													"GetFloatSliderValue ($SpiralDecreaseFloatSlider), " +
+													"1)")`;
+									
+		setParent $FirstTab;
+	
+	setParent ..;
+
+		
+	string $SecondTab = `columnLayout
+						-adjustableColumn true
+						-columnAttach "left" 0
+						-rowSpacing 5
+						-backgroundColor $LR $LG $LB`;
+
+		// Name for profile curve
+		string $ProfileNameTextField = `textFieldGrp
+											-label "Profile Curve Name"
+											-text $sProfileName
+											-backgroundColor $LR $LG $LB`;
+		
+		// Number of sections for profile
+		string $ProfileSectionsIntSlider = `intSliderGrp
+											-label "Profile Sections"
+											-field true
+											-minValue 4
+											-maxValue 64
+											-value $sProfileSections
+											-backgroundColor $LR $LG $LB`;
+											
+		// Radius of the profile
+		string $ProfileRadiusFloatSlider = `floatSliderGrp
+											-label "Profile Radius"
+											-field true
+											-precision 3
+											-minValue 0.001
+											-value $sProfileRadius
+											-backgroundColor $LR $LG $LB`;
+											
+		// Scale factor for taper effect
+		string $ExtrusionScaleFloatSlider = `floatSliderGrp
+											-label "Extrusion Scale(Taper)"
+											-field true
+											-precision 3
+											-minValue 0.000
+											-value $sExtrusionScale
+											-backgroundColor $LR $LG $LB`;
+									
+		rowColumnLayout
+			-numberOfColumns 2
+			-columnWidth 1 200
+			-columnWidth 2 200
+			-backgroundColor $LR $LG $LB;
+		
+			// Creating a circle profile
+			string $CreateCircleButton = `button
+										-label "Create Circle Profile"
+										-backgroundColor $BR $BG $BB
+										-height 40
+										-command ("CreateCircle (GetStringTextValue ($ProfileNameTextField), " +
+													"GetIntSliderValue ($ProfileSectionsIntSlider), " +
+													"GetFloatSliderValue ($ProfileRadiusFloatSlider), " +
+													"GetFloatSliderValue ($RadiusBFloatSlider))")`;
+			
+			// Extrude a profile along a path
+			string $ExtrudeProfilePathButton = `button
+											-label "Extrude Profile Along Path"
+											-backgroundColor $BR $BG $BB
+											-height 40
+											-command "ExtrudeAlongPath (GetFloatSliderValue ($ExtrusionScaleFloatSlider))"`;
+										
+		setParent $SecondTab;
+		
+			
+	setParent ..;
+	
+	string $ThirdTab = `columnLayout
+						-adjustableColumn true
+						-columnAttach "left" 0
+						-rowSpacing 5
+						-backgroundColor $LR $LG $LB`;
+		
+		// Number of duplicates in one Revolution
+		string $NumberOfDuplicatesIntSlider = `intSliderGrp
+											-label "Duplicates Per Revolution"
+											-field true
+											-minValue 2
+											-maxValue 4096
+											-value $sNumberOfDuplicates
+											-backgroundColor $LR $LG $LB`;
+											
+		// Object rotation type
+		string $RotationStyleRadioButton = `radioButtonGrp
+											-numberOfRadioButtons 2
+											-label "Select Rotation Style"
+											-labelArray2 "Preserve Rotation" "Apply Rotation"
+											-select $sRotationStyle
+											-backgroundColor $LR $LG $LB`;
+											
+		// Object duplication type
+		string $DuplicationStyleRadioButton = `radioButtonGrp
+											-numberOfRadioButtons 2
+											-label "Select Duplication Style"
+											-labelArray2 "Duplicate" "Instance"
+											-select $sDuplicationStyle
+											-backgroundColor $LR $LG $LB`;
+											
+		// Scale factor for taper effect
+		string $DupliScaleFactorFloatSlider = `floatSliderGrp
+												-label "Uniform Scale Factor"
+												-field true
+												-precision 6
+												-minValue 0.000001
+												-maxValue 2.000000
+												-value $sDupliScaleFactor
+												-backgroundColor $LR $LG $LB`;
+										
+		// Enable/Disable random translation
+		string $RandomTranslationRadioButton = `radioButtonGrp
+												-numberOfRadioButtons 2
+												-label "Random Translation"
+												-labelArray2 "Enable" "Disable"
+												-select $sRandomTranslation
+												-backgroundColor $LR $LG $LB`;
+												
+		rowColumnLayout
+			-numberOfColumns 5
+			-columnWidth 1 80
+			-columnWidth 2 100
+			-columnWidth 3 80
+			-columnWidth 4 100
+			-columnWidth 5 20
+			-backgroundColor $LR $LG $LB;
+			
+			text
+				-label "Min X    "
+				-align "right"
+				-backgroundColor $LR $LG $LB;
+												
+			// Min x translation values
+			string $MinXTranslationFloatField = `floatField
+													-precision 6
+													-minValue -100.000000
+													-maxValue 0.000000
+													-value $sMinTranslation
+													-backgroundColor $LR $LG $LB`;
+													
+			text
+				-label "Max X    "
+				-align "right"
+				-backgroundColor $LR $LG $LB;
+											
+			// Max x translation values
+			string $MaxXTranslationFloatField = `floatField
+													-precision 6
+													-minValue 0.000000
+													-maxValue 100.000000
+													-value $sMaxTranslation
+													-backgroundColor $LR $LG $LB`;
+													
+		setParent $ThirdTab;
+		
+		rowColumnLayout
+			-numberOfColumns 5
+			-columnWidth 1 80
+			-columnWidth 2 100
+			-columnWidth 3 80
+			-columnWidth 4 100
+			-columnWidth 5 20
+			-backgroundColor $LR $LG $LB;
+		
+			text
+				-label "Min Y    "
+				-align "right"
+				-backgroundColor $LR $LG $LB;
+		
+			// Min y translation values
+			string $MinYTranslationFloatField = `floatField
+													-precision 6
+													-minValue -100.000000
+													-maxValue 0.000000
+													-value $sMinTranslation
+													-backgroundColor $LR $LG $LB`;
+													
+			text
+				-label "Max Y    "
+				-align "right"
+				-backgroundColor $LR $LG $LB;
+												
+			// Max y translation values
+			string $MaxYTranslationFloatField = `floatField
+													-precision 6
+													-minValue 0.000000
+													-maxValue 100.000000
+													-value $sMaxTranslation
+													-backgroundColor $LR $LG $LB`;
+												
+		setParent $ThirdTab;
+		
+		rowColumnLayout
+			-numberOfColumns 5
+			-columnWidth 1 80
+			-columnWidth 2 100
+			-columnWidth 3 80
+			-columnWidth 4 100
+			-columnWidth 5 20
+			-backgroundColor $LR $LG $LB;
+			
+			text
+				-label "Min Z    "
+				-align "right"
+				-backgroundColor $LR $LG $LB;
+		
+			// Min z translation values
+			string $MinZTranslationFloatField = `floatField
+													-precision 6
+													-minValue -100.000000
+													-maxValue 0.000000
+													-value $sMinTranslation
+													-backgroundColor $LR $LG $LB`;
+													
+			text
+				-label "Max Z    "
+				-align "right"
+				-backgroundColor $LR $LG $LB;
+												
+			// Max z translation values
+			string $MaxZTranslationFloatField = `floatField
+													-precision 6
+													-minValue 0.000000
+													-maxValue 100.000000
+													-value $sMaxTranslation
+													-backgroundColor $LR $LG $LB`;
+												
+		setParent $ThirdTab;
+												
+		// Enable/Disable random rotation
+		string $RandomRotationRadioButton = `radioButtonGrp
+												-numberOfRadioButtons 2
+												-label "Random Rotation"
+												-labelArray2 "Enable" "Disable"
+												-select $sRandomRotation
+												-backgroundColor $LR $LG $LB`;
+												
+												
+		rowColumnLayout
+			-numberOfColumns 5
+			-columnWidth 1 80
+			-columnWidth 2 100
+			-columnWidth 3 80
+			-columnWidth 4 100
+			-columnWidth 5 20
+			-backgroundColor $LR $LG $LB;
+			
+			text
+				-label "Min X    "
+				-align "right"
+				-backgroundColor $LR $LG $LB;
+												
+			// Min x rotation values
+			string $MinXRotationFloatField = `floatField
+													-precision 6
+													-minValue -360.000000
+													-maxValue 0.000000
+													-value $sMinRotation
+													-backgroundColor $LR $LG $LB`;
+													
+			text
+				-label "Max X    "
+				-align "right"
+				-backgroundColor $LR $LG $LB;
+												
+			// Max x rotation values												
+			string $MaxXRotationFloatField = `floatField
+													-precision 6
+													-minValue 0.000000
+													-maxValue 360.000000
+													-value $sMaxRotation
+													-backgroundColor $LR $LG $LB`;
+													
+		setParent $ThirdTab;
+		
+		rowColumnLayout
+			-numberOfColumns 5
+			-columnWidth 1 80
+			-columnWidth 2 100
+			-columnWidth 3 80
+			-columnWidth 4 100
+			-columnWidth 5 20
+			-backgroundColor $LR $LG $LB;
+		
+			text
+				-label "Min Y    "
+				-align "right"
+				-backgroundColor $LR $LG $LB;
+		
+			// Min y rotation values
+			string $MinYRotationFloatField = `floatField
+													-precision 6
+													-minValue -360.000000
+													-maxValue 0.000000
+													-value $sMinRotation
+													-backgroundColor $LR $LG $LB`;
+				
+			text
+				-label "Max Y    "
+				-align "right"
+				-backgroundColor $LR $LG $LB;
+													
+			// Max y rotation values
+			string $MaxYRotationFloatField = `floatField
+													-precision 6
+													-minValue 0.000000
+													-maxValue 360.000000
+													-value $sMaxRotation
+													-backgroundColor $LR $LG $LB`;
+												
+		setParent $ThirdTab;
+		
+		rowColumnLayout
+			-numberOfColumns 5
+			-columnWidth 1 80
+			-columnWidth 2 100
+			-columnWidth 3 80
+			-columnWidth 4 100
+			-columnWidth 5 20
+			-backgroundColor $LR $LG $LB;
+			
+			text
+				-label "Min Z    "
+				-align "right"
+				-backgroundColor $LR $LG $LB;
+		
+			// Min z rotation values
+			string $MinZRotationFloatField = `floatField
+													-precision 6
+													-minValue -360.000000
+													-maxValue 0.000000
+													-value $sMinRotation
+													-backgroundColor $LR $LG $LB`;
+													
+			text
+				-label "Max Z    "
+				-align "right"
+				-backgroundColor $LR $LG $LB;
+											
+			// Max z rotation values
+			string $MaxZRotationFloatField = `floatField
+													-precision 6
+													-minValue 0.000000
+													-maxValue 360.000000
+													-value $sMaxRotation
+													-backgroundColor $LR $LG $LB`;
+													
+		setParent $ThirdTab;
+												
+		// Enable/Disable random scale
+		string $RandomScaleRadioButton = `radioButtonGrp
+											-numberOfRadioButtons 2
+											-label "Random Scale"
+											-labelArray2 "Enable" "Disable"
+											-select $sRandomScale
+											-backgroundColor $LR $LG $LB`;
+											
+		rowColumnLayout
+			-numberOfColumns 5
+			-columnWidth 1 80
+			-columnWidth 2 100
+			-columnWidth 3 80
+			-columnWidth 4 100
+			-columnWidth 5 20
+			-backgroundColor $LR $LG $LB;
+			
+			text
+				-label "Min      "
+				-align "right"
+				-backgroundColor $LR $LG $LB;
+		
+			// Min max scale values
+			string $MinScaleFloatField = `floatField
+													-precision 6
+													-minValue -1.000000
+													-maxValue 0.000000
+													-value $sMinScale
+													-backgroundColor $LR $LG $LB`;
+													
+			text
+				-label "Max      "
+				-align "right"
+				-backgroundColor $LR $LG $LB;
+			
+			// Max scale values
+			string $MaxScaleFloatField = `floatField
+													-precision 6
+													-minValue 0.000000
+													-maxValue 1.000000
+													-value $sMaxScale
+													-backgroundColor $LR $LG $LB`;
+													
+		setParent $ThirdTab;
+											
+		rowColumnLayout
+			-numberOfColumns 2
+			-columnWidth 1 200
+			-columnWidth 2 200
+			-backgroundColor $LR $LG $LB;
+		
+		// Duplicate along a spiral
+		string $SpiralDuplicationButton = `button
+										-label "Duplicate/Instance Along Spiral"
+										-backgroundColor $BR $BG $BB
+										-height 40
+										-command ("SpiralHelixDuplication (GetIntSliderValue ($NumberOfDuplicatesIntSlider), " +
+													"GetRadioButton2Value ($RotationStyleRadioButton), " +
+													"GetRadioButton2Value ($DuplicationStyleRadioButton), " +
+													"GetFloatSliderValue ($RadiusAFloatSlider), " +
+													"GetFloatSliderValue ($RadiusBFloatSlider), " +
+													"GetIntSliderValue ($RevolutionsIntSlider), " +
+													"GetFloatSliderValue ($PitchFloatSlider), " +
+													"GetFloatSliderValue ($PitchDelayFloatSlider), " +
+													"GetFloatSliderValue ($SpiralDecreaseFloatSlider), " +
+													"GetFloatSliderValue ($DupliScaleFactorFloatSlider), " +
+													"GetRadioButton2Value ($RandomTranslationRadioButton), " +
+													"GetFloatFieldValue ($MinXTranslationFloatField), GetFloatFieldValue ($MaxXTranslationFloatField), " +
+													"GetFloatFieldValue ($MinYTranslationFloatField), GetFloatFieldValue ($MaxYTranslationFloatField), " +
+													"GetFloatFieldValue ($MinZTranslationFloatField), GetFloatFieldValue ($MaxZTranslationFloatField), " +
+													"GetRadioButton2Value ($RandomRotationRadioButton), " +
+													"GetFloatFieldValue ($MinXRotationFloatField), GetFloatFieldValue ($MaxXRotationFloatField), " +
+													"GetFloatFieldValue ($MinYRotationFloatField), GetFloatFieldValue ($MaxYRotationFloatField), " +
+													"GetFloatFieldValue ($MinZRotationFloatField), GetFloatFieldValue ($MaxZRotationFloatField), " +
+													"GetRadioButton2Value ($RandomScaleRadioButton), " +
+													"GetFloatFieldValue ($MinScaleFloatField), GetFloatFieldValue ($MaxScaleFloatField), " +
+													"0 )")`;
+													
+		// Duplicate along a helix
+		string $HelixDuplicationButton = `button
+										-label "Duplicate/Instance Along Helix"
+										-backgroundColor $BR $BG $BB
+										-height 40
+										-command ("SpiralHelixDuplication (GetIntSliderValue ($NumberOfDuplicatesIntSlider), " +
+													"GetRadioButton2Value ($RotationStyleRadioButton), " +
+													"GetRadioButton2Value ($DuplicationStyleRadioButton), " +
+													"GetFloatSliderValue ($RadiusAFloatSlider), " +
+													"GetFloatSliderValue ($RadiusBFloatSlider), " +
+													"GetIntSliderValue ($RevolutionsIntSlider), " +
+													"GetFloatSliderValue ($PitchFloatSlider), " +
+													"GetFloatSliderValue ($PitchDelayFloatSlider), " +
+													"GetFloatSliderValue ($SpiralDecreaseFloatSlider), " +
+													"GetFloatSliderValue ($DupliScaleFactorFloatSlider), " +
+													"GetRadioButton2Value ($RandomTranslationRadioButton), " +
+													"GetFloatFieldValue ($MinXTranslationFloatField), GetFloatFieldValue ($MaxXTranslationFloatField), " +
+													"GetFloatFieldValue ($MinYTranslationFloatField), GetFloatFieldValue ($MaxYTranslationFloatField), " +
+													"GetFloatFieldValue ($MinZTranslationFloatField), GetFloatFieldValue ($MaxZTranslationFloatField), " +
+													"GetRadioButton2Value ($RandomRotationRadioButton), " +
+													"GetFloatFieldValue ($MinXRotationFloatField), GetFloatFieldValue ($MaxXRotationFloatField), " +
+													"GetFloatFieldValue ($MinYRotationFloatField), GetFloatFieldValue ($MaxYRotationFloatField), " +
+													"GetFloatFieldValue ($MinZRotationFloatField), GetFloatFieldValue ($MaxZRotationFloatField), " +
+													"GetRadioButton2Value ($RandomScaleRadioButton), " +
+													"GetFloatFieldValue ($MinScaleFloatField), GetFloatFieldValue ($MaxScaleFloatField), " +
+													"1 )")`;
+													
+		setParent $ThirdTab;
+		
+	setParent ..;
+	
+	string $FourthTab = `columnLayout
+						-adjustableColumn true
+						-columnAttach "left" 0
+						-rowSpacing 5
+						-backgroundColor $LR $LG $LB`;
+						
+		// Information text
+		string $AnimationGrowInfoText = `text
+											-label "ONLY for extruded curves. NOT (yet) for duplicated objects."
+											-backgroundColor $LR $LG $LB`;
+				
+		// Animation start frame
+		string $AnimationStartIntSlider = `intSliderGrp
+											-label "Start Frame"
+											-field true
+											-minValue 1
+											-maxValue 99999
+											-value $sAnimationStart
+											-backgroundColor $LR $LG $LB`;
+											
+		// Animation start value
+		string $AnimationStartValueFloatSlider = `floatSliderGrp
+												-label "Start Value"
+												-field true
+												-precision 3
+												-minValue 0.000
+												-maxValue 1.000
+												-value $sAnimationStartValue
+												-backgroundColor $LR $LG $LB`;
+		
+		// Animation end frame
+		string $AnimationEndIntSlider = `intSliderGrp
+											-label "End Frame"
+											-field true
+											-minValue 2
+											-maxValue 100000
+											-value $sAnimationEnd
+											-backgroundColor $LR $LG $LB`;
+											
+		// Animation end value
+		string $AnimationEndValueFloatSlider = `floatSliderGrp
+												-label "End Value"
+												-field true
+												-precision 3
+												-minValue 0.000
+												-maxValue 1.000
+												-value $sAnimationEndValue
+												-backgroundColor $LR $LG $LB`;
+												
+		// Create animation settings with or without extrusion option
+		string $AnimationCreationStyleRadioButton = `radioButtonGrp
+													-numberOfRadioButtons 2
+													-label "Animation Creation Style"
+													-labelArray2 "With Extrusion" "Without Extrusion"
+													-select $sAnimationCreationStyle
+													-backgroundColor $LR $LG $LB`;
+											
+		rowColumnLayout
+			-numberOfColumns 1
+			-columnWidth 1 400
+			-backgroundColor $LR $LG $LB;
+			
+		// Set keys and values
+		string $SetAnimSettingsButton = `button
+										-label "Create Animation Settings"
+										-backgroundColor $BR $BG $BB
+										-height 40
+										-command ("ExtrusionAnimation (GetIntSliderValue ($AnimationStartIntSlider), " +
+										"GetFloatSliderValue ($AnimationStartValueFloatSlider), " +
+										"GetIntSliderValue ($AnimationEndIntSlider), " +
+										"GetFloatSliderValue ($AnimationEndValueFloatSlider), " +
+										"GetRadioButton2Value ($AnimationCreationStyleRadioButton), " +
+										"GetStringTextValue ($ProfileNameTextField), " +
+										"GetIntSliderValue ($ProfileSectionsIntSlider), " +
+										"GetFloatSliderValue ($ProfileRadiusFloatSlider), " +
+										"GetFloatSliderValue ($RadiusBFloatSlider), " +
+										"GetFloatSliderValue ($ExtrusionScaleFloatSlider))")`;
+						
+		setParent $FourthTab;
+		
+	setParent ..;
+	
+setParent ..;
+
+
+// Edit the tablayout
+tabLayout -edit
+			-tabLabel $FirstTab $FirstTabName
+			-tabLabel $SecondTab $SecondTabName
+			-tabLabel $ThirdTab $ThirdTabName
+			-tabLabel $FourthTab $FourthTabName
+			$TabLayoutStyle;
+
+
+////////////////////////////////
+// CreateSpiralHelix function //
+////////////////////////////////
+
+global proc CreateSpiralHelix (string $PathName,
+						float $RadiusA,
+						float $RadiusB,
+						int $PointsPerRevolution,
+						int $Revolutions,
+						float $RevolutionDistance,
+						float $DecRevolution,
+						float $SpiralDecrease,
+						int $Type)
+{
+	/* Type:
+	0 = Spiral
+	everything else = Helix
+	*/
+	
+	// Add "Spiral" to curve name
+	if ($Type == 0)
+	{
+		$PathName += "Spiral";
+	}
+	
+	// Else add "Helix" to curve name
+	else
+	{
+		$PathName += "Helix";
+	}
+	
+	// Local variables
+	string $CurvePoints;
+	float $PI = 3.14159265;
+	
+	float $XPos = 0.0;
+	float $YPos = 0.0;
+	float $ZPos = 0.0;
+	
+	float $TotalCurvePoints = $PointsPerRevolution * $Revolutions;
+	
+	// Correct the number of total points
+	--$TotalCurvePoints;
+	
+	float $Phi = 0.0;
+	
+	int $ActualPoint = 0;
+	
+	for ($ActualPoint = 0; $ActualPoint <= $TotalCurvePoints; ++$ActualPoint)
+	{
+		// Rotation Angle
+		$Phi = (360.0 * $Revolutions / $TotalCurvePoints * $ActualPoint) * ($PI / 180.0);
+		
+		// X position
+		$XPos = $RadiusA * sin ($Phi);
+		
+		// Z position
+		$ZPos = $RadiusB * cos ($Phi);
+		
+		// Add point to curve creation string
+		$CurvePoints += ("-p " + $XPos + " " + $YPos + " " + $ZPos + " ");
+		
+		// Y position
+		$YPos += ($RevolutionDistance / $PointsPerRevolution) + ($DecRevolution * $ActualPoint);
+		
+		// Spiral
+		if ($Type == 0)
+		{
+			$RadiusA -= $SpiralDecrease / $TotalCurvePoints;
+			
+			$RadiusB -= $SpiralDecrease / $TotalCurvePoints;
+		}
+	}
+	
+	// Create curve with calculated points
+	string $PathCurveObj = "curve -degree 3	-name ";			// Curve command
+	$PathCurveObj = $PathCurveObj + $PathName + $CurvePoints;	// Add points to command
+	
+	eval ($PathCurveObj);
+}
+
+
+//////////////////////////
+// CreateHelix function //
+//////////////////////////
+/*
+global proc CreateHelix (string $PathName,
+					float $RadiusA,
+					float $RadiusB,
+					int $PointsPerRevolution,
+					int $Revolutions,
+					float $RevolutionDistance,
+					float $DecRevolution)
+{
+	// Local variables
+	string $CurvePoints;
+	float $PI = 3.14159265;
+	
+	float $XPos = 0.0;
+	float $YPos = 0.0;
+	float $ZPos = 0.0;
+	
+	float $Phi = 0.0;
+	
+	int $TotalCurvePoints = $PointsPerRevolution * $Revolutions;
+	
+	// Correct the number of total points
+	--$TotalCurvePoints;
+
+	
+	int $ActualPoint = 0;
+	
+	for ($ActualPoint = 0; $ActualPoint <= $TotalCurvePoints; ++$ActualPoint)
+	{
+		$Phi = (360.0 * $Revolutions / $TotalCurvePoints * $ActualPoint) * ($PI / 180.0);
+		
+		// X position
+		$XPos = $RadiusA * sin ($Phi);
+		
+		// Z position
+		$ZPos = $RadiusB * cos ($Phi);
+		
+		// Add point to curve creation string
+		$CurvePoints += ("-p " + $XPos + " " + $YPos + " " + $ZPos + " ");
+		
+		// Y position
+		$YPos += ($RevolutionDistance / $PointsPerRevolution) + ($DecRevolution * $ActualPoint);
+	}
+	
+	// Create curve with calculated points
+	string $PathCurveObj = "curve -degree 3	-name ";			// Curve command
+	$PathCurveObj = $PathCurveObj + $PathName + $CurvePoints;	// Add points to command
+	
+	eval ($PathCurveObj);
+}
+*/
+
+///////////////////////////
+// CreateSpiral function //
+///////////////////////////
+/*
+global proc CreateSpiral (string $PathName,
+					float $RadiusA,
+					float $RadiusB,
+					int $PointsPerRevolution,
+					int $Revolutions,
+					float $RevolutionDistance,
+					float $DecRevolution,
+					float $SpiralDecrease)
+{
+	// Local variables
+	string $CurvePoints;
+	float $PI = 3.14159265;
+	
+	float $XPos = 0.0;
+	float $YPos = 0.0;
+	float $ZPos = 0.0;
+	
+	float $TotalCurvePoints = $PointsPerRevolution * $Revolutions;
+	
+	// Correct the number of total points
+	--$TotalCurvePoints;
+	
+	float $Phi = 0.0;
+	
+	int $ActualPoint = 0;
+	
+	for ($ActualPoint = 0; $ActualPoint <= $TotalCurvePoints; ++$ActualPoint)
+	{
+		$Phi = (360.0 * $Revolutions / $TotalCurvePoints * $ActualPoint) * ($PI / 180.0);
+		
+		// X position
+		$XPos = $RadiusA * sin ($Phi);
+		
+		// Z position
+		$ZPos = $RadiusB * cos ($Phi);
+		
+		// Add point to curve creation string
+		$CurvePoints += ("-p " + $XPos + " " + $YPos + " " + $ZPos + " ");
+		
+		// Y position
+		$YPos += ($RevolutionDistance / $PointsPerRevolution) + ($DecRevolution * $ActualPoint);
+		
+		$RadiusA -= $SpiralDecrease / $TotalCurvePoints;
+		
+		$RadiusB -= $SpiralDecrease / $TotalCurvePoints;
+	}
+	
+	// Create curve with calculated points
+	string $PathCurveObj = "curve -degree 3	-name ";			// Curve command
+	$PathCurveObj = $PathCurveObj + $PathName + $CurvePoints;	// Add points to command
+	
+	eval ($PathCurveObj);
+}
+*/
+
+///////////////////////////
+// CreateCircle function //
+///////////////////////////
+
+global proc CreateCircle (string $ProfileName, int $ProfileSections, float $ProfileRadius, float $RadiusB)
+{
+	circle
+		-constructionHistory true
+		-normal 0 1 0
+		-center 0.0 0.0 0.0
+		-radius $ProfileRadius
+		-sections $ProfileSections
+		-name $ProfileName;
+		
+	// Move the curve profile - RadiusB for proper animation
+	move 0 0 $RadiusB;
+}
+
+
+///////////////////////////////
+// ExtrudeAlongPath function //
+///////////////////////////////
+
+global proc ExtrudeAlongPath (float $ScaleFactor)
+{	
+	// Test selected Objects
+	
+	// Selected number of objects have to be two
+	
+	string $SelectionList [] = `ls -selection -dagObjects -leaf`;
+	int $SelectionSize = size ($SelectionList);
+	print ($SelectionList);
+	
+	if ($SelectionSize != 2)
+	{
+		// Number of selected objects is not equal to two
+		print ("You have " + $SelectionSize + " objects selected." + "\n");
+		error "Number of selected objects have to be two.";
+	}
+	
+	else
+	{
+		// Number of selected objects is equal to two
+		// Test selection on "nurbsCurve" type
+		
+		string $Profile = `nodeType $SelectionList [0]`;
+		string $Path = `nodeType $SelectionList [1]`;
+		print (`nodeType $SelectionList [0]` + "\n");
+		print (`nodeType $SelectionList [1]` + "\n");
+		
+		
+		if ($Profile != "nurbsCurve")
+		{
+			error "The first selected object is not a nurbsCurve";
+		}
+		
+		else if ($Path != "nurbsCurve")
+		{
+			error "The second selected object is not a nurbsCurve";
+		}
+		
+		else
+		{
+			print ("Given information is correct extrusion is in work." + "\n");
+			
+			// The two selected objects are nurbs curves
+			
+			// Extrude from selection list
+			
+			string $ExtrudeProfilePathCurve [] = `extrude -constructionHistory true
+														-range false
+														-polygon 0
+														-extrudeType 2
+														-useComponentPivot 2
+														-fixedPath true
+														-useProfileNormal true
+														-rotation 0
+														-scale $ScaleFactor
+														-reverseSurfaceIfPathReversed true
+														$SelectionList [0]
+														$SelectionList [1]`;
+			
+			// eval ($ExtrudeProfilePathCurve);
+			
+			print ("Extrusion Done" + "\n");
+		}
+	}
+}
+
+
+/////////////////////////////////////
+// SpiralHelixDuplication function //
+/////////////////////////////////////
+
+global proc SpiralHelixDuplication (int $DuplicatesPerRevolution,
+								int $Rotation,
+								int $Duplication,
+								float $RadiusA,
+								float $RadiusB,
+								int $Revolutions,
+								float $RevolutionDistance,
+								float $DecRevolution,
+								float $SpiralDecrease,
+								float $DupliScaleFactor,
+								int $RandomTranslation,
+								float $MinXTranslation, float $MaxXTranslation,
+								float $MinYTranslation, float $MaxYTranslation,
+								float $MinZTranslation, float $MaxZTranslation,
+								int $RandomRotation,
+								float $MinXRotation, float $MaxXRotation,
+								float $MinYRotation, float $MaxYRotation,
+								float $MinZRotation, float $MaxZRotation,
+								int $RandomScale,
+								float $MinScale, float $MaxScale,
+								int $Type)
+{
+	/* Type:
+	0 = Spiral
+	everything else = Helix
+	*/
+	
+	// Local variables
+	float $PI = 3.14159265;
+	
+	float $XPos = 0.0;
+	float $YPos = 0.0;
+	float $ZPos = 0.0;
+	
+	float $Phi = 0.0;
+	
+	// Random variables
+	float $RXTranslation = 0.0;
+	float $RYTranslation = 0.0;
+	float $RZTranslation = 0.0;
+	
+	float $RXRotation = 0.0;
+	float $RYRotation = 0.0;
+	float $RZRotation = 0.0;
+	
+	float $RScale = 0.0;
+	
+	int $TotalCurveDuplicates = $DuplicatesPerRevolution * $Revolutions;
+	
+	// Correct the total number of duplicates
+	--$TotalCurveDuplicates;
+	
+	// Rotation for every single object
+	float $TempRotationPerObject = $Revolutions * 360 / $TotalCurveDuplicates;
+	float $XActualRotation = 0.0;
+	float $YActualRotation = 0.0;
+	float $ZActualRotation = 0.0;
+	
+	// Scale variables
+	float $TempActualScaleFactor = 1.0;
+	
+	// Selection list and size
+	string $SelectionList [] = `ls -selection`;
+	int $SelectionListSize = size ($SelectionList);
+	
+	// Group of objects for each point
+	string $DuplicateGroup = CreateGroup ($SelectionList);
+	
+	// Spiral/helix group name
+	string $SpiralHelixGroupName = {};
+	if ($Type == 0)
+	{
+		$SpiralHelixGroupName = "SpiralGroup";
+	}
+	
+	else
+	{
+		$SpiralHelixGroupName = "HelixGroup";
+	}
+	
+	// Group for all groups for each point on spiral/helix
+	string $SpiralHelixGroup = `group -name ($SpiralHelixGroupName + $DuplicateGroup)`;
+	
+	// Select "$DuplicateGroup" so that "$SpiralHelixGroup" is the master
+	select $DuplicateGroup;
+	
+	if ($SelectionListSize == 0)
+	{
+		// No Objects selected
+		print ("You have no object(s) selected." + "\n");
+		print ("No Duplication started." + "\n");
+	}
+	
+	else
+	{
+		int $ActualPoint = 0;
+	
+		for ($ActualPoint = 0; $ActualPoint <= $TotalCurveDuplicates; ++$ActualPoint)
+		{
+			$Phi = (360.0 * $Revolutions / $TotalCurveDuplicates * $ActualPoint) * ($PI / 180.0);
+			
+			// X position
+			$XPos = $RadiusA * sin ($Phi);
+			
+			// Z position
+			$ZPos = $RadiusB * cos ($Phi);
+			
+			// Y position
+			$YPos += ($RevolutionDistance / $DuplicatesPerRevolution) + ($DecRevolution * $ActualPoint);
+
+			// Spiral
+			if($Type == 0)
+			{
+				$RadiusA -= $SpiralDecrease / $TotalCurveDuplicates;
+				
+				$RadiusB -= $SpiralDecrease / $TotalCurveDuplicates;
+			}
+			
+			if ($Duplication == 0)
+			{
+				duplicate `ls -selection`;
+			}
+			
+			else
+			{
+				instance `ls -selection`;
+			}
+			
+			// Random translation, rotation, scale
+			
+			// Check random translation
+			if ($RandomTranslation == 0)
+			{
+				$RXTranslation = RandomFloatRange ($MinXTranslation, $MaxXTranslation);
+				$RYTranslation = RandomFloatRange ($MinYTranslation, $MaxYTranslation);
+				$RZTranslation = RandomFloatRange ($MinZTranslation, $MaxZTranslation);
+				
+				$XPos += $RXTranslation;
+				$YPos += $RYTranslation;
+				$ZPos += $RZTranslation;
+			}
+			
+			// Check random rotation and add random factor
+			if ($RandomRotation == 0)
+			{
+				$RXRotation = RandomFloatRange ($MinXRotation, $MaxXRotation);
+				$RYRotation = RandomFloatRange ($MinYRotation, $MaxYRotation);
+				$RZRotation = RandomFloatRange ($MinZRotation, $MaxZRotation);
+				
+				$XActualRotation += $RXRotation;
+				$YActualRotation += $RYRotation;
+				$ZActualRotation += $RZRotation;
+			}
+			
+			// Move
+			move $XPos $YPos $ZPos;
+			
+			// Rotate
+			rotate $XActualRotation $YActualRotation $ZActualRotation;
+			
+			//  Check for scale factor and scale if necessary
+			if ($DupliScaleFactor != 1)
+			{
+				scale $TempActualScaleFactor $TempActualScaleFactor $TempActualScaleFactor;
+				
+				$TempActualScaleFactor *= $DupliScaleFactor;
+			}
+			
+			// Check random scale
+			if ($RandomScale == 0)
+			{
+				$RScale = RandomFloatRange ($MinScale, $MaxScale);
+				
+				scale $RScale $RScale $RScale;
+			}
+			
+			// Check rotation around the center
+			if ($Rotation == 1)
+			{
+				$YActualRotation += $TempRotationPerObject;
+			}
+		}
+	}
+}
+
+
+///////////////////////////////
+// HelixDuplication function //
+///////////////////////////////
+/*
+global proc HelixDuplication (int $DuplicatesPerRevolution,
+						int $Rotation,
+						int $Duplication,
+						float $RadiusA,
+						float $RadiusB,
+						int $Revolutions,
+						float $RevolutionDistance,
+						float $DecRevolution,
+						float $DupliScaleFactor,
+						int $RandomTranslation,
+						float $MinXTranslation, float $MaxXTranslation,
+						float $MinYTranslation, float $MaxYTranslation,
+						float $MinZTranslation, float $MaxZTranslation,
+						int $RandomRotation,
+						float $MinXRotation, float $MaxXRotation,
+						float $MinYRotation, float $MaxYRotation,
+						float $MinZRotation, float $MaxZRotation,
+						int $RandomScale,
+						float $MinScale, float $MaxScale)
+{
+	// Local variables
+	
+	float $PI = 3.14159265;
+	
+	float $XPos = 0.0;
+	float $YPos = 0.0;
+	float $ZPos = 0.0;
+	
+	float $Phi = 0.0;
+	
+	// Random variables
+	float $RXTranslation = 0.0;
+	float $RYTranslation = 0.0;
+	float $RZTranslation = 0.0;
+	
+	float $RXRotation = 0.0;
+	float $RYRotation = 0.0;
+	float $RZRotation = 0.0;
+	
+	float $RScale = 0.0;
+	
+	int $TotalCurveDuplicates = $DuplicatesPerRevolution * $Revolutions;
+	
+	// Correct the total number of duplicates
+	--$TotalCurveDuplicates;
+	
+	// Rotation for every single object
+	float $TempRotationPerObject = $Revolutions * 360 / $TotalCurveDuplicates;
+	float $XActualRotation = 0.0;
+	float $YActualRotation = 0.0;
+	float $ZActualRotation = 0.0;
+	
+	// Scale variables
+	float $TempActualScaleFactor = 1.0;
+	
+	string $SelectionList [] = `ls -selection`;
+	int $SelectionListSize = size ($SelectionList);
+	
+	// Group of objects for each point
+	string $DuplicateGroup = CreateGroup ($SelectionList);
+	
+	// Spiral/helix group name
+	string $SpiralHelixGroupName = "SpiralHelixGroup";
+	
+	// Group for all groups for each point on spiral/helix
+	string $SpiralHelixGroup = `group -name ($SpiralHelixGroupName + $DuplicateGroup)`;
+	
+	// Select "$DuplicateGroup" so that "$SpiralHelixGroup" is the master
+	select $DuplicateGroup;
+	
+	if ($SelectionListSize == 0)
+	{
+		// No Objects selected
+		print ("You have no object(s) selected." + "\n");
+		print ("No Duplication started." + "\n");
+	}
+	
+	else
+	{
+		int $ActualPoint = 0;
+	
+		for ($ActualPoint = 0; $ActualPoint <= $TotalCurveDuplicates; ++$ActualPoint)
+		{
+			$Phi = (360.0 * $Revolutions / $TotalCurveDuplicates * $ActualPoint) * ($PI / 180.0);
+			
+			// X position
+			$XPos = $RadiusA * sin ($Phi);
+			
+			// Z position
+			$ZPos = $RadiusB * cos ($Phi);
+			
+			// Add point to curve creation string
+			
+			// Y position
+			$YPos += ($RevolutionDistance / $DuplicatesPerRevolution) + ($DecRevolution * $ActualPoint);
+			
+			// Check duplicate or instance
+			if ($Duplication == 0)
+			{
+				duplicate `ls -selection`;
+			}
+			
+			else
+			{
+				instance `ls -selection`;
+			}
+			
+			// Random translation, rotation, scale
+			
+			// Check random translation
+			if ($RandomTranslation == 0)
+			{
+				$RXTranslation = RandomFloatRange ($MinXTranslation, $MaxXTranslation);
+				$RYTranslation = RandomFloatRange ($MinYTranslation, $MaxYTranslation);
+				$RZTranslation = RandomFloatRange ($MinZTranslation, $MaxZTranslation);
+				
+				$XPos += $RXTranslation;
+				$YPos += $RYTranslation;
+				$ZPos += $RZTranslation;
+			}
+			
+			// Check random rotation and add random factor
+			if ($RandomRotation == 0)
+			{
+				$RXRotation = RandomFloatRange ($MinXRotation, $MaxXRotation);
+				$RYRotation = RandomFloatRange ($MinYRotation, $MaxYRotation);
+				$RZRotation = RandomFloatRange ($MinZRotation, $MaxZRotation);
+				
+				$XActualRotation += $RXRotation;
+				$YActualRotation += $RYRotation;
+				$ZActualRotation += $RZRotation;
+			}
+			
+			// Move
+			move $XPos $YPos $ZPos;
+			
+			// Rotate
+			rotate $XActualRotation $YActualRotation $ZActualRotation;
+			
+			//  Check for scale factor and scale if necessary
+			if ($DupliScaleFactor != 1)
+			{
+				scale $TempActualScaleFactor $TempActualScaleFactor $TempActualScaleFactor;
+				
+				$TempActualScaleFactor *= $DupliScaleFactor;
+			}
+			
+			// Check random scale
+			if ($RandomScale == 0)
+			{
+				$RScale = RandomFloatRange ($MinScale, $MaxScale);
+				
+				scale $RScale $RScale $RScale;
+			}
+			
+			// Check rotation around the center
+			if ($Rotation == 1)
+			{
+				$YActualRotation += $TempRotationPerObject;
+			}
+		}
+	}
+}
+*/
+
+////////////////////////////////
+// SpiralDuplication function //
+////////////////////////////////
+/*
+global proc SpiralDuplication (int $DuplicatesPerRevolution,
+						int $Rotation,
+						int $Duplication,
+						float $RadiusA,
+						float $RadiusB,
+						int $Revolutions,
+						float $RevolutionDistance,
+						float $DecRevolution,
+						float $SpiralDecrease,
+						float $DupliScaleFactor,
+						int $RandomTranslation,
+						float $MinXTranslation, float $MaxXTranslation,
+						float $MinYTranslation, float $MaxYTranslation,
+						float $MinZTranslation, float $MaxZTranslation,
+						int $RandomRotation,
+						float $MinXRotation, float $MaxXRotation,
+						float $MinYRotation, float $MaxYRotation,
+						float $MinZRotation, float $MaxZRotation,
+						int $RandomScale,
+						float $MinScale, float $MaxScale)
+{
+	// Local variables
+	
+	float $PI = 3.14159265;
+	
+	float $XPos = 0.0;
+	float $YPos = 0.0;
+	float $ZPos = 0.0;
+	
+	float $Phi = 0.0;
+	
+	// Random variables
+	float $RXTranslation = 0.0;
+	float $RYTranslation = 0.0;
+	float $RZTranslation = 0.0;
+	
+	float $RXRotation = 0.0;
+	float $RYRotation = 0.0;
+	float $RZRotation = 0.0;
+	
+	float $RScale = 0.0;
+	
+	int $TotalCurveDuplicates = $DuplicatesPerRevolution * $Revolutions;
+	
+	// Correct the total number of duplicates
+	--$TotalCurveDuplicates;
+	
+	// Rotation for every single object
+	float $TempRotationPerObject = $Revolutions * 360 / $TotalCurveDuplicates;
+	float $XActualRotation = 0.0;
+	float $YActualRotation = 0.0;
+	float $ZActualRotation = 0.0;
+	
+	// Scale variables
+	float $TempActualScaleFactor = 1.0;
+	
+	string $SelectionList [] = `ls -selection`;
+	int $SelectionListSize = size ($SelectionList);
+	
+	// Group of objects for each point
+	string $DuplicateGroup = CreateGroup ($SelectionList);
+	
+	// Spiral/helix group name
+	string $SpiralHelixGroupName = "SpiralHelixGroup";
+	
+	// Group for all groups for each point on spiral/helix
+	string $SpiralHelixGroup = `group -name ($SpiralHelixGroupName + $DuplicateGroup)`;
+	
+	// Select "$DuplicateGroup" so that "$SpiralHelixGroup" is the master
+	select $DuplicateGroup;
+	
+	if ($SelectionListSize == 0)
+	{
+		// No Objects selected
+		print ("You have no object(s) selected." + "\n");
+		print ("No Duplication started." + "\n");
+	}
+	
+	else
+	{
+		int $ActualPoint = 0;
+	
+		for ($ActualPoint = 0; $ActualPoint <= $TotalCurveDuplicates; ++$ActualPoint)
+		{
+			$Phi = (360.0 * $Revolutions / $TotalCurveDuplicates * $ActualPoint) * ($PI / 180.0);
+			
+			// X position
+			$XPos = $RadiusA * sin ($Phi);
+			
+			// Z position
+			$ZPos = $RadiusB * cos ($Phi);
+			
+			// Y position
+			$YPos += ($RevolutionDistance / $DuplicatesPerRevolution) + ($DecRevolution * $ActualPoint);
+
+			
+			$RadiusA -= $SpiralDecrease / $TotalCurveDuplicates;
+			
+			$RadiusB -= $SpiralDecrease / $TotalCurveDuplicates;
+			
+			
+			if ($Duplication == 0)
+			{
+				duplicate `ls -selection`;
+			}
+			
+			else
+			{
+				instance `ls -selection`;
+			}
+			
+			// Random translation, rotation, scale
+			
+			// Check random translation
+			if ($RandomTranslation == 0)
+			{
+				$RXTranslation = RandomFloatRange ($MinXTranslation, $MaxXTranslation);
+				$RYTranslation = RandomFloatRange ($MinYTranslation, $MaxYTranslation);
+				$RZTranslation = RandomFloatRange ($MinZTranslation, $MaxZTranslation);
+				
+				$XPos += $RXTranslation;
+				$YPos += $RYTranslation;
+				$ZPos += $RZTranslation;
+			}
+			
+			// Check random rotation and add random factor
+			if ($RandomRotation == 0)
+			{
+				$RXRotation = RandomFloatRange ($MinXRotation, $MaxXRotation);
+				$RYRotation = RandomFloatRange ($MinYRotation, $MaxYRotation);
+				$RZRotation = RandomFloatRange ($MinZRotation, $MaxZRotation);
+				
+				$XActualRotation += $RXRotation;
+				$YActualRotation += $RYRotation;
+				$ZActualRotation += $RZRotation;
+			}
+			
+			// Move
+			move $XPos $YPos $ZPos;
+			
+			// Rotate
+			rotate $XActualRotation $YActualRotation $ZActualRotation;
+			
+			//  Check for scale factor and scale if necessary
+			if ($DupliScaleFactor != 1)
+			{
+				scale $TempActualScaleFactor $TempActualScaleFactor $TempActualScaleFactor;
+				
+				$TempActualScaleFactor *= $DupliScaleFactor;
+			}
+			
+			// Check random scale
+			if ($RandomScale == 0)
+			{
+				$RScale = RandomFloatRange ($MinScale, $MaxScale);
+				
+				scale $RScale $RScale $RScale;
+			}
+			
+			// Check rotation around the center
+			if ($Rotation == 1)
+			{
+				$YActualRotation += $TempRotationPerObject;
+			}
+		}
+	}
+}
+*/
+
+/////////////////////////////////
+// ExtrusionAnimation function //
+/////////////////////////////////
+
+global proc ExtrusionAnimation (int $AnimationStart,
+							float $AnimationStartValue,
+							int $AnimationEnd,
+							float $AnimationEndValue,
+							int $AnimExtOption,
+							string $ProfileName,
+							int $ProfileSections,
+							float $ProfileRadius,
+							float $RadiusB,
+							float $ExtrusionScale)
+{
+	// Test selected object(s) on count and type
+	// Only one selected object and only curve type allowed
+	
+	string $SelectionList [] = `ls -selection -dagObjects -leaf`;
+	int $SelectionListSize = size ($SelectionList);
+	
+	if ($SelectionListSize != 1)
+	{
+		// Number of selected objects is not equal to two
+		print ("You have " + $SelectionListSize + " objects selected." + "\n");
+		error "Number of selected objects have to be one.";
+	}
+	
+	else
+	{
+		// Number of selected objects is equal to one
+		// Test selection on "nurbsCurve" type
+		
+		string $AnimationCurve = `nodeType $SelectionList [0]`;
+		print (`nodeType $SelectionList [0]` + "\n");
+		
+		
+		if ($AnimationCurve != "nurbsCurve")
+		{
+			error "The selected object is not a nurbsCurve";
+		}
+		
+		else
+		{			
+			// "Copy" selected object to pathcurve variable
+			string $PathCurve = $SelectionList [0];
+			
+			// Create the subcurve for animation
+			string $PathSubCurve = `createNode subCurve`;
+			
+				// Set standard values
+				setAttr ($PathSubCurve + ".relative") true;
+				setAttr ($PathSubCurve + ".minValue") 0.0;
+				setAttr ($PathSubCurve + ".maxValue") 1.0;
+				
+				// Connect selected path curve with the sub curve
+				connectAttr ($PathCurve + ".worldSpace") ($PathSubCurve + ".inputCurve");
+			
+			// Create an output curve for extrude animation
+			string $PathOutputCurve = `createNode nurbsCurve`;
+			
+				// Connect sub curve with the new created output curve
+				connectAttr ($PathSubCurve + ".outputCurve") ($PathOutputCurve + ".create");
+				
+			// Animation:
+			
+				// Go to first frame
+				currentTime $AnimationStart;
+				
+				// Set value for first frame
+				setAttr ($PathSubCurve + ".maxValue") $AnimationStartValue;
+				
+				// Set key
+				setKeyframe ($PathSubCurve + ".maxValue");
+				
+				// Go to second frame
+				currentTime $AnimationEnd;
+				
+				// Set value for second frame
+				setAttr ($PathSubCurve + ".maxValue") $AnimationEndValue;
+				
+				// Set key
+				setKeyframe ($PathSubCurve + ".maxValue");
+				
+				// Option for animation with extrusion
+				if ($AnimExtOption == 0)
+				{
+					// Clear selection list
+					select -clear;
+					
+					// Create circle profile and it is automatic selected
+					CreateCircle ($ProfileName, $ProfileSections, $ProfileRadius, $RadiusB);
+					
+					// Add the animated subcurve to selection list and execute extrusion
+					select -add $PathOutputCurve;
+					
+					ExtrudeAlongPath ($ExtrusionScale);
+				}
+		}
+	}
+}
+
+
+///////////////////////////////////
+// DuplicationAnimation function //
+///////////////////////////////////
+
+/*
+global proc DuplicationAnimation ()
+{
+	
+}
+*/
+
+////////////////////////
+// CVSH Main function //
+////////////////////////
+
+global proc CVSHMain (string $WindowName, int $Seed)
+{
+	// Show main window
+	showWindow $WindowName;
+	
+	/* Get time
+	string $Time = `system "time"`;
+	
+	print ("CVSH Tool start Time: " + $Time + "\n");
+	
+	int $Timei = $Time;
+	
+	print ("CVSH Tool start Time: " + $Timei + "\n");
+	*/
+	
+	// Seed random values
+	InitRandom ($Seed);
+}
+
+// Call Main function
+
+CVSHMain ($CVSHWindow, 128);

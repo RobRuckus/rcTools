@@ -1,0 +1,425 @@
+/*
+Author:
+	Jamie Dower
+
+Email:
+	pix@pixjamix.com
+
+Date:
+	19.08.10
+
+Version:
+	1.0.0
+
+Description:
+Creates flocking type motion. Easy to use. Depending on your system, allows for realtime adjustment of behaviour.
+Ability to edit behaviour at any time after creation. Ability to keyframe behaviour over time.
+See demo/quick tutorial: http://www.youtube.com/watch?v=Igglp50PNFQ
+
+Usage:
+1). Animate any number of leaders for copyCatz to follow. (just try one to start with)
+2). Execute the script ("copyCatz")
+3). Add your leader(s) into the textScrollList and the number of copyCatz you wish. Hit "Create copyCatz".
+4). Hit play and edit the behavour in the newly created copyCatz edit window. (Setting should be fairly obvious).
+
+Tips:
+-If you wish to edit your motion at any stage just execute "copyCatz" again to bring up the edit window.
+-To avoid "bunching" at the start of your animation set your animation curves for preinfinity to linear on your leaders.
+-If you selected more than one leader at creation, try playing with the weight sliders in the edit window to switch or blend motion between them
+-Attributes are keyable in edit window! (To edit them in the graphEditor they exist on the ccLOC object).
+-Press play while editing the behaviour for instant feedback on changes
+-To create "random" copyCat objects, make your initial leaders different.
+
+Feedback, comments, examples of useage, most welcome and appreciated. Good luck!
+*/
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///determine state of funnel and frequency sliders and refresh ui
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+global proc sliderTrue()
+{
+    float $enableFreq = `getAttr ccLOC.randMotion`;
+    float $enableFunn = `getAttr ccLOC.maxOffset`;
+    if ($enableFreq > 0)
+        {        attrFieldSliderGrp -e -en 1 -min 1 -max 20 -pre 1 -at ccLOC.randFreq randF;}
+    else
+        {        attrFieldSliderGrp -e -en 0 -min 1 -max 20 -pre 1 -at ccLOC.randFreq randF;}
+
+    if (($enableFunn > 0) || ($enableFreq > 0))
+        {attrFieldSliderGrp -e -en 1 -min 0 -max 1 -pre 1 -at ccLOC.funnel funn;}
+    else
+        {attrFieldSliderGrp -e -en 0 -min 0 -max 1 -pre 1 -at ccLOC.funnel funn;}
+};
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///eval faceForward value on ccLOC
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+global proc evalFace()
+{
+    float $faceVal = `checkBox -q -v faceCheckBox`;
+    setAttr ccLOC.faceForward $faceVal;
+};
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//generate sliders from ccLOC weightList for editing ui
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+proc weightSliders()
+
+{
+	string $weightList[] = `listAttr -ud "ccLOC_parentConstraint1"`;
+		for ($wL in $weightList)
+			{
+			    attrFieldSliderGrp -cw 1 70 -cw 2 40 -cw 3 160 -min 0 -max 1 -pre 1 -at ("ccLOC_parentConstraint1." + $wL) $wL;
+			}
+
+cycleCheck -e off;//end of script
+};
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//queries how many catz have been created
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+global proc queryCatz()
+{
+	select -r "copyCatz*";
+	pickWalk -d up;//deselect shape node
+	string $numCatz[] = `ls -sl`;
+
+	int $hMany = `intSliderGrp -query -value howMany`;//get the number of copyCatz to be created
+
+    if (size ($numCatz) < ($hMany))//calculate how many have already been created
+	    {
+	    dupCatz;
+	    }
+
+    else
+	    {
+//some cleanup
+        select -r "copyCatz*"; Group; rename "ccGRP";
+        select -r "*lookat"; Group; rename "ccLookAtGRP"; setAttr "ccLookAtGRP.visibility" 0;
+        select -r ccLookAtGRP ; select -add ccGRP ;parent;
+//	connectWeights;
+        deleteUI cC_ui;//end of creation script
+        select -cl;
+        editWin;
+	    }
+}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//randomly pick a leader from user leader list to duplicate
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+proc getLead()
+{
+
+	string $leadList[] = `textScrollList -q -ai listOBJ`;
+		int $numLead = (size ($leadList));
+			for ($i=0; $i<1; $i++)
+		{
+			int $randItem = rand (0,($numLead));//generate a random value to select
+			string $lead = $leadList[$randItem];
+			select -r $lead;//select random leader
+		}
+
+};
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//create copyCatz and connections to leader
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+global proc dupCatz()
+{
+getLead;//proc for selecting a random leader to duplicate
+
+	        duplicate -rr -n "copyCatz_1";
+
+	        string $Catselect[] = `ls -sl`;
+	        for ($catName in $Catselect);//current duplicate
+            {
+
+//Add cc Attributes to copyCatz
+            //creation value
+            string $AttrArray[] = {"Delay", "RandScale", "OffsetX", "OffsetY", "OffsetZ", "RandFreqX", "RandFreqY", "RandFreqZ", "RandMotionX", "RandMotionY", "RandMotionZ"};
+            for ($Attr in $AttrArray)
+                {
+	                addAttr -ln $Attr -k 1 -at double;
+	            }
+	        //adjusted values
+            string $ccAttrArray[] = {"ccDelay", "ccRandScale", "ccOffsetX", "ccOffsetY", "ccOffsetZ", "ccRandFreqX", "ccRandFreqY", "ccRandFreqZ", "ccRandMotionX", "ccRandMotionY", "ccRandMotionZ", "ccfuturePosX", "ccfuturePosY", "ccfuturePosZ", "Funnel"};
+            for ($ccAttr in $ccAttrArray)
+                {
+	                addAttr -ln $ccAttr -at double;
+	            }
+
+//expressions to calculate adjustments from editWin on creation values of attributes
+    //store random value on delay and expression on ccDelay
+	        float $ccDelay = rand (1,25);
+	        setAttr ($catName + ".Delay") $ccDelay;
+            expression -o $catName -s "ccDelay = ((Delay/25) * ccLOC.maxDelay);" -n "ccExp_Delay1";
+
+    //store random value on offset, randMotion, freq and scale
+            string $offset[] = {"OffsetX", "OffsetY", "OffsetZ", "RandMotionX", "RandMotionY", "RandMotionZ", "RandFreqX", "RandFreqY", "RandFreqZ", "RandScale"};
+                for ($o in $offset)
+                    {
+                    float $rand = rand (-1,1);
+                    setAttr ($catName + "." + $o) $rand;
+                    }
+
+    //expression on funnel
+            expression -o $catName -s "if (ccLOC.funnel == 0) Funnel = 1; if (ccLOC.funnel > 0) Funnel = ((ccDelay / ccLOC.maxDelay) * ccLOC.funnel);" -n "ccEXP_fun1";
+
+
+    //expression on ccOffset
+            string $offset[] = {"OffsetX", "OffsetY", "OffsetZ"};
+                for ($o in $offset)
+                    {
+                    string $exp = "cc" + $o + " = ((" + $o + " * ccLOC.maxOffset) * Funnel);";
+                    expression -o $catName -s $exp -n "ccExp_rOff1";
+                    }
+
+    //expression on ccRandMotion
+            string $motion[] = {"RandMotionX", "RandMotionY", "RandMotionZ"};
+                for ($m in $motion)
+                    {
+                    string $exp = "cc" + $m + " = ((" + $m + " * ccLOC.randMotion) * Funnel);";
+                    expression -o $catName -s $exp -n "ccExp_rMotion1";
+                    }
+
+    //expression on ccRandfreq
+            string $freq[] = {"RandFreqX", "RandFreqY", "RandFreqZ"};
+                for ($f in $freq)
+                    {
+                    string $exp = "cc" + $f + " = (" + $f + " * ccLOC.randFreq);";
+                    expression -o $catName -s $exp -n "ccExp_rFreq1";
+                    }
+
+    //expression on ccRandScale
+            expression -o $catName -s "ccRandScale = (RandScale * ccLOC.Scale) + 1;" -n "ccEXP_Scale1";
+
+
+//expressions to calculate current position
+    //expression on copyCatz translate
+	        expression -o $catName -s "float $delayTX = `getAttr -time (frame - ccDelay) ccLOC.tx`;tx = $delayTX + ((sin (time * ccRandFreqX + 1) * ccRandMotionX)  + ccOffsetX);" -n "ccExp_tx1";
+	        expression -o $catName -s "float $delayTY = `getAttr -time (frame - ccDelay) ccLOC.ty`;ty = $delayTY + ((sin (time * ccRandFreqY + 1) * ccRandMotionY) + ccOffsetY);" -n "ccExp_ty1";
+	        expression -o $catName -s "float $delayTZ = `getAttr -time (frame - ccDelay) ccLOC.tz`;tz = $delayTZ + ((sin (time * ccRandFreqZ + 1) * ccRandMotionZ) + ccOffsetZ);" -n "ccExp_tz1";
+    //calculate future position to calc an aim position for the individual lookat locs
+    	    expression -o $catName -s " float $aimPosX = `getAttr -time ((frame - ccDelay) + 1) ccLOC.tx`; if (ccLOC.faceForward == 0) ccfuturePosX = 0; if (ccLOC.faceForward > 0) ccfuturePosX = ($aimPosX + ((sin (time * ccRandFreqX + 1) * ccRandMotionX) + ccOffsetX));" -ae 1 -n "ccExp_futx1";
+		    expression -o $catName -s " float $aimPosY = `getAttr -time ((frame - ccDelay) + 1) ccLOC.ty`; if (ccLOC.faceForward == 0) ccfuturePosY = 0; if (ccLOC.faceForward > 0) ccfuturePosY = ($aimPosY + ((sin (time * ccRandFreqY + 1) * ccRandMotionY) + ccOffsetY));" -ae 1 -n "ccExp_futy1";
+		    expression -o $catName -s " float $aimPosZ = `getAttr -time ((frame - ccDelay) + 1) ccLOC.tz`; if (ccLOC.faceForward == 0) ccfuturePosZ = 0; if (ccLOC.faceForward > 0) ccfuturePosZ = ($aimPosZ + ((sin (time * ccRandFreqZ + 1) * ccRandMotionZ) + ccOffsetZ));" -ae 1 -n "ccExp_futz1";
+    //expression on copyCatz scale
+	        expression -o $catName -s "float $delaySX = `getAttr -time (frame - ccDelay) ccLOC.sx`;sx = $delaySX  * (ccRandScale);" -ae 1 -n "ccExp_sx1";
+		    expression -o $catName -s "float $delaySY = `getAttr -time (frame - ccDelay) ccLOC.sy`;sy = $delaySY  * (ccRandScale);" -ae 1 -n "ccExp_sy1";
+		    expression -o $catName -s "float $delaySZ = `getAttr -time (frame - ccDelay) ccLOC.sz`;sz = $delaySZ  * (ccRandScale);" -ae 1 -n "ccExp_sz1";
+//create a locator and connections for copyCatz to aim at//
+    CreateLocator;
+	        rename (("cc_") + $catName + ("_lookat"));
+//connect loc position to copyCatz future postion
+    	    connectAttr ($catName +(".ccfuturePosX")) (("cc_") + $catName + ("_lookat.tx"));
+    	    connectAttr ($catName +(".ccfuturePosY")) (("cc_") + $catName + ("_lookat.ty"));
+    	    connectAttr ($catName +(".ccfuturePosZ")) (("cc_") + $catName + ("_lookat.tz"));
+
+        	select - r (("cc_") + $catName + ("_lookat")) $catName;
+    		aimConstraint -offset 0 0 0 -weight 1 -aimVector 0 90 0 -upVector 0 0 0 -worldUpType "vector" -worldUpVector 0 1 0;
+    		setAttr ($catName +("_aimConstraint1.restRotateX")) 0; setAttr ($catName +("_aimConstraint1.restRotateY")) 0; setAttr ($catName +("_aimConstraint1.restRotateZ")) 0;
+    	    //coonect ccLOC faceforward to aimConstraint weight
+            connectAttr ccLOC.faceForward ($catName +("_aimConstraint1.cc_" + $catName + "_lookatW0"));
+            }
+queryCatz;
+
+};
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//create the cC control locator
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+global proc createLoc()
+{
+	string $lead[] = `textScrollList -q -ai listOBJ`;
+
+	CreateLocator;
+	rename "ccLOC";
+
+	string $attrArray[] = {"maxDelay", "maxOffset", "funnel", "Scale", "randMotion", "randFreq", "faceForward", "enableFun", "enableFreq"};//attrs to add to ccLoc
+        for ($attr in $attrArray)
+        {
+            addAttr -ln $attr -k true -dv 1 -at double;
+        }
+
+	select -r $lead ccLOC;//constrain ccLoc to all leaders
+	parentConstraint -weight 1;
+	scaleConstraint -offset 1 1 1 -weight 1;
+//set a few default values on ccLOC
+    setAttr ccLOC.maxDelay 25;
+    setAttr ccLOC.maxOffset 0;
+    setAttr ccLOC.funnel 0;
+    setAttr ccLOC.randMotion 0;
+    setAttr ccLOC.Scale 0;
+
+dupCatz;//create duplicates
+};
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Warning dialog if no leaders are selected in textScrollList
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+proc pickLeader()
+{
+	    confirmDialog
+		-title "WARNING"
+		-message "No Leaders Selected!       "
+   		-button "continue";
+};
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//build the list of leaders in creation ui
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//select objects in scene when selected from textScrollList
+global proc selObj ()
+{
+		string $selInList[] = `textScrollList -q -selectItem listOBJ`;
+		select $selInList;
+};
+
+//removes selection from textScrollList
+global proc remLeader()
+{
+	    string $rem[] = `ls -sl`;
+
+        for ($eachR in $rem)
+	    {
+	        textScrollList -e -removeItem $eachR listOBJ;
+	        select -cl;
+	    }
+};
+
+//add aditional leaders to textScrollList
+global proc addLeader()
+{
+	    string $add[] = `ls -sl`;
+	    string $oldL[] = `textScrollList -q -allItems listOBJ`;//all items in list
+	    select $oldL $add;//reselect old and new items
+	    string $newL[] = `ls -sl`;
+
+	    textScrollList -e -removeAll listOBJ;//removes all
+
+        for ($eachA in $newL)
+		{
+	        textScrollList -e -append $eachA listOBJ;//add the new list back
+		}
+};
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//make sure selection has been made
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+global proc queryInputs()
+{
+	    string $lead[] = `textScrollList -q -allItems listOBJ`;
+		int $size = size($lead);
+
+        if ($size < 1)
+ 	        {pickLeader;}
+
+        else
+	        {createLoc;}
+
+};
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//creation UI
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+global proc createCC_ui()
+{
+        if (`window -exists cC_ui` == true)
+	        deleteUI cC_ui;
+
+	    if (`window -exists editWin` == true)
+	        deleteUI editWin;
+
+        window
+	        -rtf true
+	        -title "copyCatz"
+        	-sizeable false
+        	cC_ui;
+
+columnLayout -rowSpacing 5;
+		    text -label "Add Leader(s) below...";
+			textScrollList -h 80 - w 150 -allowMultiSelection true -selectCommand selObj listOBJ;
+			button -w 150 -label "Add Selection to List" -c addLeader;
+			button -w 150 -label "Clear List" -c remLeader;
+    separator -w 150 -st "out";
+            text -label "Number of copyCatz...";
+	        intSliderGrp -cw 1 40 -cw 2 110 -w 150 -min 1 -max 250 -field true -value 50 howMany;
+    separator -w 150 -st "in";
+		    button -w 150 -label "Create copyCatz!" -command queryInputs;
+
+showWindow cC_ui;
+};
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//editing ui
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+global proc editWin()
+{
+    if (`window -exists cC_ui` == true)
+	    deleteUI cC_ui;
+
+    if (`window -exists editWin` == true)
+	    deleteUI editWin;
+
+    window
+			-rtf true
+	 		-w 270
+	        -title "Edit copyCatz"
+	        -sizeable false
+	        editWin;
+
+//////////build motion editing ui//////////
+
+columnLayout -rs 3;
+
+        //create delay slider
+        text -w 270 -align "left" -fn "smallBoldLabelFont" -l " --Max Delay";
+        attrFieldSliderGrp -cw 1 70 -cw 2 40 -cw 3 160 -min 1 -max 100 -pre 0  -at ccLOC.maxDelay maxDelay;
+//setParent..;
+
+        //add distance offset sliders
+    separator -w 300 -st "out";
+        text -w 270 -align "left" -fn "smallBoldLabelFont" -l " --Spread";
+        attrFieldSliderGrp -cw 1 70 -cw 2 40 -cw 3 160 -min 0 -max 25 -pre 1  -cc sliderTrue -at ccLOC.maxOffset maxOffset;
+
+	 int $enableFun = `getAttr ccLOC.enableFun`;
+        attrFieldSliderGrp -en 0 -l "Funnel Effect" -cw 1 70 -cw 2 40 -cw 3 160 -min 0 -max 1 -pre 1 -at ccLOC.funnel funn;
+//setParent..;
+        //add distance random slider
+    separator -w 300 -st "out";
+        text -w 270 -align "left" -fn "smallBoldLabelFont" -l " --Random Motion";
+        attrFieldSliderGrp -cw 1 70 -cw 2 40 -cw 3 160 -min 0 -max 10 -pre 1 -cc sliderTrue -at ccLOC.randMotion randM;
+
+	 int $enableFreq = `getAttr ccLOC.enableFreq`;
+        attrFieldSliderGrp -en $enableFreq -cw 1 70 -cw 2 40 -cw 3 160 -min 1 -max 20 -pre 1 -cc sliderTrue -at ccLOC.randFreq randF;
+
+        //add scale offset sliders
+    separator -w 300 -st "out";
+        text -w 270 -align "left" -fn "smallBoldLabelFont" -l " --Random Scale";
+        attrFieldSliderGrp -label "Variance" -cw 1 70 -cw 2 40 -cw 3 160 -min 0 -max 1 -pre 1 -at ccLOC.Scale Scale;
+
+        //eval rotation checkbox
+    separator -w 300 -st "out";
+        text -w 270 -align "left" -fn "smallBoldLabelFont" -l " --Rotational Properties";
+rowColumnLayout -nc 2 -cw 1 72 -cw 2 100;
+        text " ";
+        float $faceVal = `getAttr ccLOC.faceForward`;
+        checkBox -v $faceVal -l " Face Forward " -cc evalFace faceCheckBox;
+setParent..;
+
+//////////build weight sliders//////////
+    separator -w 300 -st "out";
+        text -w 270 -align "left" -fn "smallBoldLabelFont" -l " --copyCatz Weighting";
+columnLayout -rs 5;
+        weightSliders;
+
+showWindow editWin;
+sliderTrue;
+}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//launch copyCatz
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+global proc copyCatz()
+{
+        if ( `objExists "ccLOC"` )
+	        {editWin;}//launch copyCatz editor
+
+        else
+	        {createCC_ui;}
+};

@@ -1,0 +1,749 @@
+/*  This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: RockGen v1.1
+''    Author: 
+''    Last Updated: July 11, 2001
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=modeling#1151
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                              //
+//                                      Rock Generator                                          //
+//                                                                                              //
+//////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Copyright (C) 1997-2000 Alias|Wavefront,
+// a division of Silicon Graphics Limited.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias|Wavefront.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias|Wavefront license agreement, without fee.
+//
+// ALIAS|WAVEFRONT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS|WAVEFRONT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+// Alias|Wavefront Script File
+// MODIFY THIS AT YOUR OWN RISK
+//
+// Author:             Terry Stoeger
+//
+// Creation Date:       ( 10/05/99 )
+// Last Update:         (  5/12/01 Adam Martinez *fixed array indexing errors)
+//
+// Thank You:
+// Alex Tang, Mike Aquino, & Jeff Meeker: 
+//      for you wisdom and input!!
+//
+// Description:
+// This scripts generates different types of rock formations.
+//
+// Boulder: Round in shape.  
+// Glacial: Sharp like an iceberg.
+// Slate: Flat with broken edges.
+// Quartz: Crystal structure.
+// Stalagmite: They look like aaaaa.....  stalagmite.
+//
+// Tips:
+// To create one rock at World Origin set "Distribution Radius" too Zero. 
+// GlobalScale - Adjusts the over all size of the rock group.
+//
+// For "Quartz" - "Distribution Radius" has know effect.
+// For "Stalagmite" - experiment with ScaleMin And ScaleMax.
+//
+//
+//
+// Input Arguments: NONE
+//
+//////////////////////////////////////////////////////////////////////////////////////////////////
+//                                      Version: Maya2.5                                        //
+//   ALERT: This script will work with Maya2.0 but "Quartz" will report an error and quit!!!    //
+//          This is not a bug; some function calls have changed from 2.0 to 2.5!!               //
+//                                                                                              //
+//////////////////////////////////////////////////////////////////////////////////////////////////
+global proc rockGen()
+{
+string $win = "RockGenerator";
+if (`window -exists $win`) deleteUI -window $win;       
+        window -title "Rock Generator"
+        -minimizeButton true -maximizeButton false -rtf true
+        -wh 300 300 $win;
+
+                columnLayout -adjustableColumn true -cal "left" ColumnLayout;
+                frameLayout -labelVisible false -marginWidth 0 -marginHeight 0 rockFrame;       
+                columnLayout;
+
+                        optionMenu -label "       Rock Type      " rockType;
+                                menuItem -label "Boulder";
+                                menuItem -label "Glacial";
+                                menuItem -label "Quartz";
+                                menuItem -label "Slate";
+                                menuItem -label "Stalagmite";
+
+                        separator -height 20 -st none;
+
+                        intSliderGrp
+                                -label "Number of Rocks" -field true
+                                -value 5 -minValue 1 -maxValue 30 -sliderStep 1
+                                rockNum;
+                        floatSliderGrp
+                                -label "Distribution Radius" -field true -precision 2
+                                -value 10 -minValue 0 -maxValue 100 -step .1
+                                distRadius;
+
+                        separator -height 20 -st none;
+
+                        floatSliderGrp
+                                -label "Global Rock Scale" -field true -precision 2
+                                -value 1 -minValue .1 -maxValue 10 -step .1
+                                globalRockScale;
+                        floatSliderGrp
+                                -label "Rock Scale Min" -field true -precision 2
+                                -value .5 -minValue .01 -maxValue 2 -step .01
+                                rockScaleMin;
+                        floatSliderGrp
+                                -label "Rock Scale Max" -field true -precision 2
+                                -value 1 -minValue .01 -maxValue 2 -step .01
+                                rockScaleMax;
+                        
+                setParent RockGenerator|ColumnLayout;
+                        textField -text "RockGenerator 1.0 - Requires Maya2.5:" -editable false StatusLine; 
+                        
+                rowColumnLayout -numberOfRows 1 -rowHeight 1 30;
+                        
+                        button -label "Generate" -w 129 -c "genRock()";
+                        button -label "Disgard" -w 130 -c delete;
+                        button -label "Close" -w 129 -c ("window -e -vis 0 "+$win) closeBtn;
+                        setParent RockGenerator;
+
+        //alert callbacks:
+        optionMenu -edit -cc "changRockUI()" rockType;
+
+        intSliderGrp -edit -changeCommand "showStatus \"ALERT: A Number > 5 May Take A Few Seconds:\"" rockNum;
+        floatSliderGrp -edit -changeCommand "showStatus \"Radius From Global Origin:\"" distRadius;
+        floatSliderGrp -edit -changeCommand "showStatus \"Sets Over All Size Of Rock Group:\"" globalRockScale;
+        floatSliderGrp -edit -changeCommand "showStatus \"Sets Minimum Size Of Rock In Group:\"" rockScaleMin;
+        floatSliderGrp -edit -changeCommand "showStatus \"Sets Maximum Size Of Rock In Group:\"" rockScaleMax;
+
+                
+showWindow $win;
+}
+
+////////////////////////////////////
+global proc genRock()
+{
+        string $optionVal = `optionMenu -q -v rockType`;
+        switch ($optionVal) 
+        {
+                case "Boulder":
+                        bolderGen();
+                        textField -edit -text "Boulders Generated !!" StatusLine;
+                        break;
+                case "Glacial":
+                        glacialGen();
+                        textField -edit -text "Glacial Rocks Generated !!" StatusLine;
+                        break;
+                case "Quartz":
+                        crystalGen();
+                        textField -edit -text "Quartz Crystal Generated !!" StatusLine;
+                        break;
+                case "Slate":
+                        slateGen();
+                        textField -edit -text "Slate Rocks Generated !!" StatusLine;
+                        break;
+                case "Stalagmite":
+                        stalagGen();
+                        textField -edit -text "Stalagmite Generated !!" StatusLine;
+                        break;
+        } // end switch
+}
+////////////////////////////////////
+global proc changRockUI()
+{
+        string $getV = `optionMenu -q -v rockType`;
+        switch($getV)
+        {
+                case "Boulder":
+                        intSliderGrp -edit -value 5 -minValue 1 rockNum;
+                        floatSliderGrp -edit -en true -value 10 distRadius;
+                        floatSliderGrp -edit -value 1.0 globalRockScale;
+                        floatSliderGrp -edit -value .5 rockScaleMin;
+                        floatSliderGrp -edit -value 1.0 rockScaleMax;
+                        textField -edit -text "RockGenerator 1.0" StatusLine;
+                        break;
+                case "Glacial":
+                        intSliderGrp -edit -value 5 -minValue 1 rockNum;
+                        floatSliderGrp -edit -en true -value 10 distRadius;
+                        floatSliderGrp -edit -value 1.0 globalRockScale;
+                        floatSliderGrp -edit -value .5 rockScaleMin;
+                        floatSliderGrp -edit -value 1.0 rockScaleMax;
+                        textField -edit -text "RockGenerator 1.0" StatusLine;
+                        break;
+                case "Quartz":
+                        intSliderGrp -edit -value 20 -minValue 1 rockNum;
+                        floatSliderGrp -edit -en false distRadius;
+                        floatSliderGrp -edit -value 1.0 globalRockScale;
+                        floatSliderGrp -edit -value .5 rockScaleMin;
+                        floatSliderGrp -edit -value 1.0 rockScaleMax;
+                        textField -edit -text "RockGenerator 1.0" StatusLine;
+                        break;
+                case "Slate":
+                        intSliderGrp -edit -value 5 -minValue 1 rockNum;
+                        floatSliderGrp -edit -en true -value 10 distRadius;
+                        floatSliderGrp -edit -value 1.0 globalRockScale;
+                        floatSliderGrp -edit -value .5 rockScaleMin;
+                        floatSliderGrp -edit -value 1.0 rockScaleMax;
+                        textField -edit -text "RockGenerator 1.0" StatusLine;
+                        break;
+                case "Stalagmite":
+                        intSliderGrp -edit -value 7 -minValue 2 rockNum;
+                        floatSliderGrp -edit -en true -value 6 distRadius;
+                        floatSliderGrp -edit -value 1.0 globalRockScale;
+                        floatSliderGrp -edit -value 1.0 rockScaleMin;
+                        floatSliderGrp -edit -value 1.0 rockScaleMax;
+                        textField -edit -text "RockGenerator 1.0" StatusLine;
+                        break;
+        }// end switch
+}
+////////////////////////////////////
+global proc showStatus (string $newStatus) 
+{
+    textField -edit -text $newStatus RockGenerator|ColumnLayout|StatusLine;
+}
+
+///////////////////////////////////
+global proc bolderGen()
+{
+
+//bolder generation proc:
+int $bolderIndex;
+
+//number of bolders in group:
+int $bolderNumber = `intSliderGrp -q -value rockNum`;
+
+//create group node:
+string $bolderGroup = `createNode transform -n bolderGroup1`;
+
+//generate bolder in for loop:
+
+for($bolderIndex = 0; $bolderIndex < $bolderNumber; $bolderIndex++)
+        {
+
+        //generate base curve and 1st face:
+        int $bolderSect = rand (4,10);
+        float $bolderRadi =  rand (1.5,3);
+                string $bolderBaseCurve[] = `circle -c 0 0 0 -sweep -360 -r $bolderRadi -nr 0 1 0 -d 1 -ut 0 -s $bolderSect -ch 0`;
+                string $bolderNurbs[] = `planarSrf -ch 0 -d 3 -ko 0 -tol 0.00013 -rn 0 -po 0 $bolderBaseCurve[0]`;
+                string $bolderBasePoly[] = `nurbsToPoly -ch 0 -f 0 -pt 1 -pc 1 $bolderNurbs[0]`;
+                delete $bolderBaseCurve[0];
+                delete $bolderNurbs[0];
+        
+        //extrude:
+        string $bolderPolyF[] = `listRelatives -s $bolderBasePoly[0]`;
+        float $bolderExtrudeY = rand (.5,3);
+        polyExtrudeFacet -ch 0 -kft 1 -ty $bolderExtrudeY -off 0 $bolderPolyF[0];
+
+                //make softbody and perturb:
+                string $bolderSoft[] = `ls -sl`;
+                string $bolderHist[] = `listRelatives -s $bolderSoft`;
+                polyTriangulate -ch 1 $bolderHist[0];
+                string $bolderSoftBody[] =`soft -c $bolderSoft[0]`;
+                string $bolderEX = "position = position + sphrand(<<.5,.5,.5>>);";
+
+                        dynExpression -s $bolderEX -c $bolderSoftBody[0];
+                        dynExpression -s $bolderEX -r $bolderSoftBody[0];
+                        delete -ch $bolderSoft[0];
+                        delete $bolderSoftBody[0];
+
+        //smooth poly:
+        polySmooth  -dv 2 -c 0.8 -ch 1 $bolderHist[0];
+        delete -ch $bolderSoft[0];
+
+                //repeat soft perturb:
+                string $bolderHist[] = `listRelatives -s $bolderSoft`;
+                string $bolderSoftBody[] =`soft -c $bolderSoft[0]`;
+                string $bolderEX = "position = position + sphrand(<<.06,.08,.05>>);";
+
+                        dynExpression -s $bolderEX -c $bolderSoftBody[0];
+                        dynExpression -s $bolderEX -r $bolderSoftBody[0];
+                        delete -ch $bolderSoft[0];
+                        delete $bolderSoftBody[0];
+
+        //smooth again:
+        polySmooth  -dv 1 -c 0.2 -ch 1 $bolderHist[0];
+        delete -ch $bolderSoft[0];
+
+        //get the transform node
+        string $newBolder[] = `listRelatives -p`;
+        string $moveBolder[] = `ls -sl`;
+
+        //random scale:
+        float $newBolderSmin = `floatSliderGrp -q -value rockScaleMin`;
+        float $newBolderSmax = `floatSliderGrp -q -value rockScaleMax`;
+        float $newBolderSRand = rand($newBolderSmin,$newBolderSmax);
+                scale $newBolderSRand $newBolderSRand $newBolderSRand;
+        
+        // randomly distribute:
+        float $bolderDradius = `floatSliderGrp -q -value distRadius`;
+        float $bolderDradiusN = -$bolderDradius;
+        float $distX = rand ($bolderDradiusN,$bolderDradius);
+        float $distZ = rand ($bolderDradiusN,$bolderDradius);
+        string $distBolder[] = {($moveBolder[0] + ".tx"), ($moveBolder[0] + ".ty"), ($moveBolder[0] + ".tz")};
+                setAttr $distBolder[0] $distX; 
+                setAttr $distBolder[1] -.5;
+                setAttr $distBolder[2] $distZ;
+
+
+        //parent to group node and rename:
+        parent $newBolder[0] $bolderGroup;
+        rename $newBolder[0] "bolder1";
+        }
+
+//global scale and group:
+float $bolderGRPscale = `floatSliderGrp -q -value globalRockScale`;
+select $bolderGroup;
+scale $bolderGRPscale $bolderGRPscale $bolderGRPscale;
+makeIdentity -apply true;
+}
+//end of bolder proc:
+
+////////////////////////////////////
+global proc glacialGen()
+
+{
+//glacial rock generation proc:
+int $glacIndex;
+
+//number of glacial rocks in group:
+int $glacNumber = `intSliderGrp -q -value rockNum`;
+
+//create group node:
+string $glacialGroup = `createNode transform -n glacialGroup1`;
+
+//generate glacial rocks in for loop:
+
+for($glacIndex = 0; $glacIndex < $glacNumber; $glacIndex++)
+{
+
+        //generate base curve and 1st face:
+        int $glacSect = rand (5,10);
+        float $glacRadi =  rand (1.5,3);
+                string $glacCurve[] = `circle -c 0 0 0 -sweep -360 -r $glacRadi -nr 0 1 0 -d 1 -ut 0 -s $glacSect -ch 0`;
+                string $glacNurbs[] = `planarSrf -ch 0 -d 3 -ko 0 -tol 0.00013 -rn 0 -po 0 $glacCurve[0]`;
+                string $glacPoly[] = `nurbsToPoly -ch 0 -f 0 -pt 1 -pc 1 $glacNurbs[0]`;
+                delete $glacCurve[0];
+                delete $glacNurbs[0];
+
+        //extrude:
+        string $glacPolyF[] = `listRelatives -s $glacPoly[0]`;
+        float $glacExtrudeY = rand (.5,3);
+        polyExtrudeFacet -ch 0 -kft 1 -ty $glacExtrudeY -off 0 $glacPolyF[0];
+
+                //make softbody and perturb:
+                string $glacSoft[] = `ls -sl`;
+                string $glacHist[] = `listRelatives -s $glacSoft`;
+                string $galcSoftBody[] =`soft -c $glacSoft[0]`;
+                string $glacEX = "position = position + sphrand(<<.5,.5,.5>>);";
+
+                        dynExpression -s $glacEX -c $galcSoftBody[0];
+                        dynExpression -s $glacEX -r $galcSoftBody[0];
+                        delete -ch $glacSoft[0];
+                        delete $galcSoftBody[0];
+
+        //smooth poly:
+        polySmooth  -dv 3 -c 0 -ch 1 $glacHist[0];
+        delete -ch $glacSoft[0];
+
+                //repeat soft perturb:
+                string $glacSoft[] = `ls -sl`;
+                string $glacHist[] = `listRelatives -s $glacSoft`;
+                string $galcSoftBody[] =`soft -c $glacSoft[0]`;
+                string $glacEX = "position = position + sphrand(<<.1,.1,.1>>);";
+
+                        dynExpression -s $glacEX -c $galcSoftBody[0];
+                        dynExpression -s $glacEX -r $galcSoftBody[0];
+                        delete -ch $glacSoft[0];
+                        delete $galcSoftBody[0];
+
+        //smooth again:
+        polySmooth  -dv 1 -c .2 -ch 0 $glacHist[0];
+        delete -ch $glacSoft[0];
+
+        //get the transform node:
+        string $newGlac[] = `listRelatives -p`;
+        string $moveGlac[] = `ls -sl`;
+        
+        //random scale and shear:
+
+                float $scaleX = rand (1.5,3);
+                float $shear = rand (-.8,-1.8);
+                float $newGlacSmin = `floatSliderGrp -q -value rockScaleMin`;
+                float $newGlacSmax = `floatSliderGrp -q -value rockScaleMax`;
+                float $newGlacSRand = rand($newGlacSmin,$newGlacSmax);
+
+                        scale $newGlacSRand $newGlacSRand $newGlacSRand;
+                        string $galcShearXY =  $moveGlac[0] + ".shearXY";
+                        setAttr $galcShearXY $shear;
+                
+        //randomly distribute:
+                float $glacDradius = `floatSliderGrp -q -value distRadius`;
+                float $glacDradiusN = -$glacDradius;
+                float $distX = rand ($glacDradiusN,$glacDradius);
+                float $distZ = rand ($glacDradiusN,$glacDradius);
+                        string $distGlac[] = {($moveGlac[0] + ".tx"), ($moveGlac[0] + ".ty"), ($moveGlac[0] + ".tz")};
+                        setAttr $distGlac[0] $distX; 
+                        setAttr $distGlac[1] -.5;
+                        setAttr $distGlac[2] $distZ;
+                float $randRotY = rand (0,360);
+                        string $rotGlac = $moveGlac[0] + ".ry";
+                        setAttr $rotGlac $randRotY;
+
+
+        //parent to group node and rename:
+        parent $newGlac[0] $glacialGroup;
+        rename $newGlac[0] "glacial1";
+        }
+//global scale and group
+float $glacGRPscale = `floatSliderGrp -q -value globalRockScale`;
+select $glacialGroup;
+scale $glacGRPscale $glacGRPscale $glacGRPscale;
+makeIdentity -apply true;
+
+}
+//end of glacial rock generation proc:
+
+////////////////////////////////////
+global proc crystalGen()
+{
+
+//crystal generation proc:
+int $crystalIndex;
+
+//number of crystal in group: 
+int $crystalNumber = `intSliderGrp -q -value rockNum`;
+
+//create group node:
+string $crystalGroup = `createNode transform -n quartzGroup1`;
+
+//generate crystal in for loop:
+
+for($crystalIndex = 0; $crystalIndex < $crystalNumber; $crystalIndex++)
+        {
+        //generate base curve and 1st face:
+        float $crystalRadi =  rand (.4,1.2);
+                string $crystalCurve[] = `circle -c 0 0 0 -sweep -360 -r $crystalRadi -nr 0 1 0 -d 1 -ut 0 -s 6 -ch 0`;
+                move 0 -.5 0;
+                string $crystalNurbs[] = `planarSrf -ch 0 -d 3 -ko 0 -tol 0.00013 -rn 0 -po 0 $crystalCurve[0]`;
+                string $crystalPoly[] = `nurbsToPoly -ch 0 -f 0 -pt 1 -pc 1 $crystalNurbs[0]`;
+                delete $crystalNurbs[0];
+                delete $crystalCurve[0];
+	  string $thisCrystal[] = `ls -sl`;
+	   print $thisCrystal;
+
+        //list the verts and perturb:
+        string $vert[] = `polyListComponentConversion -tv $crystalPoly[0]`;
+        string $vertsExband[] = `filterExpand -sm 31 $vert`;
+
+                int $i;
+                int $vertNum = 5;
+                for($i = 0; $i < $vertNum; $i++)
+                {
+                        select -r $vertsExband[$i];
+                        float $vertAround = rand(-.4,.2);
+                        move -r -moveXZ $vertAround;
+                }
+
+        //extrude:
+        string $crystalPolyF[] = `listRelatives -s $crystalPoly[0]`;
+
+        float $extrudeYmin = `floatSliderGrp -q -value rockScaleMin`;
+        float $extrudeYmax = `floatSliderGrp -q -value rockScaleMax` * 3;
+        float $extrudeY = rand ($extrudeYmin,$extrudeYmax);
+                polyExtrudeFacet -ch 0 -kft 1 -ty $extrudeY -off 0 $crystalPolyF[0];
+
+
+        string $crystalPolySF[] = `ls -sl`;
+
+        float $extrudeY2 = rand (.4,.8);
+                polyExtrudeFacet -ch 0 -kft 1 -ty $extrudeY2 -sx .01 -sz .01 -off 0 $crystalPolySF[0];
+
+        //perturb crystal points:
+
+        string $crystal[] = `listRelatives -p`;
+	  print $crystal;
+        string $crystVerts[] = `polyListComponentConversion -tv $crystal[0]`;
+        string $crystExband[] = `filterExpand -sm 31 $crystVerts`;
+
+                for ($i = 6; $i < 12; $i++)
+                {
+                        select -r $crystExband[$i];
+                        float $vertUp = rand(-.3,.3);
+                        move -r -moveY $vertUp;
+                }
+        
+        //set random angle:
+        string $newCrystal[] = $thisCrystal;
+        float $anglX = rand (-85,85);
+        float $anglZ = rand (-85,85);
+        string $RotateCrystal[] = {($newCrystal[0] + ".rx"), ($newCrystal[0] + ".rz")};
+                setAttr $RotateCrystal[0] $anglX; 
+                setAttr $RotateCrystal[1] $anglZ;
+
+        //parent to group node and rename:
+        parent $newCrystal[0] $crystalGroup; 
+        rename $newCrystal[0] "quartz1";
+        }
+
+//global scale and group
+float $crystGRPscale = `floatSliderGrp -q -value globalRockScale`;
+select $crystalGroup;
+scale $crystGRPscale $crystGRPscale $crystGRPscale;
+makeIdentity -apply true;
+
+}
+//end of crystal proc:
+
+////////////////////////////////////
+global proc slateGen()
+{
+
+//slate rock generation proc:
+int $slateIndex;
+
+//number of slate rocks in group:
+int $slateNumber = `intSliderGrp -q -value rockNum`;
+
+//create group node:
+string $slateGroup = `createNode transform -n slateGroup1`;
+
+//generate slate rock in for loop:
+
+for($slateIndex = 0; $slateIndex < $slateNumber; $slateIndex++)
+{
+        //generate base curve and 1st face:
+        int $slateSect = rand (4,10);
+        float $slateRadi =  rand (1.5,3);
+                string $slateBaseCurve[] = `circle -c 0 0 0 -sweep -360 -r $slateRadi -nr 0 1 0 -d 1 -ut 0 -s $slateSect -ch 0`;
+                string $slateNurbs[] = `planarSrf -ch 0 -d 3 -ko 0 -tol 0.00013 -rn 0 -po 0 $slateBaseCurve[0]`;
+                string $slateBasePoly[] = `nurbsToPoly -ch 0 -f 0 -pt 1 -pc 1 $slateNurbs[0]`;
+                delete $slateBaseCurve[0];
+                delete $slateNurbs[0];
+
+        //extrude:
+        string $slatePolyF[] = `listRelatives -s $slateBasePoly[0]`;
+        float $slateExtrudeY = rand (.2,.8);
+        polyExtrudeFacet -ch 0 -kft 1 -ty $slateExtrudeY -off 0 $slatePolyF[0];
+
+                //make softbody and perturb:
+                string $slateSoft[] = `ls -sl`;
+                string $slateHist[] = `listRelatives -s $slateSoft`;
+                polyTriangulate -ch 1 $slateHist[0];
+                string $slateSoftBody[] =`soft -c $slateSoft[0]`;
+                string $slateEX = "position = position + sphrand(<<.5,0,.5>>);";
+
+                        dynExpression -s $slateEX -c $slateSoftBody[0];
+                        dynExpression -s $slateEX -r $slateSoftBody[0];
+                        delete -ch $slateSoft[0];
+                        delete $slateSoftBody[0];
+
+        //smooth poly:
+        polySmooth  -dv 2 -c 0.2 -ch 1 $slateHist[0];
+        delete -ch $slateSoft[0];
+
+                //repeat soft perturb:
+                string $slateHist[] = `listRelatives -s $slateSoft`;
+                string $slateSoftBody[] =`soft -c $slateSoft[0]`;
+                string $slateEX = "position = position + sphrand(<<.1,0.05,.1>>);";
+
+                        dynExpression -s $slateEX -c $slateSoftBody[0];
+                        dynExpression -s $slateEX -r $slateSoftBody[0];
+                        delete -ch $slateSoft[0];
+                        delete $slateSoftBody[0];
+
+        //smooth again:
+        polySmooth  -dv 1 -c 0.2 -ch 1 $slateHist[0];
+        delete -ch $slateSoft[0];
+
+        //get the transform node
+        string $newSlate[] = `listRelatives -p`;
+        string $moveSlate[] = `select -r $newSlate[0]`;
+
+        //random scale:
+        float $newSlateSmin = `floatSliderGrp -q -value rockScaleMin`;
+        float $newSlateSmax = `floatSliderGrp -q -value rockScaleMax`;
+        float $newSlateSRand = rand($newSlateSmin,$newSlateSmax);
+        scale $newSlateSRand $newSlateSRand $newSlateSRand;
+
+        // randomly distribute:
+                float $slateDradius = `floatSliderGrp -q -value distRadius`;
+                float $slateDradiusN = -$slateDradius;
+                float $distX = rand ($slateDradiusN,$slateDradius);
+                float $distZ = rand ($slateDradiusN,$slateDradius);
+                        string $distSlate[] = {($moveSlate[0] + ".tx"), ($moveSlate[0] + ".ty"), ($moveSlate[0] + ".tz")};
+                        setAttr $distSlate[0] $distX; 
+                        setAttr $distSlate[1] 0;
+                        setAttr $distSlate[2] $distZ;
+
+
+        //parent to group node and rename:
+        parent $newSlate[0] $slateGroup;
+        rename $newSlate[0] "slate1";
+        }
+
+//global scale and group
+float $slateGRPscale = `floatSliderGrp -q -value globalRockScale`;
+select $slateGroup;
+scale $slateGRPscale $slateGRPscale $slateGRPscale;
+makeIdentity -apply true;
+
+}
+//end of slate rock generation proc:
+////////////////////////////////////
+
+global proc stalagGen()
+{
+
+// stalagmite generation proc:
+int $slagIndex;
+
+//number of stalagmite's in group:
+int $slagNumber = `intSliderGrp -q -value rockNum`;
+
+//create group node:
+string $tmpGroup = `createNode transform`;
+
+//generate stalagmite in for loop:
+for($slagIndex = 0; $slagIndex < $slagNumber; $slagIndex++)
+
+        {
+
+        //generate base curve and 1st face:
+        int $slagSect = rand(8,12);
+        float $slagRadi =  rand(1,2);
+                string $slagBaseCurve[] = `circle -c 0 0 0 -sweep -360 -r $slagRadi -nr 0 1 0 -d 1 -ut 0 -s $slagSect -ch 0`;
+                string $slagNurbs[] = `planarSrf -ch 0 -d 3 -ko 0 -tol 0.00013 -rn 0 -po 0 $slagBaseCurve[0]`;
+                string $slagBasePoly[] = `nurbsToPoly -ch 0 -f 0 -pt 1 -pc 1 $slagNurbs[0]`;
+                delete $slagBaseCurve[0];
+                delete $slagNurbs[0];
+
+        //extrude:
+        string $slagPolyF[] = `listRelatives -s $slagBasePoly[0]`;
+        float $slagExtrudeY = rand (1,3);
+        polyExtrudeFacet -ch 0 -kft 1 -ty $slagExtrudeY -s 0.7 1 0.7 -off 0 $slagPolyF[0];
+        string $slagHigh[] = `ls -sl`;
+
+
+        int $slagUp;
+        for($slagUp = 0; $slagUp < 3; $slagUp++)
+                {
+                polyExtrudeFacet -ch 0 -kft 1 -ty 1.5 -s .7 1 .7 -off 0 $slagHigh[1];
+                }
+        polyExtrudeFacet -ch 0 -kft 1 -ty .9 -s .4 1 .4 -off 0 $slagHigh[1];
+
+        string $newSlag[] = `listRelatives -p`;
+        
+        // randomly scale & distribute:
+        string $moveSlag[] = `select -r $newSlag[0]`;
+        float $slagHeight = rand (1,3);
+        scale 1 $slagHeight 1;
+
+                float $slagDradius = `floatSliderGrp -q -value distRadius` / 6;
+                float $slagDradiusN = -$slagDradius;
+                float $distX = rand ($slagDradiusN,$slagDradius);
+                float $distZ = rand ($slagDradiusN,$slagDradius);
+
+        string $distSlag[] = {($moveSlag[0] + ".tx"), ($moveSlag[0] + ".ty"), ($moveSlag[0] + ".tz")};
+        setAttr $distSlag[0] $distX; 
+        setAttr $distSlag[1] -1;
+        setAttr $distSlag[2] $distZ;
+
+        //parent to group node :
+        parent $newSlag[0] $tmpGroup; 
+        }
+
+//perform boolean op's & delete history:
+
+string $bolSlagGrp = $tmpGroup;
+string $boleSlag[] = `listRelatives -c $bolSlagGrp`;
+polyBoolOp -op 1 -ch 0 $boleSlag[0] $boleSlag[1];
+string $firstBol[] = `ls -sl`;
+polyBoolOp -op 1 -ch 0 -n tmpSlag $boleSlag[0] $boleSlag[1];
+
+int $i;
+for ($i=2; $i < size($boleSlag); ++$i)
+    {
+
+        string $firstBol[] = `ls -sl`;
+        polyBoolOp -op 1 -ch 0 -n tmpSlag $firstBol[0] $boleSlag[$i];
+        delete $firstBol[0];
+        string $firstBol[] = `ls -sl`;
+
+
+    }
+
+string $slagPoly[] = `ls -sl`;
+delete $firstBol[0];
+delete $tmpGroup;
+        
+        //make softbody and perturb:
+        string $slagSoftBody[] =`soft -c $slagPoly[0]`;
+        string $slagEX = "position = position + sphrand(<<.2,.1,.2>>);";
+
+                dynExpression -s $slagEX -c $slagSoftBody[0];
+                dynExpression -s $slagEX -r $slagSoftBody[0];
+                delete -ch $slagPoly[0];
+                delete $slagSoftBody[0];
+
+        //smooth poly:
+        string $slagFaces[] = `listRelatives -s $slagPoly`;
+        polySmooth  -dv 1 -c 1 -ch 1 $slagFaces[0];
+        delete -ch $slagPoly[0];
+
+        string $slagDone[] = `listRelatives -p `;
+        string $scaleSlag[] = `select -r $slagDone[0]`;
+
+        //random scale:
+        float $newSlagSmin = `floatSliderGrp -q -value rockScaleMin`;
+        float $newslagSmax = `floatSliderGrp -q -value rockScaleMax`;
+
+        scale $newslagSmax $newSlagSmin $newslagSmax;
+
+makeIdentity -apply true;
+
+float $newSlagS = `floatSliderGrp -q -value globalRockScale`;
+scale $newSlagS $newSlagS $newSlagS;
+makeIdentity -apply true;
+
+rename $slagDone[0] "stalagmite1";
+
+if ( catch( $firstBol[0] == "tmpSlag"))
+        {
+        delete;
+        }
+}
+//end of stalagmite rock generation proc:
+//////////////////////////////////////////////////////////////////////////////////////////////////
+//												//
+//                              End of Rock Gen                   				//
+//												//
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Warning: Cannot perform boolean operation for geometrical reasons : move objects slightly //
+// Error: Cannot perform boolean operation for topological reasons :  //
+// Error: Cannot perform boolean operation for topological reasons :  //
+// Error: Cannot perform boolean operation for topological reasons :  //
+// Warning: tmpSlagShape (Mesh Node): Tweaks can be undesirable on shapes with history. //
+// Warning: Can't perform polySmoothFacet1 on disabled selection //
+// Error: No object matches name:  //
+//////////////////////////////////////////////////////////////////////////////////////////////////

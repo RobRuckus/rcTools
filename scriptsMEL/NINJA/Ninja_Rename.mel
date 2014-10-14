@@ -1,0 +1,545 @@
+string $NinjaRename_Version = "Ninja Rename V 2.1";
+float $NinjaRename_ButtonColor[] = {.6, .6, .6};
+string $LongNameListArray[] = {};
+string $SelectedNodes[] = {};
+
+global proc NinjaRename_RenameObjects()
+{
+	//global string $LongNameListArray[];
+	//global string $SelectedNodes[];
+
+	$NewName = `textField -q -text New_Name`;
+	$StartNumber = `intField -q -v Start_Number`;
+	$SelShort = `ls -sl -fl -sn`;
+	$SelLong = `ls -sl -fl -l`;
+	string $RemoveArray[] = {};
+	string $AddArray[] = {};
+
+	for ($r = 0; $r < `size $SelShort`; $r++)
+		{
+			$SelShort = `ls -sl -fl -sn`;
+			$Name = `rename $SelShort[$r] ($NewName + ($StartNumber + $r))`;
+
+		}
+
+	Update_RenameList();
+	Update_FilterList();
+}
+
+
+global proc Ninja_Rename_AddPrefix()
+{
+	$Prefix_Name = `textField -q -text Prefix_Name`;
+
+	$Sel = `ls -sl -fl -sn`;
+	for ($r = 0; $r < `size $Sel`; $r++)
+		{
+			string $NewName = ($Prefix_Name + $Sel[$r]) ;
+			rename $Sel[$r] $NewName;
+		}
+
+	Update_RenameList();
+}
+
+
+global proc Ninja_Rename_Replace()
+{
+	$ReplaceName = `textField -q -text Replace_Name`;
+	$ReplaceWith = `textField -q -text ReplaceWith_Name`;
+
+	if ($ReplaceName != "")
+	{
+
+		$Sel = `ls -sl -fl -sn`;
+		for ($r = 0; $r < `size $Sel`; $r++)
+			{
+				$Sel = `ls -sl -fl -sn`;
+				string $NewName = substituteAllString($Sel[$r], $ReplaceName, $ReplaceWith);
+				string $buf[] = {};
+				int $numTokens = `tokenize $NewName "|" $buf`;
+				$NewName = $buf[(`size $buf` - 1)];
+				//print $NewName;
+				rename $Sel[$r] $NewName;
+			}
+
+		Update_RenameList();
+
+        }
+}
+
+
+
+global proc Ninja_Rename_ReNumber()
+{
+	$StartNumber = `intField -q -v Start_Number`;
+	string $Sel[] = `ls -sl -fl -sn`;
+	string $NewName;
+	//print $Sel;
+	//force a Number at end
+	for ($n = 0; $n < `size $Sel`; $n++)
+		{
+			string $Sel[] = `ls -sl -fl -sn`;
+			string $buf[] = {};
+			int $numTokens = `tokenize $Sel[$n] "|" $buf`;
+			$NewName = $buf[(`size $buf` - 1)];
+			rename $Sel[$n] ($NewName + $n);
+
+        }
+
+
+	for ($r = 0; $r < `size $Sel`; $r++)
+		{
+			string $Sel[] = `ls -sl -fl -sn`;
+			$FilteredName = `match "[^|]*$"  $Sel[$r]`;
+			$numbers = `match "[0-9]+" $FilteredName`;
+			$NewName = substituteAllString($FilteredName, $numbers, "");//remove numbers
+           	rename $Sel[$r] ($NewName + ($r + $StartNumber));
+        }
+
+	Update_RenameList();
+}
+
+
+
+global proc Ninja_Rename_Alphabetize()
+{
+	string $alphabetArray[]={"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"};
+	//string $alphabetArrayA[]={"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"};
+	$StartNumber = `intField -q -v Start_Number`;
+	string $Sel[] = `ls -sl -fl -sn`;
+	string $NewNameArray[] ={};
+	string $TempNameArray[] ={};
+	for ($r = 0; $r < `size $Sel`; $r++)
+		{
+
+			string $NewName;
+			string $numbers = `match "[0-9]+" $Sel[$r]`;
+			if ($numbers != "")
+				{
+					$NewName = substituteAllString($Sel[$r], $numbers, "");//remove numbers
+
+                }
+
+			else
+			{
+				$NewName =  $Sel[$r];
+
+            }
+
+			//print $NewName;
+
+			string $buf[] = {};
+			int $numTokens = `tokenize $NewName "|" $buf`;
+			$NewName = $buf[0];
+           	$NewName = $buf[(`size $buf` - 1)];
+			$NewNameArray[$r] = $NewName;
+			$TempName = `rename $Sel[$r] ("BK_TempName" + $r)`;
+			$TempNameArray[$r] = $TempName;
+
+		}
+
+
+	//print $TempNameArray;
+//	print $NewNameArray;
+//	error;
+	for ($t = 0; $t < `size $TempNameArray`; $t++)
+		{
+			print $TempNameArray[$t];
+			print  ($NewNameArray[$t] + $alphabetArray[$t]);
+			$NewName = ($NewNameArray[$t] + $alphabetArray[$t]);
+			string $buf[] = {};
+			int $numTokens = `tokenize $NewName "|" $buf`;
+			$NewName = $buf[0];
+           	$NewName = $buf[(`size $buf` - 1)];
+
+			rename $TempNameArray[$t] $NewName;
+
+      	}
+
+	Update_RenameList();
+}
+
+
+global proc Update_RenameList()
+{
+	$NinjaRename_UIWidth = 245;
+	global string $LongNameListArray[] = {};
+
+	textScrollList -e -w $NinjaRename_UIWidth -ra selectedObjList;
+
+	$IgnoreShapes = `checkBox -q -v cbox_IgnoreShapes`;
+	string $LongName[] = {};
+	if ($IgnoreShapes == 1)
+		{
+			$LongNameListArray = `ls -sl -l -fl -type "transform"`;
+        }
+
+	else
+		{
+			$LongNameListArray = `ls -sl -l -fl -o`;
+
+        }
+
+		sort $LongNameListArray;
+		string $ShortName;
+		for ($i = (`size $LongNameListArray`); $i >= 0; $i--)
+			{
+				$ShortName = `shortNameOf $LongNameListArray[$i]`;
+				$ShortName = `match "[^|]*$"  $ShortName`;
+				textScrollList -e -ap 1 $ShortName selectedObjList;
+			}//end for
+
+		//update selection
+		if (`size $LongNameListArray` > 0)
+		{
+			textField -e -text $ShortName "New_Name";
+		}
+			text -e -l ("Selected Object List: " + `size $LongNameListArray`) text_SelectionList;
+
+
+}
+
+global proc Clear_FilterList()
+{
+	global string $SelectedNodes[];
+	$SelectedNodes = {};
+	textScrollList -e -ra textScrollList_selectedTypes;
+}
+
+global proc Update_FilterList()
+{
+	global string $SelectedNodes[];
+	$SelectedNodes = `ls -sl -fl -l`;
+	$Sel = `ls -sl -fl -l`;
+	string $TypeArray[] = {};
+	for ($s = 0; $s < (`size $Sel`); $s++)
+		{
+			string $Type = `nodeType $Sel[$s]`;
+			stringArrayInsertAtIndex (0, $TypeArray, $Type);
+
+			$ShapeObjects = `listRelatives -s $Sel[$s]`;
+			if (`size $ShapeObjects` == 0 && $Type == "transform")
+				{
+					stringArrayInsertAtIndex (0, $TypeArray, "Group");
+                }
+
+        }
+
+	$TypeArray = `stringArrayRemoveDuplicates $TypeArray`;
+	textScrollList -e -ra textScrollList_selectedTypes;
+		for ($i = 0; $i < (`size $TypeArray`); $i++)
+			{
+				textScrollList -e -ap 1 $TypeArray[$i] -si $TypeArray[$i] textScrollList_selectedTypes;
+			}
+
+	//print `size $TypeArray`;
+	text -e -l ("Object Type Filter List: " + `size $TypeArray` ) text_TypeList;
+}
+
+
+global proc Filter_TypeList()
+{
+	global string $SelectedNodes[];
+	string $SelectedTypes[] = `textScrollList -q -si textScrollList_selectedTypes`;
+
+	//string $RemoveList[] = {};
+	string $AddList[] = {};
+	string $RemoveList = {};
+	for ($s = 0; $s < (`size $SelectedNodes`); $s++)
+		{
+			$ShapeObjects = `listRelatives -s $SelectedNodes[$s]`;
+			string $Type = `nodeType $SelectedNodes[$s]`;
+
+			//This will add non transform nodes
+			if (stringArrayContains ($Type, $SelectedTypes) && $Type != "transform")
+			{
+				stringArrayInsertAtIndex(0, $AddList , $SelectedNodes[$s]);
+            }
+
+
+			//This will add non Group Transforms if transform is selected
+			if ($Type == "transform"  && `size $ShapeObjects` != 0 && stringArrayContains ($Type, $SelectedTypes))
+				{
+					stringArrayInsertAtIndex(0, $AddList , $SelectedNodes[$s]);
+           	 	}
+
+			//this will add groups to the Addlist
+			if (stringArrayContains ("Group", $SelectedTypes) && `size $ShapeObjects` == 0 && $Type == "transform")
+				{
+					stringArrayInsertAtIndex(0, $AddList , $SelectedNodes[$s]);
+                }
+
+        }
+
+	select $AddList;
+
+
+}
+
+global proc NinjaRename_FindDuplicateNames()
+{
+	Clear_FilterList;
+	string $all[] = `ls -tr -sn -fl`;
+	string $obj;
+
+	string $duplicateArray[] = {};
+	for($obj in $all)
+
+
+	{
+		if(`gmatch $obj "*\|*"`)
+		{
+			stringArrayInsertAtIndex(0, $duplicateArray , $obj);
+
+		}
+
+	}
+
+	select $duplicateArray;
+	string $Selection[] = `ls -sl -fl -type "transform"`;
+	select $Selection;
+	showHidden -a;
+	Update_FilterList;
+
+
+}
+
+global proc NinjaReName_SelectRenameList()
+{
+	global string $LongNameListArray[] = {};
+
+	//if ($type == "all")
+	//{
+	//	int $AllItems = `textScrollList -q -ni selectedObjList`;
+	//	for ($s = 1; $s < ($AllItems + 1); $s++)
+	//		{
+	//			textScrollList -e -sii $s selectedObjList;
+    //        }
+	//}
+
+
+		int $SelList[] = `textScrollList -q -sii selectedObjList`;
+		string $SelectList[] = {};
+		for ($i = 0; $i < `size $SelList`; $i++)
+			{
+				$Index = $SelList[$i];
+				stringArrayInsertAtIndex (0, $SelectList, $LongNameListArray[($Index - 1)]);
+			}
+		select $SelectList;
+		string $Selection[] = `ls -sl -fl -type "transform"`;
+		select $Selection;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////Select By Name
+
+global proc NinjaReName_SelectBySameName ()
+{
+	Clear_FilterList;
+	string $DefinitionObj[];
+	string $SceneObjs[];
+	string $DefinitionObjName = "";
+
+	$DefinitionObj = (`ls -sl -sn -fl`);
+	string $SelectionArray[] = {};
+	for ($i = 0; $i < `size $DefinitionObj`; $i++)
+		{
+			string $numbers = `match "[0-9]+" $DefinitionObj[$i]`;
+			if ($numbers != "")
+				{
+					$DefinitionObjName = substituteAllString($DefinitionObj[$i], $numbers, "");//remove numbers
+					stringArrayInsertAtIndex(0, $SelectionArray, ($DefinitionObjName + "*") );
+				}
+		}
+	//print $SelectionArray;
+	select $SelectionArray;
+
+	$IgnoreShapes = `checkBox -q -v cbox_IgnoreShapes`;
+	if ($IgnoreShapes == 1)
+	{
+		$Selection  = `ls -sl -fl -l -type "transform"`;
+		select $Selection;
+
+    }
+	showHidden -a;
+	Update_FilterList;
+
+
+}//end select by name
+
+
+global proc NinjaRename_SelectByName()
+{
+	global string $SelectedNodes[];
+	$Search_Name = `textField -q -text "Search_Name"`;
+	$SceneObjs = (`ls -dag -sn`);
+	$DefinitionObjName = $Search_Name;
+	select -r ($DefinitionObjName)  ;
+
+	$IgnoreShapes = `checkBox -q -v cbox_IgnoreShapes`;
+	if ($IgnoreShapes == 1)
+	{
+		string $SelectedNodes[] = `ls -sl -fl -l -type "transform"`;
+		select $SelectedNodes;
+    }
+	showHidden -a;
+	Update_FilterList;
+}//end select by name
+
+
+
+global proc Build_Ninja_Rename_Menu()
+{
+	menuBarLayout;
+   		menu -label "Rename UI" -to true;
+			menuItem -label "Bar Mode" -c ("Ninja_Rename");
+			menuItem -label "Dock Right (2011)" -c ("Ninja_RenameDock");
+}
+
+global proc string Build_frame_Rename_RenameSelect()
+{
+
+	global float $NinjaRename_ButtonColor[];
+	$NinjaRename_UIWidth = 245;
+	$HelpText = (
+				"----------------------------------------------------Rename-------------------------------------------------*\n"+
+				"\n"
+				);
+	frameLayout -label "Select"  -width ($NinjaRename_UIWidth + 5) -cl false -cll true frame_Rename_RenameSelect;
+		popupMenu;
+			menuItem -l "Interactuve Help" -c ("Build_NinjaHelpTopic frame_Rename_Rename 1");
+		columnLayout;
+			//text -l "Select";
+			checkBox -l "Select Only Transforms " -v 1 cbox_IgnoreShapes;
+
+			rowColumnLayout -nc 2   -columnWidth 1 155 -columnWidth 2 90 ;
+				textField -w 155 -text ""  -ec ("NinjaSelect_ByName ")"Search_Name";
+				button -label "Select By Name" -h 20 -bgc $NinjaRename_ButtonColor[0] $NinjaRename_ButtonColor[1] $NinjaRename_ButtonColor[2] -c ("NinjaRename_SelectByName");
+			setParent..;
+
+
+			rowColumnLayout -nc 2 -columnWidth 1 ($NinjaRename_UIWidth/2) -columnWidth 2 ($NinjaRename_UIWidth/2);
+				button -label "Select By Same Name" -h 20 -width ($NinjaRename_UIWidth/2) -bgc $NinjaRename_ButtonColor[0] $NinjaRename_ButtonColor[1] $NinjaRename_ButtonColor[2] -c ("NinjaReName_SelectBySameName");
+				button -label "Select Duplicate Names" -h 20 -width ($NinjaRename_UIWidth/2) -bgc $NinjaRename_ButtonColor[0] $NinjaRename_ButtonColor[1] $NinjaRename_ButtonColor[2] -c ("NinjaRename_FindDuplicateNames()");
+			setParent..;
+
+			separator -height 10 -width $NinjaRename_UIWidth;
+			text -l "Selected Object List: " text_SelectionList;
+			textScrollList -w $NinjaRename_UIWidth  -h 200 -ams true -dcc ("NinjaReName_SelectRenameList()") selectedObjList;
+				popupMenu;
+					menuItem -l "select hilited items" -c ("NinjaReName_SelectRenameList");
+
+			//button -label "Update Selected Object List" -h 20 -width ($NinjaRename_UIWidth) -bgc $NinjaRename_ButtonColor[0] $NinjaRename_ButtonColor[1] $NinjaRename_ButtonColor[2] -c ("Update_RenameList");
+
+			separator -height 10 -width $NinjaRename_UIWidth;
+			text -l "Object Type Filter List: " text_TypeList;
+			textScrollList -w $NinjaRename_UIWidth  -h 100 -ams true -sc "Filter_TypeList" textScrollList_selectedTypes;
+
+			rowColumnLayout -nc 2   -columnWidth 1 120 -columnWidth 2 120 ;
+				button -label "Update Fliter List" -h 20 -width ($NinjaRename_UIWidth/2) -bgc $NinjaRename_ButtonColor[0] $NinjaRename_ButtonColor[1] $NinjaRename_ButtonColor[2] -c ("Update_FilterList");
+				button -label "Clear Fliter List" -h 20 -width ($NinjaRename_UIWidth/2) -bgc $NinjaRename_ButtonColor[0] $NinjaRename_ButtonColor[1] $NinjaRename_ButtonColor[2] -c ("Clear_FilterList");
+			setParent..;
+		setParent..;//parent columnLayout
+	setParent..;//parent framelayout
+	return $HelpText;
+}
+
+global proc string Build_frame_Rename_Rename()
+{
+	global float $NinjaRename_ButtonColor[];
+	$NinjaRename_UIWidth = 245;
+
+
+	$HelpText = (
+				"----------------------------------------------------Rename-------------------------------------------------*\n"+
+				"\n"
+				);
+
+	frameLayout -label "Rename"  -width ($NinjaRename_UIWidth + 5) -cl false -cll true frame_Rename_Rename;
+		popupMenu;
+			menuItem -l "Interactuve Help" -c ("Build_NinjaHelpTopic frame_Rename_Rename 1");
+		$Ninja_Rename_Main = `columnLayout`;
+			text -l "Rename";
+			rowColumnLayout -nc 3   -columnWidth 1 75 -columnWidth 2 145 -columnWidth 3 25;
+				text -l "New Name";
+				textField -w 145 -text ""  -ec ("NinjaRename_RenameObjects") New_Name;
+				button -label "OK" -h 20 -width 20 -bgc $NinjaRename_ButtonColor[0] $NinjaRename_ButtonColor[1] $NinjaRename_ButtonColor[2] -c ("NinjaRename_RenameObjects");
+
+				text -l "Prefix";
+				textField -w 145 -text ""  -ec ("Ninja_Rename_AddPrefix") Prefix_Name;
+				button -label "OK" -h 20 -width 20 -bgc $NinjaRename_ButtonColor[0] $NinjaRename_ButtonColor[1] $NinjaRename_ButtonColor[2] -c ("Ninja_Rename_AddPrefix");
+
+				text -l "Start Number";
+				intField -w 145 -v 1  -ec ("Ninja_Rename_ReNumber") Start_Number;
+				button -label "OK" -h 20 -width 20 -bgc $NinjaRename_ButtonColor[0] $NinjaRename_ButtonColor[1] $NinjaRename_ButtonColor[2] -c ("Ninja_Rename_ReNumber");
+			setParent..;// parent rowcolumnlayout
+
+			button -label "Alphabetize" -h 25 -width $NinjaRename_UIWidth -bgc $NinjaRename_ButtonColor[0] $NinjaRename_ButtonColor[1] $NinjaRename_ButtonColor[2] -c ("Ninja_Rename_Alphabetize");
+
+			//Replace Name Section
+				text -l "Replace Name";
+
+				rowColumnLayout -nc 2   -columnWidth 1 75 -columnWidth 2 150;
+					text -l "Replace";
+					textField -w 150 -text ""  Replace_Name;
+					text -l "With";
+					textField -w 150 -text ""  -ec ("Ninja_Rename_Replace") ReplaceWith_Name;
+				setParent..;//paretn row columnLayout
+
+			button -label "Replace Name" -h 25 -width $NinjaRename_UIWidth -bgc $NinjaRename_ButtonColor[0] $NinjaRename_ButtonColor[1] $NinjaRename_ButtonColor[2] -c ("Ninja_Rename_Replace");
+		//	separator -height 10 -width $NinjaRename_UIWidth;
+			// List Section
+
+					//menuItem -l "select all" -c ("NinjaReName_SelectRenameList all");
+		setParent ..;//parent columLayout
+
+	setParent..;//parent frame Layout
+	scriptJob -e SelectionChanged ("Update_RenameList") -p $Ninja_Rename_Main ;
+	//scriptJob -e SelectionChanged ("Update_FilterList") -p $Ninja_Rename_Main ;
+
+	return $HelpText;
+
+}
+
+global proc Build_Ninja_Rename_UI(int $UseScroll)
+{
+
+	//Build_Ninja_Rename_Menu;
+	columnLayout ;
+	Build_frame_Rename_RenameSelect;
+	Build_frame_Rename_Rename;
+	setParent..;
+
+
+}
+
+global proc Ninja_Rename()
+{
+	global string $NinjaRename_Version;
+	$NinjaRename_UIWidth = 250;
+	if ((`window -ex  Ninja_Rename_UI`) == true) deleteUI Ninja_Rename_UI;
+	$Fracture_Window = `window -title $NinjaRename_Version -w $NinjaRename_UIWidth Ninja_Rename_UI`;
+
+	Build_Ninja_Rename_UI (1);
+
+	showWindow Ninja_Rename_UI;
+}
+
+global proc Ninja_RenameDock()
+{
+	global string $NinjaRename_Version;
+	float $mayaVersion = `getApplicationVersionAsFloat` ;
+
+	if ($mayaVersion >= 2011)
+	{
+		if ((`window -ex Ninja_Rename_UI`) == true) deleteUI  Ninja_Rename_UI;
+		$Ninja_Mesh_UI =`window -title $NinjaRename_Version Ninja_Rename_UI`;
+
+		if ((`dockControl -ex Ninja_Rename_Dock`) == true) deleteUI Ninja_Rename_Dock;
+
+		Build_Ninja_Rename_UI 1;
+
+		dockControl  -area "right" -allowedArea "right" -label "Ninja Rename" -w 300 -content Ninja_Rename_UI Ninja_Rename_Dock ;
+
+    }
+
+}

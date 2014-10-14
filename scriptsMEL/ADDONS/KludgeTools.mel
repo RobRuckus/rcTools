@@ -1,0 +1,1050 @@
+//=================================
+// KludgeTools Free (2011)
+// by Edward Whetstone (www.WhetstoneVFX.com)
+// 
+// All Rights Reserved.
+// 
+// The script is freeware. Non-commercial redistribution is permitted as long as this header remains included and unmodified.
+// Your feedback is always appreciated - if you find the script useful or if you have questions, comments, suggestions, requests, 
+// bug-reports, if you created an updated version, or to check for updates please contact me at:
+//
+// Ed@Whetstonevfx.com
+// 
+//==================================
+// INSTALLATION: Copy the script into your Maya script-directory, source in the code, and start it with the KludgeTools; command.
+//
+//
+// COMPATIBILITY NOTE: Requires Maya 2009 +
+//
+// PLEASE ENJOY KLUDGETOOLSRESPONSIBLY
+
+/*****************************************************************************************************************/
+//																			GUI //
+/*****************************************************************************************************************/
+
+
+global proc KludgeTools() {
+kludgeTools;
+};
+
+global proc kludgeTools(){
+if ( `window -exists KludgeToolsMain` ) {
+ deleteUI KludgeToolsMain;
+};
+
+window -rtf 1 -t "Ed Whetstone's KludgeTools 1.0" -mnb 1 -mxb 1 -w 490 -h 700 KludgeToolsMain;
+scrollLayout -w 460 -h 700 KOTScrollLayout;
+	columnLayout -adjustableColumn 1 -rowSpacing 0 KOTCColumnLayout;
+		button -l "Set Camera Clips" -command "kt_setCameraClips" globalSetCameraClips;
+		frameLayout -w 425 -cll true -cl false -l "Pivots" -bs etchedIn kt_PivotsFrame;
+		gridLayout -cwh 60 24 -nrc 2 5 -ag 1;
+			button -l "Center" -command "kt_movePivot 1" kt_PvCenterPivot;
+			button -l "Y Min" -command "kt_movePivot 2" kt_PvDropPivot;
+			button -l "Y Max" -command "kt_movePivot 3" kt_PvTopPivot;
+			button -l "Origin" -command "kt_movePivot 4" kt_PvOriginPivot;
+			button -l "Selected" -command "kt_movePivot 5" -enable true kt_PvSelPivot;
+			button -l "X Min" -command "kt_movePivot 6" kt_PvxMinPivot;
+			button -l "X Max" -command "kt_movePivot 7" kt_PvxMaxPivot;
+			button -l "Z Min" -command "kt_movePivot 8" kt_PvzMinPivot;
+			button -l "Z Max" -command "kt_movePivot 9" kt_PvzMaxPivot;
+		setParent ..;
+	setParent ..;
+frameLayout -cll true -cl true -l "Move Objects" -bs etchedIn kt_ObjControlFrame;
+	columnLayout -rowSpacing 5 -adjustableColumn 1;
+		gridLayout -cwh 80 24 -nrc 1 4 -ag 1;
+		button -l "To Origin" -command "kt_moveToOrigin" kt_MtOriginButton;
+		button -l "To Selected" -command "kt_moveToSelected" kt_MtSelectedButton;
+		button -l "Stack" -enable 1 -command "kt_moveToStack" kt_MtStackButton;
+		setParent ..;
+	setParent ..;
+setParent ..;
+frameLayout -cll true -cl true -l "Parenting Controls" -bs etchedIn kt_PcFrame;
+	columnLayout -rowSpacing 5 -adjustableColumn 1;
+		gridLayout -cwh 80 24 -nrc 1 4 -ag 1 kt_PcGLayout;
+			button -l "Create Chain" -command "kt_parentChain";
+			button -l "Un-Parent" -command "parent -w";
+		setParent ..;
+	setParent ..;	
+setParent ..;
+frameLayout -cll true -cl true -l "Normals" -bs etchedIn kt_NFrame;
+	columnLayout -rowSpacing 5 -adjustableColumn 1;
+		gridLayout -cwh 80 24 -nrc 1 4 -ag 1 kt_NGLayout;
+			button -l "Soften Norm." -command "polySoftEdge -a 180 -ch 1" kt_NSetSoftButton;
+			button -l "Harden Norm." -command "polySoftEdge -a 0 -ch 1" kt_NSetHardenButton;
+			button -l "Set N. Angle" -command "kt_setNormalAngle" kt_NSetSetAngleButton;
+			intField -value 70 NSetAngleIntField;
+		setParent ..;
+	setParent ..;
+setParent ..;
+frameLayout -cll true -cl true -l "Digital Tutors" -bs etchedIn kt_DTFrame;
+	columnLayout -rowSpacing 5 -adjustableColumn 1;
+			text -l "_______________LINEAR WORKFLOW_______________";
+			button -l "Insert Gamma Node for Selected" -command "kt_insertGamma";
+			button -l "Remove Selected Gamma Node" -command "kt_deleteGamma";
+			button -l "Apply Gamma .454" -command "kt_gammaValue .454";
+			button -l "Apply Gamma 1.0" -command "kt_gammaValue 1";
+			text -l "_______________PORTALS_______________";
+			button -l "Build Portal Light" -command "kt_makePortalLight" -w 100;
+			text -l "Select any four contiguous edges:";
+			button -l "Build Portal in Hole" -command "kt_buildPortalInHole";
+			text -l "_______________AMBIENT LIGHTING_______________";
+			button -l "Build Global Ambient Light" -en 0;
+			button -l "Assign Selected to mia_mat_x Ambient Channel" -command "kt_assignToAll_x";
+			button -l "Enable AO on ALL mia_mat_x" -command "kt_enableAO_x";
+			button -l "Disable AO on ALL mia_mat_x" -command "kt_disableAO_x";
+			text -l "_______________RAMPS_______________";
+			button -l "Build Ramp Projection Gizmo" -en 0;
+			text -l "_______________RENDER LAYERS_______________";
+			button -l "Turn OFF Primary Visibility on selected" -command "kt_primaryOff";
+			button -l "Turn ON Primary Visibility on selected" -command "kt_primaryOn";
+	setParent ..;
+setParent ..;
+text -l "+++++++++++++++++++++++++++";
+button -l "Reset KludgeTools" -command "progressWindow -endProgress; source KludgeTools; KludgeTools";
+text -l " ";
+		button -l "Download KludgeCity Free" - command "kt_support";
+		text -l " ";
+showWindow KludgeToolsMain;
+};
+
+
+/*****************************************************************************************************************/
+//																			SELECTION UTILITIES	//
+/*****************************************************************************************************************/
+global proc kt_shrinkSel(int $iter){
+	for($i = 0; $i < $iter; $i++){
+	ShrinkPolygonSelectionRegion;
+	};
+};
+
+global proc kt_selPerim(){
+ConvertSelectionToEdges;
+polySelectConstraint -t 0x8000 -m 2 -w 1;
+resetPolySelectConstraint;
+};
+
+global proc kt_selBorderQuads(){
+ConvertSelectionToFaces;
+polySelectConstraint -t 0x0008 -m 2 -w 1 -sz 2;
+resetPolySelectConstraint;
+};
+
+global proc kt_selHard(){
+ConvertSelectionToEdges;
+polySelectConstraint -t 0x8000 -m 2 -sm 1;
+resetPolySelectConstraint;
+};
+
+global proc kt_selHardVerticals(){
+string $selSet[] = `ls -sl`;
+kt_selHard;
+string $allSel[] = `ls -sl`;
+select -r $selSet;
+kt_selTopEdges;
+string $deSelTop[] = `ls -sl`;
+select -r $selSet;
+kt_selBottomEdges;
+string $deSelBottom[] = `ls -sl`;
+select -r $allSel;
+select -deselect $deSelTop;
+select -deselect $deSelBottom;
+resetPolySelectConstraint;
+};
+
+global proc kt_selInteriorEdges(){
+ConvertSelectionToEdges;
+polySelectConstraint -t 0x8000 -m 2 -w 2;
+resetPolySelectConstraint;
+};
+
+global proc kt_selHardInteriorEdges(){
+ConvertSelectionToEdges;
+polySelectConstraint -t 0x8000 -m 2 -w 2 -sm 1;
+resetPolySelectConstraint;
+};
+
+global proc kt_selOuterCorners(){
+ConvertSelectionToVertices;
+polySelectConstraint -t 0x0001 -m 2 -or 1 -orb 2 2;
+resetPolySelectConstraint;
+};
+
+global proc kt_cullSelBorder(){
+ConvertSelectionToEdges;
+polySelectConstraint -t 0x8000 -m 2 -w 2;
+resetPolySelectConstraint;
+};
+
+global proc kt_deSelVertCorners(){
+ConvertSelectionToVertices;
+polySelectConstraint -t 0x0001 -m 2 -or 1 -orb 3 3;
+resetPolySelectConstraint;
+};
+
+global proc int kt_selLoneTabs(){
+kt_selOuterCorners;
+ConvertSelectionToFaces;
+string $selFaceList[] = `ls -sl -fl`;
+string $tabList[];
+	for ($thisFace in $selFaceList){
+		select $thisFace;
+		kt_selOuterCorners;
+		string $selListVerts[] = `ls -sl -fl`;
+			if(size($selListVerts) > 1){
+			$tabList[size($tabList)] = $thisFace;
+			};
+	};
+select $tabList;
+return size($tabList);
+};
+
+global proc kt_selVertIntCorners(){
+ConvertSelectionToVertices;
+polySelectConstraint -t 0x0001 -w 1 -m 2 -or 1 -orb 4 4;
+resetPolySelectConstraint;
+};
+
+global proc kt_selIntVertCorners3D(){
+ConvertSelectionToVertices;
+polySelectConstraint -t 0x0001 -w 2 -m 2 -or 1 -orb 5 5;
+resetPolySelectConstraint;
+};
+
+global proc kt_selBorderFacesOnly(){
+ConvertSelectionToFaces;
+polySelectConstraint -t 0x0008 -w 1 -m 2;
+resetPolySelectConstraint;
+};
+
+global proc kt_selBottom(){
+string $selList[] = `ls -sl`;
+float $getBoundArray[] = `kt_getBounds $selList[0]`;
+float $bbXAv =$getBoundArray[6];
+float $bbZAv = $getBoundArray[8];
+float $bbYMin = $getBoundArray[1];
+ConvertSelectionToFaces;
+polySelectConstraint -t 0x0008 -m 3 -oa 0 1 0 -d 3 -dp $bbXAv $bbYMin $bbZAv -db 0 .001 -da 0 1 0 ;
+resetPolySelectConstraint;
+};
+
+global proc string[] kt_selBottomEdges(){
+string $selList[] = `ls -sl`;
+float $getBoundArray[] = `kt_getBounds $selList[0]`;
+float $bbXAv =$getBoundArray[6];
+float $bbZAv = $getBoundArray[8];
+float $bbYMin = $getBoundArray[1];
+ConvertSelectionToEdges;
+polySelectConstraint -t 0x8000-m 2 -oa 0 1 0 -d 3 -dp $bbXAv $bbYMin $bbZAv -db 0 .001 -da 0 1 0 ;
+resetPolySelectConstraint;
+string $selSet[] = `ls -sl`;
+return $selSet;
+};
+
+global proc kt_selTop(){
+string $selList[] = `ls -sl`;
+float $getBoundArray[] = `kt_getBounds $selList[0]`;
+float $bbXAv =$getBoundArray[6];
+float $bbZAv = $getBoundArray[8];
+float $bbYMax = $getBoundArray[4];
+ConvertSelectionToFaces;
+polySelectConstraint -t 0x0008 -m 2 -oa 0 1 0 -d 3 -dp $bbXAv $bbYMax $bbZAv -db 0 .001 -da 0 1 0 ;
+resetPolySelectConstraint;
+};
+
+global proc string[] kt_selTopEdges(){
+string $selList[] = `ls -sl`;
+float $getBoundArray[] = `kt_getBounds $selList[0]`;
+float $bbXAv =$getBoundArray[6];
+float $bbZAv = $getBoundArray[8];
+float $bbYMax = $getBoundArray[4];
+ConvertSelectionToEdges;
+polySelectConstraint -t 0x8000 -m 2 -oa 0 1 0 -d 3 -dp $bbXAv $bbYMax $bbZAv -db 0 .001 -da 0 1 0 ;
+resetPolySelectConstraint;
+string $selSet[] = `ls -sl`;
+return $selSet;
+};
+
+global proc kt_selOuterEdgeTriangles(){
+string $selList[] = `ls -sl`;
+ConvertSelectionToFaces;
+polySelectConstraint -t 0x0008 -m 2 -w 1 -sz 1;
+resetPolySelectConstraint;
+};
+
+global proc kt_selCorners(){
+ConvertSelectionToVertices;
+polySelectConstraint -t 0x0001 -m 3 -or 1 -orb 2 2;
+resetPolySelectConstraint;
+};
+
+global proc kt_selRandom(float $passedValue){
+string $selFaces[] = `ls -sl -fl`;
+	for($thisFace in $selFaces){
+	float $randValue = rand(0,1);
+		if ($passedValue < $randValue){
+		select -deselect $thisFace;
+		};
+	};
+};
+
+global proc kt_deSelCorners(){
+ConvertSelectionToFaces;
+string $selList[] = `ls -sl`;
+ConvertSelectionToEdges;
+polySelectConstraint -t 0x8000 -w 2 -m 3 -sm 1;
+resetPolySelectConstraint;
+PolySelectConvert 1;
+string $selFaces[] = `ls -sl`;
+select -r $selList;
+select -deselect $selFaces;
+};
+
+global proc kt_selRandom(float $passedValue){
+string $selFaces[] = `ls -sl -fl`;
+	for($thisFace in $selFaces){
+	float $randValue = rand(0,1);
+		if ($passedValue < $randValue){
+		select -deselect $thisFace;
+		};
+	};
+};
+
+global proc kt_selectTools(string $type){
+string $selSet[] = `ls -sl -fl`;
+if (`attributeExists windowShader $selSet[0]`){
+	string $windowShader = `getAttr ($selSet[0] + ".windowShader")`;
+	string $bufferShader = `getAttr ($selSet[0] + ".bufferShader")`;
+	string $extShader = `getAttr ($selSet[0] + ".exteriorShader")`;
+	string $ledgeShader = `getAttr ($selSet[0] + ".ledgeShader")`;
+	string $intFloorShader = `getAttr ($selSet[0] + ".intFloorShader")`;
+	string $intWallShader = `getAttr ($selSet[0] + ".intWallShader")`;
+	string $intCeilShader = `getAttr ($selSet[0] + ".intCeilShader")`;
+	string $intFloorShaderLit = `getAttr ($selSet[0] + ".intFloorShaderLit")`;
+	string $intWallShaderLit = `getAttr ($selSet[0] + ".intWallShaderLit")`;
+	string $intCeilShaderLit = `getAttr ($selSet[0] + ".intCeilShaderLit")`;
+	string $intObjectShader = `getAttr ($selSet[0] + ".interiorObjects")`;
+	string $intWindowShader = `getAttr ($selSet[0] + ".interiorWindows")`;
+	ConvertSelectionToFaces;
+	string $tempSet = `sets -fc 1`;
+		if ($type == "windows"){
+		string $tempGrps[] = `listConnections -type shadingEngine $windowShader`;
+		select `sets -int $tempSet $tempGrps[4]`;
+		}
+		if ($type == "exterior"){
+		string $tempGrps[] = `listConnections -type shadingEngine $extShader`;
+		select `sets -int $tempSet $tempGrps[4]`;
+		}
+		if ($type == "buffer"){
+		string $tempGrps[] = `listConnections -type shadingEngine $bufferShader`;
+		select `sets -int $tempSet $tempGrps[4]`;
+		}
+		if ($type == "ledge"){
+		string $tempGrps[] = `listConnections -type shadingEngine $ledgeShader`;
+		select `sets -int $tempSet $tempGrps[4]`;
+		}
+		if ($type == "intFloors"){
+		string $tempGrps[] = `listConnections -type shadingEngine $intFloorShader`;
+		select `sets -int $tempSet $tempGrps[4]`;
+		}
+		if ($type == "intWalls"){
+		string $tempGrps[] = `listConnections -type shadingEngine $intWallShader`;
+		select `sets -int $tempSet $tempGrps[4]`;
+		}
+		if ($type == "intCeil"){
+		string $tempGrps[] = `listConnections -type shadingEngine $intCeilShader`;
+		select `sets -int $tempSet $tempGrps[4]`;
+		}
+		if ($type == "intFloorsLit"){
+		string $tempGrps[] = `listConnections -type shadingEngine $intFloorShaderLit`;
+		select `sets -int $tempSet $tempGrps[4]`;
+		}
+		if ($type == "intWallsLit"){
+		string $tempGrps[] = `listConnections -type shadingEngine $intWallShaderLit`;
+		select `sets -int $tempSet $tempGrps[4]`;
+		}
+		if ($type == "intCeilLit"){
+		string $tempGrps[] = `listConnections -type shadingEngine $intCeilShaderLit`;
+		select `sets -int $tempSet $tempGrps[4]`;
+		}
+		if ($type == "intWindows"){
+		string $tempGrps[] = `listConnections -type shadingEngine $intWindowShader`;
+		select `sets -int $tempSet $tempGrps[4]`;
+		}
+		if ($type == "intObjects"){
+		string $tempGrps[] = `listConnections -type shadingEngine $intObjectShader`;
+		select `sets -int $tempSet $tempGrps[4]`;
+		}
+	delete $tempSet;
+	};
+};
+
+global proc kt_selUVEdges(){
+string $selSet[] = `ls -sl`;
+ConvertSelectionToUVs;
+polySelectBorderShell 1;
+ConvertSelectionToEdges;
+ShrinkPolygonSelectionRegion;
+ConvertSelectionToUVs;
+};
+
+/*****************************************************************************************************************/
+//																			GENERAL UTILITIES	//
+/*****************************************************************************************************************/
+
+global proc float[] kt_getBounds(string $objSel){
+select -r $objSel;
+float $getBoundArray[] = `xform -q -ws -bb`;
+float $bbXAv = (($getBoundArray[3] + $getBoundArray[0])/2);
+float $bbYAv = (($getBoundArray[4] + $getBoundArray[1])/2);
+float $bbZAv = (($getBoundArray[5] + $getBoundArray[2])/2);
+$getBoundArray[6] = $bbXAv;
+$getBoundArray[7] = $bbYAv;
+$getBoundArray[8] = $bbZAv;
+return $getBoundArray;
+};
+
+global proc kt_setNormalAngle() {
+int $normAngle = `intField -q -value NSetAngleIntField`;
+polySoftEdge -a $normAngle;
+};
+
+global proc kt_setNormalAngleTo(float $normAngle) {
+polySoftEdge -a $normAngle;
+};
+
+global proc string kt_createVariationGrid(int $variation, float $numGrid){
+$variation = (100 - $variation);
+string $masterNode = `shadingNode -asTexture ramp -n "variationControl"`;
+setAttr ($masterNode + ".interpolation") 0;
+setAttr ($masterNode + ".type") 1;
+	for ($i = 0; $i < ($numGrid + 1); $i++){
+	setAttr ($masterNode + ".colorEntryList[" + $i + "].color") -type double3 0 0 0;
+	setAttr ($masterNode + ".colorEntryList[" + $i + "].position") ($i * (1.0000 / $numGrid));
+	};
+	for ($i = 0; $i < $numGrid; $i++){
+	string $currentNode[];
+	$currentNode[size($currentNode)] = `shadingNode -asTexture ramp`;
+	setAttr ($currentNode[$i] + ".interpolation") 0;
+		for ($j = 0; $j < ($numGrid + 1); $j++){
+		float $variationGrid = (((float)$variation / 100));
+		float $onOff = rand($variationGrid,1);
+		setAttr ($currentNode[$i] + ".colorEntryList[" + $j + "].color") -type double3 $onOff $onOff $onOff;
+		setAttr ($currentNode[$i] + ".colorEntryList[" + $j + "].position") ($j * (1.0000 / $numGrid));
+		};
+	connectAttr -force ($currentNode[$i] + ".outColor") ($masterNode + ".colorEntryList[" + $i + "].color");
+	};
+	string $masterNodeReturn = `rename $masterNode "variationControl"`;
+	return (string) $masterNodeReturn;
+};
+
+global proc kt_deleteBottom(){
+string $selSet[] = `ls -sl`;
+kt_selBottom;
+delete;
+select -r $selSet[0];
+};
+
+global proc kt_deleteTop(){
+string $selSet[] = `ls -sl`;
+kt_selTop;
+delete;
+select -r $selSet[0];
+};
+
+global proc kt_clearHistory(){
+delete -ch -all;
+};
+
+global proc kt_toggleUndoQOff(){
+int $undoQState = `undoInfo -q -state`;
+	if ($undoQState == 1){
+	undoInfo -state 0; };
+};
+
+global proc kt_toggleUndoQOn(){
+int $undoQState = `undoInfo -q -state`;
+	if ($undoQState == 0){
+	undoInfo -state 1; };
+};
+
+global proc kt_loadMr(){
+int $mrLoaded = `pluginInfo -q -l Mayatomr`;
+	if ($mrLoaded == 0){
+	loadPlugin Mayatomr;
+	}
+};
+
+
+global proc kt_endProgram(){
+undoInfo -state on;
+progressWindow -endProgress;
+cycleCheck -e on;
+kt_toggleUndoQOn;
+}
+
+global proc kt_stripEdges() {
+string $ledgeGeo[] = `ls -sl`;
+polySoftEdge -a 1;
+select -r $ledgeGeo[0];
+ConvertSelectionToEdges;
+polySelectConstraint -m 2 -sm 2 -t 0x8000;
+string $selList[] = `ls -sl -fl`;
+int $sizeSelList = size($selList);
+	if ($sizeSelList != 0){
+polyDelEdge -cv true;
+	};
+resetPolySelectConstraint;
+select -r $ledgeGeo[0];
+polySoftEdge -a 30.00;
+select -r $ledgeGeo[0];
+return;
+};
+
+global proc kt_parentChain() {
+string $selList[] = `ls -sl`;
+	if (`size($selList)` > 1){
+		for ($i = 1; $i < (`size($selList)`); $i++){
+		parent $selList[($i - 1)] $selList[$i];
+		};
+	};
+select $selList;
+};
+
+global proc kt_movePivot(int $mode){
+string $sel[] = `ls -sl`;
+	for ($each in $sel){
+	float $pos[] = `kt_getBounds $each`;
+		switch($mode){
+			case 1:
+			CenterPivot $each;
+			break;
+			
+			case 2:
+			move -a -rpr $pos[6] $pos[1] $pos[8] ($each + ".rotatePivot") ($each + ".scalePivot");
+			break;
+			
+			case 3:
+			move -a -rpr $pos[6] $pos[4] $pos[8] ($each + ".rotatePivot") ($each + ".scalePivot");
+			break;
+			
+			case 4:
+			move -a -rpr 0 0 0 ($each + ".rotatePivot") ($each + ".scalePivot");
+			break;
+			
+			case 5:
+			//move -a -rpr $pos[6] $pos[4] $pos[8] ($each + ".rotatePivot") ($each + ".scalePivot");
+			break;
+			
+			case 6:
+			move -a -rpr $pos[0] $pos[7] $pos[8] ($each + ".rotatePivot") ($each + ".scalePivot");
+			break;
+			
+			case 7:
+			move -a -rpr $pos[3] $pos[7] $pos[8] ($each + ".rotatePivot") ($each + ".scalePivot");
+			break;
+			
+			case 8:
+			move -a -rpr $pos[6] $pos[7] $pos[2] ($each + ".rotatePivot") ($each + ".scalePivot");
+			break;
+			
+			case 9:
+			move -a -rpr $pos[6] $pos[7] $pos[5] ($each + ".rotatePivot") ($each + ".scalePivot");
+			break;
+		};
+	};
+};
+
+//							MOVE SELECTED TO ORIGIN
+global proc kt_moveToOrigin() {
+string $sel[] = `ls -sl`;
+	for ($each in $sel){
+	move -a -rpr 0 0 0 -rpr $each;
+	};
+};
+
+global proc kt_moveToPivotOf() {
+string $selLast[] = `ls -sl -tail 1`;
+select -deselect $selLast[0];
+float $selectedXform[] = `xform -q -ws -piv $selLast[0]`;
+float $moveToX = $selectedXform[0];
+float $moveToY = $selectedXform[1];
+float $moveToZ = $selectedXform[2];
+string $sel[] = `ls -sl`;
+	for ($each in $sel){
+	move -a -rpr $moveToX $moveToY $moveToZ -rpr $each;
+	};
+};
+
+//							MOVE SELECTED TO SELECTED 
+global proc kt_moveToSelected() {
+string $selLast[] = `ls -sl -tail 1`;
+select -deselect $selLast[0];
+float $selectedXform[] = `xform -q -ws -piv $selLast[0]`;
+float $moveToX = $selectedXform[0];
+float $moveToY = $selectedXform[1];
+float $moveToZ = $selectedXform[2];
+string $sel[] = `ls -sl`;
+	for ($each in $sel){
+	move -a -rpr $moveToX $moveToY $moveToZ -rpr $each;
+	};
+};
+
+//							STACK SELECTED
+global proc kt_moveToStack() {
+string $selList[] = `ls -sl`;
+	for ($each in $selList){
+	string $currentSelList[] = `ls -sl`;
+		if (`size($currentSelList)` > 1){
+		string $selLast[] = `ls -sl -tail 1`;
+		select -deselect $selLast[0];
+		string $moveThisObj[]  = `ls -sl -tail 1`;
+		float $selectedXform[] = `xform -q -ws -piv $selLast[0]`;
+		float $getBoundArray[] = `xform -q -ws -bb $selLast[0]`;
+		float $bbXAv = (($getBoundArray[3] + $getBoundArray[0])/2);
+		float $bbZAv = (($getBoundArray[5] + $getBoundArray[2])/2);
+		float $bbYMax = $getBoundArray[4];
+		float $moveToX = $selectedXform[0];
+		float $moveToY = $selectedXform[1];
+		float $moveToZ = $selectedXform[2];
+		move -a -rpr $bbXAv $bbYMax $bbZAv -rpr $moveThisObj[0];
+		};
+	};
+};
+
+global proc float[] kt_getFaceVector(){
+string $polyInfoTest[] = `polyInfo -fn`;
+string $vectorInfo[];
+tokenize $polyInfoTest[0] " " $vectorInfo;
+float $faceVectors[];
+$faceVectors[0] = $vectorInfo[2];
+$faceVectors[1] = $vectorInfo[3];
+$faceVectors[2] = $vectorInfo[4];
+return $faceVectors;
+};
+
+global proc float kt_getAngleOfVert(string $deSelSet[]){
+string $vertSelSet[] = `ls -sl`;
+ConvertSelectionToFaces;
+select -deselect $deSelSet;
+string $faceSelSet[] = `ls -sl -fl`;
+float $degVal = 0;
+	if (size($faceSelSet) > 1){
+	select -r $faceSelSet[0];
+	float $fOV[] = `kt_getFaceVector`;
+	select -r $faceSelSet[1];
+	float $fTV[] = `kt_getFaceVector`;
+	float $thisAngle = `angle <<$fOV[0], $fOV[1], $fOV[2]>> <<$fTV[0], $fTV[1], $fTV[2]>>`;
+	$degVal = `rad_to_deg $thisAngle`;
+	};
+select $vertSelSet;
+return $degVal;
+};
+
+global proc float[] kt_getAverageVector(string $deSelSet[]){
+string $vertSelSet[] = `ls -sl`;
+ConvertSelectionToFaces;
+select -deselect $deSelSet;
+string $faceSelSet[] = `ls -sl -fl`;
+select -r $faceSelSet[0];
+float $fOV[] = `kt_getFaceVector`;
+float $fTV[] = `kt_getFaceVector`;
+	if (size($faceSelSet) > 1){
+	select -r $faceSelSet[1];
+	$fTV = `kt_getFaceVector`;
+	};
+float $avVector[] = {($fOV[0] + $fTV[0]), ($fOV[1] + $fTV[1]), ($fOV[2] + $fTV[2])};
+select $vertSelSet;
+return $avVector;
+};
+
+global proc kt_fixedExtrudeMove(float $translate, string $deSelSet[]){
+string $vertSelSet[] = `ls -sl -fl`;
+int $progress = 0;
+string $vertLocSet[];
+progressWindow -edit -status ("Extruding") -min 0 -max (size($vertSelSet));
+	for($thisVert in $vertSelSet){
+	progressWindow -edit -progress $progress;
+	select -r $thisVert;
+	float $angle = `kt_getAngleOfVert $deSelSet`;
+	float $fixedAngle = (180 - $angle);
+	float $theta = ($fixedAngle / 2);
+	float $sinTheta = `sin (deg_to_rad($theta))`;
+	float $dir[] = `kt_getAverageVector $deSelSet`;
+	normalize($dir);
+	float $magnitude = ( $translate / $sinTheta);
+	select -r $thisVert;
+	float $startLoc[] = `xform -q -ws -t`;
+	float $endLoc[] = {(($magnitude * $dir[0]) + $startLoc[0]), (($magnitude * $dir[1]) + $startLoc[1]), (($magnitude * $dir[2]) + $startLoc[2])};
+	string $thisVertLoc = ($thisVert + " " + $endLoc[0] + " " + $endLoc[1] + " " + $endLoc[2]);
+	$vertLocSet[size($vertLocSet)] = $thisVertLoc;
+	};
+	
+	for($thisVertString in $vertLocSet){
+	string $thisVertMove[];
+	tokenize $thisVertString " " $thisVertMove;
+	select -r $thisVertMove[0];
+	float $xT = (float) $thisVertMove[1];
+	float $yT = (float) $thisVertMove[2];
+	float $zT =(float) $thisVertMove[3];
+	xform -ws -t $xT $yT $zT;
+	};
+	
+};
+
+global proc kt_fixedExtrude(float $translate){
+string $objSelSet[] = `ls -sl`;
+ConvertSelectionToFaces;
+polyExtrudeFacet;
+string $reSelSet[] = `ls -sl`;
+InvertSelection;
+string $deSelSet[] = `ls -sl -fl`;
+InvertSelection;
+ConvertSelectionToVertices;
+refresh;
+kt_fixedExtrudeMove $translate { };
+select -r $reSelSet;
+};
+
+
+
+global proc float[] kt_lyzeSel(){
+string $selSet[] = `ls -sl`;
+	if(size($selSet) > 0){
+		kt_selPerim;
+		string $outerEdges[] = `ls -sl -fl`;
+		select -r $outerEdges[1];
+		ConvertSelectionToVertices;
+		float $fpIndex = `kt_getVertDistance`;
+		int $estDivY;
+		int $estDivX;
+		float $fpDim[] = `kt_getBounds $selSet[0]`;
+		float $sizeX =  ($fpDim[3] - $fpDim[0]);
+		float $sizeY =  ($fpDim[4] - $fpDim[1]);
+		float $minSize[] = {$sizeX, $sizeY };
+		$minSize = `sort $minSize`;
+		float $estDivisions = ((($sizeY + $sizeX)/2) / $fpIndex);
+		float $lyzeResults[] = {$fpIndex, $estDivisions };
+		return $lyzeResults;
+		};
+};
+
+global proc float kt_getVertDistance(){
+string $selSet[] = `ls -sl -fl`;
+float $pos1[] = `pointPosition $selSet[0]`;
+float $pos2[] = `pointPosition $selSet[1]`;
+float $vDis = `sqrt ((($pos1[0] - $pos2[0]) * ($pos1[0] - $pos2[0])) + (($pos1[1] - $pos2[1]) * ($pos1[1] - $pos2[1])) + (($pos1[2] - $pos2[2]) * ($pos1[2] - $pos2[2])))`;
+return $vDis;
+};
+
+global proc kt_setCameraClips() {
+string $panelSet[] = {"modelPanel1", "modelPanel2", "modelPanel3", "modelPanel4"};
+	for($thisPanel in $panelSet){
+	string $camera = `modelEditor -q -camera $thisPanel`; 
+	eval select `getCameraNode view $camera` `getCameraNode up $camera` $camera;
+	setAttr ($camera + ".nearClipPlane") .5;
+	setAttr ($camera + ".farClipPlane") 100000;
+	};
+};
+
+global proc kt_support() {
+system ("load http://whetstonevfx.com/kludgecity.php");
+};
+
+//										DIGITAL TUTORS SCRIPTS
+
+global proc kt_buildPortalInHole(){
+
+string $selSet[] = `ls -sl -fl`;
+ConvertSelectionToVertices;
+string $selVerts[] = `ls -sl -fl`;
+invertSelection;
+string $deSelVerts[] = `ls -sl -fl`;
+string $vertList[];
+$vertList[0] = $selVerts[0];
+float $pointOne[] = `xform -ws -q -t $vertList[0]`;
+float $pointTwo[];
+float $pointThree[];
+float $pointFour[];
+select -r $selVerts[0];
+	for($i = 1; $i < 4; $i++){
+		GrowPolygonSelectionRegion;
+		select -deselect $vertList;
+		select -deselect $deSelVerts;
+		string $newVertList[] = `ls -sl -fl`;
+		$vertList[$i] = $newVertList[0];
+		select -r $vertList[$i];
+		if ($i == 1){
+		$pointTwo = `xform -ws -q -t $vertList[$i]`;
+		};
+		if ($i == 2){
+		$pointThree = `xform -ws -q -t $vertList[$i]`;
+		};
+		if ($i == 3){
+		$pointFour = `xform -ws -q -t $vertList[$i]`;
+		};
+	}
+string $facePlace[] = `polyCreateFacet -p $pointOne[0] $pointOne[1] $pointOne[2] -p $pointTwo[0] $pointTwo[1] $pointTwo[2] -p $pointThree[0] $pointThree[1] $pointThree[2] -p $pointFour[0] $pointFour[1] $pointFour[2]`;
+CenterPivot;
+float $holeArea[] = `polyEvaluate -a`;
+print $holeArea;
+float $holeScale = (.5 * (`sqrt $holeArea[0]`));
+print $holeScale;
+string $kt_areaLight = `shadingNode -asLight areaLight`;
+select -r $kt_areaLight;
+scale $holeScale $holeScale $holeScale;
+makeIdentity -apply true -t 1 -r 1 -s 1 -n 0;
+string $tempPConstraint[] = `pointConstraint $facePlace[0] $kt_areaLight`;
+string $tempNConstraint[] = `normalConstraint -aim 0 0 1 $facePlace[0] $kt_areaLight`;
+delete $tempPConstraint;
+delete $tempNConstraint;
+delete $facePlace[0];
+setAttr ($kt_areaLight + ".intensity") 1;
+setAttr ($kt_areaLight + ".decayRate") 0;
+setAttr ($kt_areaLight + ".useRayTraceShadows") 0;
+setAttr ($kt_areaLight + ".areaLight") 1;
+setAttr ($kt_areaLight + ".areaHiSamples") 1;
+setAttr ($kt_areaLight + ".areaVisible") 1;
+setAttr ($kt_areaLight + ".areaShapeIntensity") 1;
+setAttr ($kt_areaLight + ".miExportMrLight") 1;
+string $kt_portalShader = `mrCreateCustomNode -asUtility ""  mia_portal_light`;
+connectAttr -f ($kt_portalShader + ".message") ($kt_areaLight + ".miLightShader");
+connectAttr -f ($kt_portalShader + ".message") ($kt_areaLight + ".miPhotonEmitter");
+select $kt_areaLight;
+};
+
+global proc kt_makePortalLight(){
+string $kt_areaLight = `shadingNode -asLight areaLight`;
+setAttr ($kt_areaLight + ".intensity") 1;
+setAttr ($kt_areaLight + ".decayRate") 0;
+setAttr ($kt_areaLight + ".useRayTraceShadows") 0;
+setAttr ($kt_areaLight + ".areaLight") 1;
+setAttr ($kt_areaLight + ".areaHiSamples") 16;
+setAttr ($kt_areaLight + ".areaVisible") 1;
+setAttr ($kt_areaLight + ".areaShapeIntensity") 1;
+setAttr ($kt_areaLight + ".miExportMrLight") 1;
+string $kt_portalShader = `mrCreateCustomNode -asUtility ""  mia_portal_light`;
+connectAttr -f ($kt_portalShader + ".message") ($kt_areaLight + ".miLightShader");
+connectAttr -f ($kt_portalShader + ".message") ($kt_areaLight + ".miPhotonEmitter");
+select $kt_areaLight;
+};
+
+//NOTE: Code modified from Andrew Weidenhammer, via Albert on 3dLight.blogspot.com
+
+global proc kt_insertGamma() {
+	float $gammaDefault = .454;
+	string $sel[] = `ls -sl`;
+	for ($obj in $sel) {
+		string $attrList[] = `listAttr -ro -hd -st "outColor" -st "outValue" -st "output" -st "value" $obj`;		
+		for ($attr in $attrList) {
+			int $ncAttr[] = `attributeQuery -node $obj -nc $attr`; //determine if it is a vector attribue if it has 3 children
+			if ($ncAttr[0]==3) {		
+				string $cons[] = `listConnections -d 1 -p 1 ($obj+"."+$attr)`;
+				if (size($cons)) {
+					string $gammaNode = `shadingNode -n "linearGammaCorrect" -asUtility gammaCorrect`;
+					setAttr ($gammaNode+".gammaX") $gammaDefault;
+					setAttr ($gammaNode+".gammaY") $gammaDefault;
+					setAttr ($gammaNode+".gammaZ") $gammaDefault;
+					connectAttr -f ($obj+"."+$attr) ($gammaNode+".value");
+					for ($con in $cons) {
+						connectAttr -f ($gammaNode+".outValue") $con;				
+						}
+					}			
+				}	
+			}
+		}
+	}
+global proc deleteGamma() {
+for ($obj in `ls -sl`) {
+	if (`nodeType $obj` == "gammaCorrect") {
+		string $outputs[] = `connectionInfo -dfs ($obj+".outValue")`;
+		string $input = `connectionInfo -sfd ($obj+".value")`;
+		for ($output in $outputs) {
+			connectAttr -f $input $output;
+			}
+		}
+		delete $obj;
+	}
+};
+
+	global proc kt_gammaValue(float $gammaVal) {
+	string $gammaNodes[];
+	if (size(`ls -sl -type gammaCorrect`)== 0) {
+		$gammaNodes = `ls -type gammaCorrect`;	
+			} else {
+		$gammaNodes = `ls -sl -type gammaCorrect`;
+		}
+		for ($node in $gammaNodes) {
+			
+			setAttr ($node+".gammaX") $gammaVal;
+			setAttr ($node+".gammaY") $gammaVal;
+			setAttr ($node+".gammaZ") $gammaVal;
+			}
+	}
+	
+//NOTE: Code modified from Genevieve Williams 2010 PMM Tools (Linear Lighting Buddy)
+global proc kt_renameFileTextures(){
+        string $fileNodeList[] = `ls -type "file"`;
+        if (`size ($fileNodeList)` > 0){
+                for ($fileNode in $fileNodeList){
+                        string $filePathName = `getAttr ( $fileNode + ".fileTextureName")`;
+                        string $fileName = `basenameEx ($filePathName)`;
+                        string $fileExt = match ( "[^/\.]*$", $filePathName); 
+                        string $fileNamePrefix = startString($fileName, 1); 
+                        if (`match "^[0-9]+" $fileNamePrefix ` != ""){
+                               catchQuiet (`rename $fileNode ("file_" + $fileName + "_" + $fileExt)`);
+                               print ($fileNode + " renamed to " + "file_" + $fileName + "\n");
+                        }else if ($fileNamePrefix == "_"){
+                               catchQuiet (`rename $fileNode ("file_" + $fileName + "_" + $fileExt)`);
+                               print ($fileNode + " renamed to " + "file_" + $fileName + "\n");
+                        }else{
+                               catchQuiet (`rename $fileNode ($fileName + "_" + $fileExt)`);
+                               print ($fileNode + " renamed to " + $fileName + "\n");
+                        }
+                }
+}
+}
+
+global proc kt_assignToAll_x(){
+string $currentSel[] = `ls -sl`;
+string $thisTex = $currentSel[0];
+string $attrConnectX;
+string $attrConnectY;
+string $attrConnectZ;
+	if(`attributeExists "outputX" $thisTex`){
+	print "output";
+	$attrConnectX = ".outputX";
+	$attrConnectY = ".outputY";
+	$attrConnectZ = ".outputZ";
+	} else if(`attributeExists "outColorR" $thisTex`){
+	print "outColor";
+	$attrConnectX = ".outColorR";
+	$attrConnectY = ".outColorG";
+	$attrConnectZ = ".outColorB";
+	} else if(`attributeExists "outValueX" $thisTex`){
+	print "outValue";
+	$attrConnectX = ".outValueX";
+	$attrConnectY = ".outValueY";
+	$attrConnectZ = ".outValueZ";
+	};
+string $allX[] = `ls -type "mia_material_x"`;
+if (`size ($allX)` > 0){
+                for ($mia_Node in $allX){
+			catchQuiet(`connectAttr -f ($thisTex + $attrConnectX) ($mia_Node + ".ao_ambientR")`);
+			catchQuiet(`connectAttr -f ($thisTex + $attrConnectY) ($mia_Node + ".ao_ambientG")`);
+			catchQuiet(`connectAttr -f ($thisTex + $attrConnectZ) ($mia_Node + ".ao_ambientB")`);
+		};
+
+	};
+};
+
+global proc kt_enableAO_x(){
+string $allX[] = `ls -type "mia_material_x"`;
+if (`size ($allX)` > 0){
+                for ($mia_Node in $allX){
+			setAttr ($mia_Node + ".ao_on") 1;
+		};
+
+	};
+};
+
+global proc kt_disableAO_x(){
+string $allX[] = `ls -type "mia_material_x"`;
+if (`size ($allX)` > 0){
+                for ($mia_Node in $allX){
+			setAttr ($mia_Node + ".ao_on") 0;
+		};
+
+	};
+};
+
+global proc kt_unitizeAndPlace(float $numGrid){
+undoInfo -state off;
+float $divisor = (1.0000/$numGrid);
+print $divisor;
+string $selObj[] = `ls -sl`;
+ConvertSelectionToFaces;
+string $selFaces[] = `ls -sl -fl`;
+int $numFaces = (size($selFaces));
+progressWindow -title "KludgeTools is working..." -progress 0 -status "KludgeTools is working..." -isInterruptable true -min 0 -max 10;
+progressWindow -e -min 0 -max $numFaces -status "Generating UVs";
+if (size($selFaces) > 0){
+	polyForceUV -unitize;
+	select -r $selFaces;
+	ConvertSelectionToUVs;
+	polyEditUV -pu 0 -pv 0 -su $divisor -sv $divisor;
+	int $selSize = size($selFaces);
+	int $index = 0;
+		for($thisFace in $selFaces){
+		if ( `progressWindow -query -isCancelled` ){ kt_terminate(); };
+		int $moveByUIndex = rand(0,$numGrid);
+		int $moveByVIndex = rand(0,$numGrid);
+		select -r $thisFace;
+		ConvertSelectionToUVs;
+		float $moveByU = ($moveByUIndex * $divisor);
+		float $moveByV = ($moveByVIndex * $divisor);
+		polyEditUV -pu 0 -pv 0 -u $moveByU -v $moveByV;
+		progressWindow -e -progress $index -status ("face " + $index + " of " + $selSize);
+		$index++;
+		};
+		select -r $selFaces;
+		delete -all -ch;
+	};
+	kt_endProgram;
+};
+
+global proc kt_primaryOff(){
+string $selList[] = `ls -sl`;
+string $allDAG[] = `listRelatives -ad -pa`;
+select -add $allDAG;
+string $allDAGShapes[] = `listRelatives -shapes -pa`;
+	for ($thisNode in $allDAGShapes){
+		if (`attributeExists "primaryVisibility" $thisNode`){
+		setAttr ($thisNode + ".primaryVisibility") 0;
+		};
+	};
+};
+
+global proc kt_primaryOn(){
+string $selList[] = `ls -sl`;
+string $allDAG[] = `listRelatives -ad -pa`;
+select -add $allDAG;
+string $allDAGShapes[] = `listRelatives -shapes -pa`;
+	for ($thisNode in $allDAGShapes){
+		if (`attributeExists "primaryVisibility" $thisNode`){
+		setAttr ($thisNode + ".primaryVisibility") 1;
+		};
+	};
+};
+
+global proc kt_terminate(){
+kt_endProgram;
+error "User cancellation.  User should learn to be patient.";
+};
+
+global proc kt_endProgram(){
+undoInfo -state on;
+progressWindow -endProgress;
+cycleCheck -e on;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

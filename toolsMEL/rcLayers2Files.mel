@@ -1,0 +1,485 @@
+/*
+__________________________________________________________
+Created By : Rob A Coakley robcoakley@gmail.com	
+__________________________________________________________
+To be used freely with the aknowledgement that the author is not responsible for any perceived damage 
+this script may directly (or indirectly) cause. Feel free to contact with any critiques or comments.
+Fixed issue with unknown nodes kicking error and not exporting 
+Added Multi-Application Support 
+Interface Update 
+
+*/
+//STRINGS
+global proc string[] rcGetDirs( string $input ){
+	rcRLMAdd;
+	string $dirs[] = {};
+	string $path="";
+	switch($input){
+		case "-scenes":
+			$path = (`workspace -q -rd` + "scenes/");
+			break;
+		case "-images":
+			$path = (`workspace -q -rd` + "images/"+ (`getAttr renderLayerManager.ImageFileFolder`)+"/");
+			break;
+		case "-render":
+			$path = (`workspace -q -rd` + "scenes/"+ (`getAttr renderLayerManager.renderFolderLocation`)+ "/render/"); 
+			break;
+			print ("input= "+$input+"\n");
+	 $path=$input;
+	 print ("Path= "+$path+"\n");
+	}
+	print ("Path= "+$path+"\n");
+	string $files[] = `getFileList -folder ( $path +"/" )`;
+	if( `substring $path (size($path)) (size($path))` != "/" ) $path += "/";
+	for( $file in $files ) if( `filetest -d ( $path + $file )` ) {
+		 $dirs[( `size $dirs` )] = $file;}
+	return $dirs;
+	}
+
+
+global proc string   rcL2FOutputFolder(){//
+	float $Absopt = `getAttr renderLayerManager.EnableAbsRenderFolder`;
+	string $AbsRenderFolder= `getAttr renderLayerManager.absoluteFolderLocation`;
+	string $RenderFolder= `getAttr renderLayerManager.renderFolderLocation`;
+	string $Output="";
+	if ($Absopt) $Output += $AbsRenderFolder +"/" ;     // + "/render/"
+	else $Output += (`workspace -q -rd`+ "scenes/" +$RenderFolder+ "/render/");
+	return $Output;
+	}
+
+global proc string   rcL2FOutputFileName(){            //	
+	string $Output= rcL2FOutputFolder();
+	float $singleopt = `checkBox -q -v L2FUI_EnableSingleFile`;
+	float $prefixopt =`checkBox -q -v L2FUI_EnablePrefixName`;
+	string $PrefixName= (`getAttr renderLayerManager.PrefixName`+ ".");
+	string $SingleFileName = `textField -q -text L2FUI_SingleFileName`;
+	if ($prefixopt) $Output += $PrefixName;
+	if ($singleopt) $Output += $SingleFileName;
+	return $Output;	
+	}
+
+//EXPORT
+global proc rcExportL2F(){
+	setView 0;
+	float $singleopt = (`getAttr renderLayerManager.EnableSingleFile`);
+	string $renderlayers[]= `lsType ("renderLayer")`;
+        $numlayer= size($renderlayers); $i=0;
+        
+        // Array RenderLayers that are on and dont have ":" in the name
+        string $onlayers[0]={"0"};
+        for($layernum=-1; $layernum < ($numlayer -2); $layernum++)
+        {
+          int $on= getAttr ($renderlayers[($layernum+1)]+".renderable");
+          if ( $on==1)
+          {
+          	  if (!`gmatch $renderlayers[($layernum+1)] "*:*"`)
+          	  {
+          	  	//  print ($renderlayers[($layernum+1)]+"\n");
+          	  	  $onlayers[$i]= $renderlayers[($layernum+1)];$i++;
+          	  }	
+          }
+        } 
+
+	//Export One File Option
+	$numonlayers= size($onlayers);
+	if ($singleopt) file -type "mayaBinary" -ea ( rcL2FOutputFileName() + ".mb"); 
+        else 
+        {
+	  for($onlayernum=0; $onlayernum < $numonlayers; $onlayernum++) setAttr ($onlayers[($onlayernum)] + ".renderable") 0;  //Turn All RenderLayers OFF
+	  
+	  //Export Each On RenderLayer
+	  int $progress = 0; progressWindow -t "Saving.." -min 0 -max $numonlayers -pr $progress -st ("Copying\n" + $onlayers[0]);
+	  for($onlayernum=0; $onlayernum < $numonlayers; $onlayernum++)
+	  {
+		
+		setAttr ($onlayers[($onlayernum)] + ".renderable") 1;
+		string $activelayer = ($onlayers[($onlayernum)] );
+	//string $project = (`workspace -q -rd`);
+	// -pmt 0 will make prompt not come up 0		
+		file -type "mayaBinary" -ea (rcL2FOutputFileName() + $activelayer+ ".mb" );
+		progressWindow -e -pr $onlayernum -st ("Save Success \n" + $activelayer);
+		setAttr ($onlayers[($onlayernum)] + ".renderable") 0;
+	  }
+	  progressWindow -ep;
+	}
+     // Turn back On All Renderlayers
+    	for($onlayernum=0; $onlayernum < $numonlayers; $onlayernum++) setAttr ($onlayers[($onlayernum)] + ".renderable") 1;
+	refreshL2F;
+	setView 1;
+	//Exit UI
+	}
+global proc rcBackupL2F(){
+	string $datetime[];
+	string $friendly= substituteAllString(`date`, "/", ".");
+	tokenize $friendly $datetime;
+	string $RenderFolder= rcL2FOutputFolder();
+	sysFile -md ($RenderFolder + $datetime[0]);
+	string $FileList[] = `getFileList -folder $RenderFolder -filespec "*.mb"`;
+	int $progress =0; int $percent = 0;
+	progressWindow -t "BackingUp.." -min 0 -max `size($FileList)` -pr $progress -st ("Copying\n" + $FileList[0]);
+	for ($y=0;$y<size($FileList);$y++) {//Copy List of Files to Backup
+	 	int $result= `sysFile -copy ($RenderFolder + $datetime[0] + "/" + $FileList[$y]) ($RenderFolder+$FileList[$y])`;
+	 	if ($result) progressWindow -e -pr $y -st ("Copy Success \n" + $FileList[$y]);
+	 	else progressWindow -e -pr $y -st ("Copy FAIL \n" + $FileList[$y]);		
+	}
+	progressWindow -ep;	
+	}
+
+//BACKEND
+global proc rcBrowse(int $opt,string $textField){
+	$workspace= (`workspace -q -rd`+ "/scenes/");
+	$return= `fileDialog2 -ds 2 -dir $workspace -fm 3 -okc "Set" -cc "Cancel"`;
+	string $path= $return[0];
+	string $path_tmp[]; tokenize $path "/" $path_tmp;
+	string $ShotFolder = $path_tmp[`size($path_tmp)`-1];
+	if ($opt==1) textFieldButtonGrp -e -text $ShotFolder $textField;
+	if ($opt==2) textFieldButtonGrp -e -text $return[0] $textField;	
+	}
+
+global proc rcRLMAdd(){ //Custom Extra Attributes added to renderLayer noode for rcTools Suite
+	//           Adds attributes to RenderLayer Manager
+    if ( !`attributeQuery -node renderLayerManager -exists "EnablePrefixName"`){
+        	addAttr -ln "EnablePrefixName"  -at bool  renderLayerManager;
+        	setAttr -e-keyable false renderLayerManager.EnablePrefixName;
+        	addAttr -ln "PrefixName" -dt "string" renderLayerManager;
+        	setAttr -type "string" renderLayerManager.PrefixName "L";
+        }
+    if ( !`attributeQuery -node renderLayerManager -exists "EnableSingleFile"`){
+          	addAttr -ln "EnableSingleFile"  -at bool  renderLayerManager;
+          	setAttr -e-keyable false renderLayerManager.EnableSingleFile;
+          	addAttr -ln "SingleFileName" -dt "string" renderLayerManager;
+          	setAttr -type "string" renderLayerManager.SingleFileName "custom";
+        }
+    if ( !`attributeQuery -node renderLayerManager -exists "EnableAbsRenderFolder"`){
+	    	string $filebase = basename(`file -q -sn`,".mb"); 
+	    	addAttr -ln "EnableAbsRenderFolder"  -at bool  renderLayerManager;
+	    	setAttr -e-keyable false renderLayerManager.EnableAbsRenderFolder;
+	 }
+	if ( !`attributeQuery -node renderLayerManager -exists "absoluteFolderLocation"`){
+	    	string $filebase = basename(`file -q -sn`,".mb"); 
+	    	addAttr -ln "absoluteFolderLocation"  -dt "string"  renderLayerManager;
+	    	setAttr -type "string" renderLayerManager.absoluteFolderLocation $filebase;
+	 }
+	if ( !`attributeQuery -node renderLayerManager -exists "renderFolderLocation"`){
+	    	string $filebase = basename(`file -q -sn`,".mb"); 
+	    	addAttr -ln "renderFolderLocation"  -dt "string"  renderLayerManager;
+	    	setAttr -type "string" renderLayerManager.renderFolderLocation $filebase;
+	 }
+	if ( !`attributeQuery -node renderLayerManager -exists "EnableRenderFolder"`){
+	    	addAttr -ln "EnableRenderFolder"  -at bool  renderLayerManager;
+          	setAttr -e-keyable false renderLayerManager.EnableRenderFolder;
+          	setAttr "renderLayerManager.EnableRenderFolder" 1;
+	 }
+	if ( !`attributeQuery -node renderLayerManager -exists "Notes"`){
+	    	addAttr -ln "Notes"  -dt "string"  renderLayerManager;
+	    	setAttr -type "string" renderLayerManager.Notes "";
+	 }
+	if ( !`attributeQuery -node renderLayerManager -exists "ImageFileFolder"`){
+	    	addAttr -ln "ImageFileFolder"  -dt "string"  renderLayerManager;
+	    	setAttr -type "string" renderLayerManager.ImageFileFolder "";
+	 }
+	}
+global proc setView(int $value){/////////////////////////////////PY IS BETTER
+	string $modelPanels[] = `getPanel -vis`;
+	string $emptySelConn = `selectionConnection`; 
+	for( $panel in $modelPanels ) if( `getPanel -to $panel` == "modelPanel" ) {
+		isolateSelect -state (!$value) $panel;
+		if( $value ) modelEditor -e -mlc $emptySelConn $panel;
+		}
+	if( !$value ) deleteUI $emptySelConn;
+	}
+
+//UI
+global proc rcLayers2Files() {
+	rcRLMAdd;
+	// default layout sizes
+	 string $default;string $last;int $enable;
+	 int $rowSpacing  = 0;
+	 int $labelWidth  = 140;
+	 int $checkWidth  = 15;
+	 int $textWidth   = 150;
+	 int $browseWidth = 25;
+	 int $labelOffset = 2;
+	 int $unpadded    = 0;
+ 	 int $textSmall   = 15;
+	 int $textMedium  = 50;
+	 int $textLarge   = 150;
+	 int $buttonWidth = 270;
+	 int $rowHeight   = 25;
+	 int $panel= 250;
+	 
+	if( `window -exists L2F_RenderUI` )deleteUI L2F_RenderUI;
+	window -t "rcFileManage"  L2F_RenderUI;
+	$form = `formLayout`;
+	$tabs = `tabLayout 
+			-childResizable 1
+			-innerMarginWidth 5
+			-innerMarginHeight 5`;
+	// Basic Info tab
+	$tab1 = `columnLayout 
+			-adjustableColumn 1
+			-rowSpacing $rowSpacing
+			-columnAttach "both" $labelOffset
+			-width 800
+			Layers2Files`;
+			// By default it will use the workspace output folder		
+	//Image Prefix
+	
+			rowLayout
+				-numberOfColumns 3
+				-adjustableColumn 3
+				-height $rowHeight
+				-columnWidth 1 $labelWidth
+				-columnWidth 2 $checkWidth
+				-columnAttach 1 "right" $labelOffset
+				-columnAttach 2 "both" $unpadded
+				-columnAttach 3 "both" $unpadded;
+			
+			//string $renderCam[]= `rcListRenderCameras`;
+			//text -l"RenderCamera:";
+			//optionMenu  -l "Render Camera:";
+			//for ($each in $renderCam){
+				//menuItem  -l `listRelatives -p $each`;}
+			text -l "Image Prefix:";
+			text -l"";
+			$default =  basename(`file -q -sn`,".mb");
+			
+			textFieldGrp
+				-text (`getAttr "defaultRenderGlobals.imageFilePrefix"`)
+				-adjustableColumn 1
+				-columnAttach 2 "right" $unpadded
+				-columnWidth 2 ($browseWidth/3)
+				-cc ("refreshL2F")
+		L2FUI_ImageFilePrefix;
+			
+	
+
+			setParent ..;
+	
+	// Render Folder
+	rowLayout
+				-numberOfColumns 3
+				-adjustableColumn 3
+				-height $rowHeight
+				-columnWidth 1 $labelWidth
+				-columnWidth 2 $checkWidth
+				-columnAttach 1 "right" $labelOffset
+				-columnAttach 2 "both" $unpadded
+				-columnAttach 3 "both" $unpadded;
+			text -l "Shot Folder:";
+			$default =  basename(`file -q -sn`,".mb");
+			//$last    = L2F_GetLastSetting( $settings, "renderFolder", $default );
+			checkBox
+					-label ""
+					-value (`getAttr renderLayerManager.EnableRenderFolder`)
+					-onCommand  ("textFieldButtonGrp -edit -enable 1 L2FUI_RenderFolder;    checkBox -edit -v 0 L2FUI_EnableAbsRenderFolder; textFieldButtonGrp -edit -enable 0 L2FUI_AbsRenderFolder")
+					-offCommand ("textFieldButtonGrp -edit -enable 0 L2FUI_RenderFolder;    checkBox -edit -v 1 L2FUI_EnableAbsRenderFolder; textFieldButtonGrp -edit -enable 1 L2FUI_AbsRenderFolder;")
+					-cc ("refreshL2F")
+					L2FUI_EnableRenderFolder;
+			textFieldButtonGrp
+					-text (`getAttr renderLayerManager.renderFolderLocation`)
+					-adjustableColumn 1
+					-buttonLabel "...."
+					-columnAttach 2 "right" $unpadded
+					-columnWidth 2 $browseWidth
+					-cc ("refreshL2F")
+					-bc ("rcBrowse 1 L2FUI_RenderFolder; refreshL2F;")
+					-en (`getAttr renderLayerManager.EnableRenderFolder`)
+					L2FUI_RenderFolder;
+			setParent ..;
+	// Absolute Folder
+	rowLayout
+				-numberOfColumns 3
+				-adjustableColumn 3
+				-height $rowHeight
+				-columnWidth 1 $labelWidth
+				-columnWidth 2 $checkWidth
+				-columnAttach 1 "right" $labelOffset
+				-columnAttach 2 "both" $unpadded
+				-columnAttach 3 "both" $unpadded;
+			text -l "Absolute Render Folder:";
+			$default =  basename(`file -q -sn`,".mb");
+			//$last    = L2F_GetLastSetting( $settings, "AbsoluterenderFolder", $default );
+			checkBox
+					-label ""
+					-value (`getAttr renderLayerManager.EnableAbsRenderFolder`)
+					-onCommand "textFieldButtonGrp -edit -enable 1 L2FUI_AbsRenderFolder;    checkBox -edit -v 0 L2FUI_EnableRenderFolder;  textFieldButtonGrp -edit -enable 0 L2FUI_RenderFolder"
+					-offCommand "textFieldButtonGrp -edit -enable 0 L2FUI_AbsRenderFolder;   checkBox -edit -v 1 L2FUI_EnableRenderFolder;  textFieldButtonGrp -edit -enable 1 L2FUI_RenderFolder"
+					-cc ("refreshL2F")
+					L2FUI_EnableAbsRenderFolder;
+			textFieldButtonGrp
+					-text (`getAttr renderLayerManager.absoluteFolderLocation`)
+					-adjustableColumn 1
+					-buttonLabel "...."
+					-columnAttach 2 "right" $unpadded
+					-columnWidth 2 $browseWidth
+					-cc ("refreshL2F")
+					-bc ("rcBrowse 2 L2FUI_AbsRenderFolder")
+					-en (`getAttr renderLayerManager.EnableAbsRenderFolder`)
+					L2FUI_AbsRenderFolder;
+			setParent ..;
+
+	// Export Single File
+	$SingleFileRow = `rowLayout
+				-numberOfColumns 3
+				-adjustableColumn 3
+				-height $rowHeight
+				-columnWidth 1 $labelWidth
+				-columnWidth 2 $checkWidth
+				-columnAttach 1 "right" $labelOffset
+				-columnAttach 2 "both" $unpadded
+				-columnAttach 3 "both" $unpadded`;
+			text -l "Export Single File:";
+			$default = "custom";
+			//$last    = L2F_GetLastSetting( $settings, "Name", $default );
+			//$enable  = (int) L2F_GetLastSetting( $settings, "EnableName", "0" );
+			checkBox
+					-label ""
+					-value (`getAttr renderLayerManager.EnableSingleFile`)
+					-onCommand "textField -edit -enable 1 L2FUI_SingleFileName"
+					-offCommand "textField -edit -enable 0 L2FUI_SingleFileName"
+					-cc ("refreshL2F")
+					L2FUI_EnableSingleFile;
+			textField
+					-enable (`getAttr renderLayerManager.EnableSingleFile`)
+					-text ($enable ? $last : $default)
+					-cc ("refreshL2F")
+					L2FUI_SingleFileName;
+			setParent ..;
+			
+	// Prefix File	
+	rowLayout
+				-numberOfColumns 3
+				-adjustableColumn 3
+				-height $rowHeight
+				-columnWidth 1 $labelWidth
+				-columnWidth 2 $checkWidth
+				-columnAttach 1 "right" $labelOffset
+				-columnAttach 2 "both" $unpadded
+				-columnAttach 3 "both" $unpadded;
+			text -l "Prefix:";
+			$default = "L";
+			//$last    = L2F_GetLastSetting( $settings, "Name", $default );
+			//$enable  = (int) L2F_GetLastSetting( $settings, "EnableName", "0" );
+			checkBox
+					-label ""
+					-value (`getAttr renderLayerManager.EnablePrefixName`)
+					-onCommand "textField -edit -enable 1 L2FUI_PrefixName"
+					-offCommand "textField -edit -enable 0 L2FUI_PrefixName"
+					-cc ("refreshL2F")
+					L2FUI_EnablePrefixName;
+			textField
+					-enable (`getAttr renderLayerManager.EnablePrefixName`)
+					-text (`getAttr renderLayerManager.PrefixName`)
+					-cc ("refreshL2F")
+					L2FUI_PrefixName;
+			setParent ..;
+	// Note
+	rowLayout -numberOfColumns 2 -adjustableColumn 2 -height $rowHeight -columnWidth 1 $labelWidth 
+				-columnAttach 1 "right" $labelOffset
+				-columnAttach 2 "both" $unpadded;
+			text -l "Note:";
+			textField 	
+					-text(`getAttr renderLayerManager.Notes`)
+					-cc ("refreshL2F")
+					L2FUI_Notes;
+			setParent ..;
+			
+	text -label "Export Setting\n" L2F_text;
+	
+	string $L2FPanel= `rowColumnLayout -numberOfColumns 2`;
+	//text -font "smallBoldLabelFont" -l "Image Prefix:";
+	text -font "smallBoldLabelFont" -align "left" -l " Scene Folders:";
+	text -font "smallBoldLabelFont" -align "left" -l " Render Files:";
+	//text -font "smallBoldLabelFont" -align "left" -l " Image Files:";
+	
+	//$L2F_AnalysisScroll = `scrollLayout -h 300 -w ($panel+15) L2F_ImageScroll`;
+	//$L2F_AnalysisrowLayout = `rowColumnLayout -nc 1 L2F_ImageRowLayout`;
+	//rcTBoxFrameImagePrefix 1;
+	//setParent $L2FPanel;
+	
+	scrollLayout -cr 1 -w $panel;
+	string $Dirs[]= rcGetDirs("-scenes");
+	for ($each in $Dirs){
+		string $bCommand= "textFieldButtonGrp -e -text " + $each + " L2FUI_RenderFolder;"+"refreshL2F;";
+		button -l $each -c $bCommand;
+		}
+	setParent..;
+	$L2F_AnalysisScroll = `scrollLayout -h 300 -w $panel L2F_AnalysisScroll`;
+	$L2F_AnalysisrowLayout = `rowLayout -nc 1 L2F_AnalysisRowLayout`;
+	$L2F_AnalysisColumn = `columnLayout -cat left 15  L2F_AnalysisColumn`;
+	text -l " " L2F_EmptyAnalysisText; refreshL2F;
+	setParent $L2FPanel;
+	
+	//$L2F_AnalysisScroll = `scrollLayout -h 300 -w $panel L2F_BackupScroll`;
+	//$L2F_AnalysisrowLayout = `rowLayout -nc 1 L2F_BackupRowLayout`;
+	//$L2F_AnalysisColumn = `columnLayout -cat left 15  L2F_BackupColumn`;
+	//setParent $L2FPanel;
+	//button -l "Refresh";
+	//button -label "Cancel"
+	//		  -backgroundColor .8 .4 .4 
+	//		  -command "deleteUI L2F_RenderUI";
+	button -label "Backup"
+				-command "rcBackupL2F";
+	button -label "Export" 
+				-backgroundColor .4 .9 .4
+				-command ("rcExportL2F ")
+				rcLayers2Files_ExportButton;
+	
+	setParent $tab1;
+	
+	showWindow;
+	}
+
+global proc refreshL2F(){
+	//String in
+	 float $renderFolderopt =   `checkBox -q -v L2FUI_EnableRenderFolder`;
+	 float $AbsRenderFolderOpt = `checkBox -q -v L2FUI_EnableAbsRenderFolder`;
+	 float $singleopt = `checkBox -q -v L2FUI_EnableSingleFile`;
+	 float $prefixopt =`checkBox -q -v L2FUI_EnablePrefixName`;
+	 string $L2F_RenderFolder =   `textFieldButtonGrp -q -text L2FUI_RenderFolder`;
+	 string $L2F_AbsFolder =   `textFieldButtonGrp -q -text L2FUI_AbsRenderFolder`;
+	 string $L2F_SingleFileName = `textField -q -text L2FUI_SingleFileName`;
+	 string $L2F_PrefixName = `textField -q -text L2FUI_PrefixName`;
+	 string $L2F_Notes = `textField -q -text L2FUI_Notes`;
+	 string $L2F_ImagePrefix= `textFieldGrp -q -text L2FUI_ImageFilePrefix`;
+	 //Update Image Prefix
+	 setAttr "defaultRenderGlobals.imageFilePrefix" -type "string" $L2F_ImagePrefix;
+
+	//Update renderLayerManager's Extra Attributes
+	 setAttr "renderLayerManager.EnableRenderFolder" $renderFolderopt;
+	 setAttr "renderLayerManager.EnableSingleFile" $singleopt;
+	 setAttr "renderLayerManager.EnablePrefixName" $prefixopt;
+	 setAttr "renderLayerManager.EnableAbsRenderFolder" $AbsRenderFolderOpt;
+	 setAttr -type "string" renderLayerManager.absoluteFolderLocation $L2F_AbsFolder;
+	 setAttr -type "string" renderLayerManager.renderFolderLocation $L2F_RenderFolder;
+	 setAttr -type "string" renderLayerManager.PrefixName $L2F_PrefixName;
+	 setAttr -type "string" renderLayerManager.SingleFileName $L2F_SingleFileName;
+	 setAttr -type "string" renderLayerManager.Notes $L2F_Notes;
+	//Update dialog
+	 string $L2F_textLabel = "\nExport RenderLayers to Individual File(s) to \n" + rcL2FOutputFileName();
+	 if ($singleopt == 0)  $L2F_textLabel += ("<RenderLayer>.mb\n");
+	 if ($singleopt == 1)  $L2F_textLabel += (".mb\n");
+	 text  -e -label $L2F_textLabel L2F_text;
+	//Delete And Rebuild List 
+	 if (`columnLayout -q -ex "L2F_AnalysisColumn"`) deleteUI "L2F_AnalysisColumn";
+	 setParent "L2F_AnalysisRowLayout";
+	 //rowColumnLayout -numberOfColumns 2 ;
+	 string $L2F_AnalysisColumn = `columnLayout -cat left 5 L2F_AnalysisColumn`;
+	 //text   -l  ("    " + rcL2FOutputFolder()) -align "left" L2F_EmptyAnalysisText;
+	 string $FileList[] = `getFileList -folder (rcL2FOutputFolder()) -filespec "*.mb"`;
+	 //Parse List 
+	 for ($y=0; $y<size($FileList);$y++) //Build CheckBox List
+	 {
+	 	
+		$currentFile= ($FileList[$y]);
+		text -l $currentFile;
+		//checkBoxGrp -ncb 1 -l1 $currentFile -l2 `getAttr "defaultRenderGlobals.imageFilePrefix"` -cw2 150 300 ($currentFile + "label");
+		//text ($FileList[$y]);
+		string $CurFile   = (rcL2FOutputFolder() + $FileList[$y]);
+		string $buffer[];
+		$numTokens = `tokenize $FileList[$y] "." $buffer`;
+	 }
+	 }
+
+

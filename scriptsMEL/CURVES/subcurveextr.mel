@@ -1,0 +1,55 @@
+
+global proc subcurveextr(){
+ $sel = `ls-sl`;
+if (size($sel)<2) {
+    string $subCurveExtrudeNotAllObjects = "HEY!!! Are you sure that all objects are selected? LOL";
+    print ($subCurveExtrudeNotAllObjects);  }
+else{
+$extrudeCurveName = `listRelatives -type "nurbsCurve"`;
+$extrudePolyName = `listRelatives -type "mesh"`;
+        if (size($extrudePolyName)==0){
+         $extrudePolyName = `listRelatives -parent -type "mesh"`;   
+        }
+
+if (size($extrudeCurveName)>0){
+
+select $sel[0];
+   $extrudePolyCheck1 = `listRelatives -parent -type "mesh"`;
+   if (size($extrudePolyCheck1)==0) {
+      $extrudePolyCheck2 = `listRelatives -children -type "mesh"`;
+      if (size($extrudePolyCheck2)==0) {
+       select $sel[1];
+       $extrudePolyCheck1 = `listRelatives -parent -type "mesh"`; 
+        if (size($extrudePolyCheck1)==0) {
+        select $sel[1];
+        pickWalk -d down;   
+        }  
+      }else{
+        select $sel[0];
+        pickWalk -d down;
+      }
+   }
+   
+PolyExtrude ;
+$selExtrude =  `ls-sl`;
+createNode "subCurve" -n ("subCrvPolyExtrude_"+$extrudeCurveName[0]);
+connectAttr -f ($extrudeCurveName[0]+".worldSpace[0]") ("subCrvPolyExtrude_"+$extrudeCurveName[0]+".inputCurve");
+connectAttr -f ("subCrvPolyExtrude_"+$extrudeCurveName[0]+".outputCurve") ($selExtrude[1]+".inputProfile");
+setAttr ("subCrvPolyExtrude_"+$extrudeCurveName[0]+".relative") 1;
+
+addAttr -ln "subCurveExtrMin"  -at double  -min 0 -max 1 $selExtrude[1];
+setAttr -e-keyable true ($selExtrude[1]+".subCurveExtrMin");
+addAttr -ln "subCurveExtrMax"  -at double  -min 0 -max 1 -dv 1 $selExtrude[1];
+setAttr -e-keyable true ($selExtrude[1]+".subCurveExtrMax");
+connectAttr -f ($selExtrude[1]+".subCurveExtrMax")("subCrvPolyExtrude_"+$extrudeCurveName[0]+".maxValue");
+connectAttr -f ($selExtrude[1]+".subCurveExtrMin") ("subCrvPolyExtrude_"+$extrudeCurveName[0]+".minValue");
+select $selExtrude[1];
+string $subCurveExtrudeEnd = "That's all folks!";
+print ($subCurveExtrudeEnd);
+}else{
+string $subCurveExtrudeNoCurve = "HEY!!! No curve selected! LOL";
+print ($subCurveExtrudeNoCurve);
+}
+}
+// ??? ?? ??????? ???!!! ??? ??????? ???????
+}

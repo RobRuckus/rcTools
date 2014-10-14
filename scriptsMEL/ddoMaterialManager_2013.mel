@@ -1,0 +1,1112 @@
+/*  */global string $ddoVersion = "3.1.0";
+global string $ddoRelease = "21 July 2014";
+global int $ddoScriptJob; //sets up script jobs and permanent values
+if ( $ddoScriptJob == 0 ) {
+    $ddoScriptJob = `scriptJob -e "SelectionChanged" "ddoUpdateIndicators" -protected`;
+    $ddoScriptJob = `scriptJob -e "Undo" "ddoUpdateMaterials" -protected`;
+    $ddoScriptJob = `scriptJob -e "NewSceneOpened" "clear $mmMarkers; ddoUpdateMaterials" -protected`;
+    $ddoScriptJob = `scriptJob -e "PostSceneRead" "ddoUpdateMaterials" -protected`;
+    global string $dDoMatsMain[];
+    global string $customMats[];
+    global string $leftCol[];
+    global string $rightCol[];
+    string $dDoMatsArranged[];
+    global float $matColor[];
+    global float $specColor[];
+    global float $cosinePower[];
+
+    // These are stored values of all the dDo presets for Maya material names, RGB info for color and specular color, and cosine power.
+    // $matColor and $specColor indices correspond to material names.  Index is three times the index value of the material name, plus two.
+    // For example, Metal_Aluminum is in index 3, so the corresponding RGB values would be found in indices 3*3+2, or indices 9, 10, and 11.
+    // There is probably an easier/cleaner way to set this up but it's all I know how to do at the moment.
+    // Used in ddoBuildFramePresets().
+
+    $dDoMatsMain = { "Metal_Chrome", "Metal_Steel", "Metal_Plate", "Metal_Aluminum", "Metal_Galvanized", "Metal_Iron", "Metal_Lead", "Metal_Gun", "Plastic_Glossy", "Plastic", "Plastic_Rough", "Rubber", "Rubber_Dry", "Carbon_Fibre", "FiberGlass", "Glass", "Marble", "Porcelain", "Terracotta", "Paper", "Leather", "Skin_Rough", "Skin", "Hair", "Brick", "Asphalt", "Concrete", "Concrete_Rough", "Wood_Raw", "Wood_Varnished", "Wood_Painted", "Wood_Bark", "Grass", "Mud", "Earth", "Rock", "Rock_Rough", "Gravel", "Snow", "Ice", "Soot", "Charcoal", "Metal_Painted", "Fabric_Soft", "Eyeball", "Metal_Rusted", "Fabric_Rough", "Metal_Copper", "Fabric_Synthetic", "Metal_Bronze", "Metal_Brass", "Metal_Gold", "Void" };
+    $customMats = { "Custom_1", "Custom_2", "Custom_3", "Custom_4", "Custom_5", "Custom_6", "Custom_7", "Custom_8", "Custom_9", "Custom_10", "Custom_11", "Custom_12", "Custom_13", "Custom_14", "Custom_15" };   
+    $dDoMatsArranged = `sort $dDoMatsMain`;
+    for ($l=0; $l<34; ++$l) {
+        $leftCol[$l] = $dDoMatsArranged[$l];
+    }
+    for ($r=34; $r<53; ++$r) {
+        $rightCol[$r-34] = $dDoMatsArranged[$r];
+    }
+    $rightCol = stringArrayCatenate($rightCol,$customMats);
+    $matColor = { 0.18823529779911041, 0.18823529779911041, 0.18823529779911041, 0.28235295414924622, 0.29803922772407532, 0.34117648005485535, 0.5, 0.5, 0.5, 0.40849927067756653, 0.45387959480285645, 0.47008469700813293, 0.39215686917304993, 0.39215686917304993, 0.47058823704719543, 0.3803921639919281, 0.36078432202339172, 0.34117648005485535, 0.1590295284986496, 0.2057679146528244, 0.24786755442619324, 0.062745101749897003, 0.062745101749897003, 0.062745101749897003, 0.76470589637756348, 0.28824204206466675, 0.20991925895214081, 0.0, 0.22779631614685059, 1.0, 0.098280169069766998, 0.067281812429428101, 0.49019607901573181, 0.12549020349979401, 0.12549020349979401, 0.12549020349979401, 0.39316394925117493, 0.39316394925117493, 0.26767376065254211, 0.086274512112140656, 0.11764705926179886, 0.19607843458652496, 0.96600157022476196, 1.0, 0.47058820724487305, 0.32295271754264832, 0.54901963472366333, 0.47868773341178894, 0.046136099845170975, 0.19607843458652496, 0.046136099845170975, 0.94117647409439087, 0.94117647409439087, 0.94117647409439087, 0.68627452850341797, 0.39729538559913635, 0.2691272497177124, 0.85470360517501831, 0.84220647811889648, 0.78765547275543213, 0.13725490868091583, 0.11315038800239563, 0.099577091634273529, 0.56862747669219971, 0.36139032244682312, 0.25643983483314514, 0.82352942228317261, 0.65990012884140015, 0.51672428846359253, 0.43137255311012268, 0.30691450834274292, 0.23683197796344757, 0.60784316062927246, 0.20000000298023224, 0.15686275064945221, 0.52941179275512695, 0.46983858942985535, 0.4463668167591095, 0.60784316062927246, 0.56414204835891724, 0.51249521970748901, 0.72549021244049072, 0.62702220678329468, 0.54056131839752197, 0.76470589637756348, 0.66474431753158569, 0.46482124924659729, 0.58120089769363403, 0.49080643057823181, 0.38750284910202026, 0.64099997282028198, 0.22691397368907928, 0.34345701336860657, 0.26495766639709473, 0.17569237947463989, 0.14029145240783691, 0.23877318203449249, 0.39316394925117493, 0.16769665479660034, 0.20512703061103821, 0.13595788180828094, 0.10870527476072311, 0.25490197539329529, 0.22352941334247589, 0.21176470816135406, 0.49019607901573181, 0.44983473420143127, 0.40369090437889099, 0.39215686917304993, 0.27942144870758057, 0.2537485659122467, 0.31433597207069397, 0.41711834073066711, 0.60799998044967651, 1.0, 1.0, 1.0, 0.42787823081016541, 0.5250018835067749, 0.58974593877792358, 0.088649377226829529, 0.033633001148700714, 0.10100000351667404, 0.048442903906106949, 0.087633147835731506, 0.17647059261798859, 1.0, 0.59803563356399536, 0.0, 0.093428187072277069, 0.25490197539329529, 0.084967322647571564, 0.89742887020111084, 0.89742887020111084, 0.78204011917114258, 0.31372550129890442, 0.13298207521438599, 0.07381775975227356, 0.50980395078659058, 0.43921568989753723, 0.5058823823928833, 0.47058823704719543, 0.2337280660867691, 0.1937716156244278, 0.19992311298847198, 0.50980395078659058, 0.21268603205680847, 0.72549021244049072, 0.53679406642913818, 0.25605535507202148, 0.70588237047195435, 0.61107891798019409, 0.17993079125881195, 1.0, 0.80580383539199829, 0.12156862020492554, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.50196081399917603, 0.0, 1.0, 1.0, 0.0, 0.90588235855102539, 0.60000002384185791, 1.0, 0.50196081399917603, 1.0, 0.50196081399917603, 0.35294118523597717, 0.64705884456634521, 1.0, 0.27058824896812439, 0.47843137383460999, 0.52941179275512695, 0.54901963472366333, 0.17254902422428131, 0.49411764740943909, 0.3490196168422699, 0.21176470816135406, 1.0, 0.60000002384185791, 0.46274510025978088, 1.0, 1.0, 0.37647059559822083, 0.50196081399917603 };
+    $specColor = { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.461539626121521, 0.461539626121521, 0.461539626121521, 0.94016939401626587, 0.94016939401626587, 0.94016939401626587, 0.28204774856567383, 0.28204774856567383, 0.28204774856567383, 0.80341804027557373, 0.80341804027557373, 0.80341804027557373, 0.16238650679588318, 0.16238650679588318, 0.16238650679588318, 0.37607386708259583, 0.37607386708259583, 0.37607386708259583, 0.81196308135986328, 0.81196308135986328, 0.81196308135986328, 0.5, 0.5, 0.5, 0.29913786053657532, 0.29913786053657532, 0.29913786053657532, 0.18803693354129791, 0.18803693354129791, 0.18803693354129791, 0.10257114470005035, 0.10257114470005035, 0.10257114470005035, 0.29913786053657532, 0.29913786053657532, 0.29913786053657532, 0.15384146571159363, 0.15384146571159363, 0.15384146571159363, 0.5, 0.5, 0.5, 0.64957654476165771, 0.64957654476165771, 0.64957654476165771, 0.25641259551048279, 0.25641259551048279, 0.25641259551048279, 0.17949187755584717, 0.11889830231666565, 0.080765999853610992, 0.37607386708259583, 0.37607386708259583, 0.37607386708259583, 0.44444954395294189, 0.44444954395294189, 0.44444954395294189, 0.27435719966888428, 0.3504234254360199, 0.3504234254360199, 0.093385212123394012, 0.20482185482978821, 0.42734417319297791, 0.50196081399917603, 0.50196081399917603, 0.30980393290519714, 0.11966124922037125, 0.11966124922037125, 0.11966124922037125, 0.068375676870346069, 0.068375676870346069, 0.068375676870346069, 0.23076218366622925, 0.23076218366622925, 0.23076218366622925, 0.10257114470005035, 0.10257114470005035, 0.10257114470005035, 0.44444954395294189, 0.38629740476608276, 0.270099937915802, 0.35896849632263184, 0.35896849632263184, 0.35896849632263184, 0.14529640972614288, 0.14529640972614288, 0.14529640972614288, 0.17647059261798859, 0.15661285817623138, 0.1487889289855957, 0.34187838435173035, 0.34187838435173035, 0.34187838435173035, 0.23932249844074249, 0.23932249844074249, 0.23932249844074249, 0.11966124922037125, 0.11966124922037125, 0.11966124922037125, 0.29059281945228577, 0.29059281945228577, 0.29059281945228577, 0.3504234254360199, 0.3504234254360199, 0.3504234254360199, 0.15384146571159363, 0.15384146571159363, 0.15384146571159363, 0.11966124922037125, 0.11966124922037125, 0.11966124922037125, 0.5, 0.5, 0.5, 0.059830624610185623, 0.059830624610185623, 0.059830624610185623, 0.059830624610185623, 0.059830624610185623, 0.059830624610185623, 0.30769819021224976, 0.30769819021224976, 0.30769819021224976, 0.076920732855796814, 0.076920732855796814, 0.076920732855796814, 0.36752879619598389, 0.36752879619598389, 0.36752879619598389, 0.094010837376117706, 0.073746852576732635, 0.073746852576732635, 0.2222171425819397, 0.2222171425819397, 0.2222171425819397, 1.0, 0.80866646766662598, 0.66666662693023682, 0.23932249844074249, 0.23932249844074249, 0.23932249844074249, 1.0, 0.89818739891052246, 0.62745094299316406, 1.0, 0.94901961088180542, 0.46666666865348816, 1.0, 0.70561665296554565, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
+    $cosinePower = { 4.51282072067, 8.70085430145, 3.67521357536, 2.0, 5.35042715073, 3.67521357536, 3.67521357536, 2.0, 62.3076934814, 6.18803405762, 2.0, 3.67521357536, 2.0, 2.83760690689, 2.0, 26.2905979156, 35.5042724609, 51.4188041687, 2.0, 2.0, 4.51282072067, 3.67521357536, 2.0, 6.18803405762, 2.0, 5.35042715073, 3.67521357536, 2.0, 2.0, 33.8290596008, 3.67521357536, 2.0, 11.213675499, 7.02564096451, 2.0, 7.02564096451, 3.67521357536, 7.8632478714, 2.0, 2.83760690689, 2.0, 2.0, 8.70085430145, 2.0, 65.6581192017, 2.0, 2.0, 8.70085430145, 4.51282072067, 3.67521357536, 3.67521357536, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0 };
+}
+
+//////////////////////////////
+// Material Manager Window //
+////////////////////////////
+
+global proc ddoMaterialManager_2013() {
+	
+    global string $ddoVersion;
+    string $title = ( "DDO Material Manager v" + $ddoVersion );
+    /*
+    int $windowHeight = 300;
+    int $width = 300;
+    if ( `window -exists mmAboutWindow` ) { deleteUI mmAboutWindow; windowPref -remove mmAboutWindow; }
+    if (`window -ex ddoManagerWindow`) { deleteUI ddoManagerWindow; }
+    window -t $title -minimizeButton 1 -maximizeButton 0 -menuBar true -h $windowHeight ddoManagerWindow;
+    */
+    
+        mmBuildMenus;
+        gridLayout -numberOfColumns 1 -cellWidthHeight 300 5 ddoSeparator;
+            separator -h 5 -w 300;
+        setParent..;
+        gridLayout -numberOfColumns 1 -cellWidthHeight 300 50 ddoTitle;
+            gridLayout -numberOfColumns 2 -cellWidthHeight 225 50;
+                image -image "ddoMM/banner_ddoMM.png" -width $width -height 47;
+                gridLayout -numberOfColumns 1 -cellWidthHeight 75 25;
+                    button -l "Import" -ann "Import a file into the scene" -bgc .2 .2 .2 -c "Import;";
+                    button -l "Export" -ann "Exports selection" -bgc .2 .2 .2 -c "ExportSelection;";
+                setParent..;
+            setParent..;
+        setParent..;
+
+        string $tabs = `tabLayout -p ddoManagerWindow ddoTabs`;
+        $tab1 = `frameLayout -cll false -bv off -bgc .18 .26 .5 -w $width -label "Modify Materials" -p $tabs ddoModify`;
+            //Modify Selection
+                ddoBuildFrameModify;
+            setParent..;
+            //Material List
+            frameLayout -cll false -bv off -bgc .18 .26 .5 -w $width -label "Materials in Scene" ddoMaterials;
+                scrollLayout -w $width -h 206 -p ddoMaterials ddoMaterialsScroller;
+                    ddoBuildFrameMaterials;
+                setParent..;
+            setParent..;
+            //Quick Materials & Channel Control
+            gridLayout -numberOfColumns 1 -cellWidthHeight $width 80;
+                frameLayout -cll false -bv off -bgc .18 .26 .5 -w $width -label "Quick Materials" ddoQuickMats;
+                    ddoBuildFrameQuickMats;
+                setParent..;
+                frameLayout -cll false -bv off -bgc .18 .26 .5 -w $width -label "Channel Control" ddoChannelControl;
+                    ddoBuildFrameChannelControl;
+                setParent..;
+            setParent..;
+        setParent..; //close tab1
+
+        $tab2 = `frameLayout -cll false -bv off -bgc .18 .26 .5 -w $width -label "DDO Material Presets" -p $tabs ddoPresets`;
+            //Preset listing
+                scrollLayout -w 300 -p ddoPresets ddoPresetScroller;
+                    ddoBuildFramePresets;
+                setParent..;
+            setParent..;
+            //Contact/Update
+            gridLayout -numberOfColumns 1 -cellWidthHeight $width 45 -p $tab2 ddoContactMain;
+                frameLayout -cll false -bv off -bgc .18 .26 .5 -w $width -label "Contact/Update" -p ddoContactMain ddoContact;
+                    ddoBuildFrameContact;
+                setParent..;
+            setParent..;
+        setParent..; //close tab2
+        
+    tabLayout -edit 
+        -tabLabel $tab1 ("           Material List           ")
+        -tabLabel $tab2 ("              Presets              ")
+        -sc ( "$lastTab = `tabLayout -q -sti " + $tabs + "`; ddoRefreshCheck;" )
+        $tabs;
+    showWindow ddoManagerWindow;
+    ddoUpdateIndicators;
+    print ( "dDo Material Manager v" + $ddoVersion + "\n");
+    int $mayaVersion = `getApplicationVersionAsFloat`;
+    if ($mayaVersion < 2013) { warning "Plugin not compatible with this version of Maya."; }
+}
+
+//// Menu Procs ////
+///////////////////
+global proc mmBuildMenus() {
+    global int $sortMode;
+    menu -l "      Tools     " -tearOff false -p ddoManagerWindow;
+        menuItem -label "Open Hypershade" -command "HypershadeWindow;";
+        menuItem -label "Graph Input Connections" -command "mmGraphHS";
+        menuItem -divider true;
+        menuItem -label "Assign Hotkey: Material Manager" -command "mmHotkey(1)";
+        menuItem -label "Assign Hotkey: Focus Material" -command "mmHotkey(2)";
+        menuItem -divider true;
+        menuItem -label "Create Shelf Button" -c "mmHotkey(0)";
+        menuItem -divider true;
+        menuItem -label "Exit" -command "deleteUI ddoManagerWindow;";
+    menu -l "     Sorting    " -tearOff false -p ddoManagerWindow;
+        menuItem -label "Default Sorting (Chronological)" -cb 1 -command "$sortMode = 0; $lastTab = 1; ddoUpdateMaterials;" menuSort0;
+        menuItem -label "Sort A-Z" -cb 1 -command "$sortMode = 1; $lastTab = 1; ddoUpdateMaterials;" menuSort1;
+        menuItem -label "Sort Z-A" -cb 1-command "$sortMode = 2; $lastTab = 1; ddoUpdateMaterials" menuSort2;
+        menuItem -label "Marking Arrows First" -cb 1 -command "; $sortMode = 3; $lastTab = 1; ddoUpdateMaterials" menuSort3;
+        menuItem -divider true;
+        menuItem -label "Force Refresh" -command "$sortMode = 0; materialManager;";
+    menu -l "     Cleanup    " -tearOff false -p ddoManagerWindow;
+        menuItem -label "Remove Unconnected Utilities..." -command "dpMenuCleanup(1)";
+        menuItem -label "Delete Unused Materials..." -command "dpMenuCleanup(2)";
+        menuItem -label "Clear Scene..." -command "dpMenuCleanup(3)";
+    menu -l "       Help     " -tearOff false -p ddoManagerWindow;
+        menuItem -label "Version Information" -command "mmHelp(0);";
+        menuItem -divider true;
+        menuItem -label "About Material Manager" -command "mmHelp(1);";
+        menuItem -label "Modifying Your Selection" -command "mmHelp(2)";
+        menuItem -label "How to Select Multiple Materials" -command "mmHelp(3);";
+        menuItem -label "About the Add Materials Tab" -command "mmHelp(4);";
+        menuItem -divider true;
+        menuItem -label "About Deleting Unused Objects" -command "mmHelp(5);";
+        menuItem -label "About Clearing the Scene" -command "mmHelp(6);";
+        menuItem -label "About Assigning/Deleting Material Channels" -command "mmHelp(7);";
+        menuItem -divider true;
+        menuItem -label "YouTube Instructional Video" -command "system(\"shell start http://youtu.be/LOwufiEJ1R0\");";
+
+    for ($m=0; $m<4; ++$m) { menuItem -e -cb 0 ("menuSort" + $m); }
+    menuItem -e -cb 1 ("menuSort" + $sortMode);
+}
+
+global proc mmCheckSortMode(string $materials[]) {
+    global int $sortMode;
+    global string $mmMarkers[];
+    // sets checkbox for menu indicators
+    for ($m=0; $m<4; ++$m) { menuItem -e -cb 0 ("menuSort" + $m); }
+    menuItem -e -cb 1 ("menuSort" + $sortMode);
+
+    // fixes case-sensitive sorting
+    if ($sortMode != 0) { 
+        string $lowercaseList[];
+        string $buffer[];
+        for ($l=0; $l<`size $materials`; ++$l) {
+            $lowercaseList[$l] = ( `tolower $materials[$l]` + ":" + $materials[$l] );
+        }
+        $lowercaseList = `sort $lowercaseList`;
+        for ($t=0; $t<`size $lowercaseList`; ++$t) {
+            tokenize $lowercaseList[$t] ":" $buffer;
+            $materials[$t] = $buffer[1]; 
+        }
+    }
+    // Alphabetical
+//    if ($sortMode == 1) { $materials = `sort($materials)`; }
+    // Reverse-alphabetical
+    if ($sortMode == 2) {
+        string $reverseMaterials[];
+        for ($n=0; $n<`size $materials`; $n++) {
+            $reverseMaterials[( `size $materials` - 1 - $n )] = $materials[$n];
+        }
+        $materials = $reverseMaterials;
+    }
+    // Markers First
+    else if ($sortMode == 3 && `textField -q -tx ddoSearch` == "Filter Materials") {
+        //remove markers from $materials
+        $materials = stringArrayRemoveExact($mmMarkers, $materials);
+        //replace them at the beginning of the array
+        for ($i=0; $i<`size $mmMarkers`; ++$i) {
+            stringArrayInsertAtIndex(0, $materials, $mmMarkers[$i]);
+        }
+    }
+}
+
+global proc mmHotkey(int $option) {
+    global string $ddoVersion;
+    string $title[] = { "", "Bind Hotkey for Material Manager", "Bind Hotkey for Focus Material" };
+    string $descrip[] = { "", "This hotkey will toggle the Material Manager window", "This hotkey will display the material of your selected object" };
+    string $recommend[] = { "", "open and closed.  ( Recommended m )", "in the Attribute Editor.  ( Recommended SHIFT + f )" };
+    string $key[] = { "", "m", "F" };
+
+    if ( $option == 0 ) {
+        global string $gShelfTopLevel;
+        string $title = ( "dDo Material Manager v" + $ddoVersion );
+        string $currentShelf = `tabLayout -q -st $gShelfTopLevel`;
+        setParent ($gShelfTopLevel + "|" + $currentShelf);
+    
+        shelfButton
+            -label $title
+            -annotation "Launch dDo Material Manager"
+            -image1 "ddoMM/button_ddoMM.png"
+            -command "source ddoMaterialManager_2013.mel; materialManager;";
+    }
+
+    else {
+        if (`window -exists bindHotkey`) {
+            deleteUI bindHotkey;
+            windowPref -remove bindHotkey;
+        }
+
+        string $alt = " ";
+        string $ctrl = " ";
+    
+        window -mxb 0 -mnb 0 -title $title[$option] -w 200 bindHotkey;
+            gridLayout -numberOfColumns 1 -cellWidthHeight 300 150;
+                gridLayout -numberOfColumns 1 -cellWidthHeight 300 50;
+                    gridLayout -numberOfColumns 1 -cellWidthHeight 300 25;
+                        text -label "Choose a desired hotkey.  The hotkey is case sensitive!";
+                        text -label "";
+                    setParent..;
+                    gridLayout -numberOfColumns 1 -cellWidthHeight 300 25;
+                        text -label $descrip[$option];
+                        text -label $recommend[$option];
+                    setParent..;
+                    gridLayout -numberOfColumns 1 -cellWidthHeight 300 50;
+                        gridLayout -numberOfColumns 3 -cellWidthHeight 100 50;
+                            gridLayout -numberOfColumns 1 -cellWidthHeight 75 50;
+                                textFieldGrp -text $key[$option] hotkeyField;
+                            setParent..;
+                            gridLayout -numberOfColumns 2 -cellWidthHeight 50 50;
+                                checkBox -label "Alt" -onCommand "$alt = \"-alt\"" -offCommand "$alt = \"\"" altCheck;
+                                checkBox -label "Ctrl" -onCommand "$ctrl = \"-ctl\"" -offCommand "$ctrl = \"\"" ctrlCheck;
+                            setParent..;
+                            gridLayout -numberOfColumns 1 -cellWidthHeight 100 50;
+                                if ( $option == 1 ) { button -label "ASSIGN" -command "dpMenuHotkey(1)"; }
+                                else { button -label "ASSIGN" -command "dpMenuHotkey(2)"; }
+                            setParent..;
+            showWindow bindHotkey;
+            setFocus hotkeyField;
+    }
+}
+
+global proc dpMenuHotkey(int $option) {
+    
+    int $keyLength;
+    string $namedCmd;
+
+    $key = `textFieldGrp -q -text hotkeyField`;
+    $keyLength = `size $key`;
+    $alt = `checkBox -q -v "altCheck"`;
+    $ctrl = `checkBox -q -v "ctrlCheck"`;
+
+    if ( $keyLength > 1 ) { error "Hotkey must be a single character."; }
+    if ( $key == " " ) { error "Hotkey may not be bound to the space bar."; }
+    if ( $key == "" ) { error "Hotkey must be a single character."; }
+    
+    string $rebindConfirm = `confirmDialog
+        -title "Confirm hotkey bind"
+        -message "Are you sure you want to bind this hotkey?  This is NOT undoable and will remain bound until you change the binding in the Hotkey Editor."
+        -button "Bind It"
+        -button "Cancel"
+        -defaultButton "Cancel"
+        -cancelButton "Cancel"
+        -dismissString "Cancel"`;
+        
+    if ( $rebindConfirm == "Bind It" ) {
+        if ( $option == 1 ) {
+            nameCommand -annotation "Material Manager" -command "source ddoMaterialManager_2013.mel; if (`window -ex ddoManagerWindow`) { deleteUI ddoManagerWindow; } else { materialManager; }" materialManagerNamedCommand;
+            $namedCmd = "materialManagerNamedCommand";
+        }
+        if ( $option == 2 ) {
+            nameCommand -annotation "FocusMaterial" -command "$matSelect = stringArrayRemoveDuplicates(ls(\"-mat\",listConnections(listConnections(\"-type\",\"shadingEngine\",`ls -sl -o -dag -s`)))); commitAENotes($gAECurrentTab);showEditorExact $matSelect[0];" focusMaterialNamedCommand;
+            $namedCmd = "focusMaterialNamedCommand";
+        }
+
+        if ( $alt == "0" && $ctrl == "0" ) {
+            hotkey -k $key -name $namedCmd;
+            warning ( "Hotkey assigned to the " + $key + " key." );
+        }
+        else if ( $alt == "1" && $ctrl == "0" ) {
+            hotkey -k $key -alt -name $namedCmd;
+            warning ( "Hotkey assigned to Alt + " + $key + "\"." );
+        }
+        else if ( $alt == "0" && $ctrl == "1" ) {
+            hotkey -k $key -ctl -name $namedCmd;
+            warning ( "Hotkey assigned to Ctrl + " + $key + "\"." );
+        }
+        else if ( $alt == "1" && $ctrl == "1" ) {
+            hotkey -k $key -alt -ctl -name $namedCmd;
+            warning ( "Hotkey assigned to Alt + Ctrl + " + $key + "\"." );
+        }    
+    }
+    deleteUI bindHotkey;
+    windowPref -remove bindHotkey;
+}
+
+global proc mmHelp(int $option) {
+    global string $ddoVersion;
+    global string $ddoRelease;
+    string $title[] = { 
+        "Version Info", 
+        "About dDo Material Manager", 
+        "Modifying Your Selection",
+        "How to Select Multiple Materials",
+        "About the Add Materials Tab", 
+        "About Deleting Unused Objects", 
+        "About Clearing the Scene", 
+        "About Assigning/Deleting Material Channels" };
+    
+    string $helpText[] = {
+        "dDo Material Manager - Version " + $ddoVersion + " build for Maya 2013, 2014, and 2015, released " + $ddoRelease + ".  Contact dennis.porter.3d@gmail.com with any questions, bugs, or feedback.\n\nVisit http://www.creativecrash.com/maya/script/ddo-material-manager for updates.\nAlternatively, visit http://DennisPorter3D.com/MEL.htm.",
+        "The main listing contains buttons and markers to expedite the selection and modification of materials.  Clicking on the name plate of a material will select it directly; holding ALT while clicking on a name plate will display that material in the Attribute Editor without losing your current selection.\n\nClicking on the \"A\" button will assign the corresponding material to whatever you have selected.  Any material with a grey marker arrow next to it can be modified using the Refresh, Match, Rename, or Delete buttons located above the listing.",
+        "With one or more materials marked in the list, you can choose to Refresh, Match, Rename, or Delete those which are marked.  If you wish to modify a single material, marking it is not necessary.  You can simply click the material's name plate then use the Modify buttons.  Note that markers will take precedence in all cases.\n\n\"Refresh\" will reload any texture maps assigned to those materials.\n\"Match\" will select all objects/components in your scene that have your selected materials assigned to them.\n\"Rename\" will prompt you for a new material name.\n\"Delete\" will erase all attached nodes (place2dtexture, file, bump2d, etc) and the material they are attached to.",
+        "The marking arrows that appear next to your materials indicate which materials will be affected when using the modification buttons (Refresh/Match/Rename/Delete).\n\nTo mark multiple materials, hold SHIFT and click additional materials.  Hold SHIFT to toggle markers on and off.\n\nTo clear the markers, hold CTRL then click any material.  Marked materials can also be sorted to always display at the top of your list.",
+        "The Add Materials tab contains the dDo material presets that also come in the swatches.fbx file (from dDo).  If you use this preset list, you do not need to import the swatches.fbx file.  The materials listed in this tab are not loaded into your scene as a material until you click one of the buttons to do so.  This further helps with keeping your materials manageable even when preparing your model for dDo.\n\nClicking the name of an object will create and add it to your scene; choosing the \"A\" button will create and apply the chosen material directly to your selection.",
+        "Using \"Delete Unused Materials\" from the Cleanup menu will delete any materials which aren't currently assigned to an object.\n\nUsing \"Remove Unconnected Nodes\" will remove most Texture, Utility, and Shading Group nodes that are not connected to a material (this also happens when using Delete Unused Materials).\n\nThese options are generally used to clean up a scene which may have duplicate nodes from extended scene use and/or asset imports.",
+        "Clearing the scene effectively deletes all Materials, Textures, Utilities, and Shading Groups regardless of whether they are assigned to an object or not.",
+        "These buttons quickly assign and delete channels from a selected material without having to go through all the interfaces associated with manipulating related nodes.  Additionally, these buttons will automatically rename all created nodes (textures, utilities, shading groups, etc.) for organization and quick identification within the Hypershade, Channel Box, and Attribute Editor." };
+    
+    if ( `window -exists mmAboutWindow` ) {
+        deleteUI mmAboutWindow;
+        windowPref -remove mmAboutWindow;
+    }
+
+    window -title $title[$option] -minimizeButton 0 -maximizeButton 0 -menuBar false mmAboutWindow;
+    paneLayout -cn "single" -w 500 -h 150;
+    scrollField 
+        -wordWrap true
+        -text $helpText[$option];
+    showWindow mmAboutWindow;
+}
+
+global proc dpMenuCleanup(int $option) {
+    global int $lastTab;
+    switch ($option) {
+////  Delete Utilities
+        case 1:
+            string $filter[];
+            string $logic[];
+            $utilityNodeNames = { "arrayMapper", "bump2d", "bump3d", "condition", "distanceBetween", "heightField", "lightInfo", "multiplyDivide",  "place2dTexture", " place3dTexture", "plusMinusAverage", "projection", "reverse", "samplerInfo", "setRange", "stencil", "uvChooser",  "vectorProduct" };
+            $fileNodes = `ls -tex`; // list all textures
+            $count = `size $fileNodes`; // defines for loop
+            for ( $n=$count-1; $n>-1; --$n ) { // -1 accounts for index 0
+                $destination = `listConnections -d on $fileNodes[$n]`; // gets destination
+                $filter = `ls -mat $destination`; // filters material
+                if ( $filter[0] == "" ) { // if not connected to a material
+                    for ( $u=0; $u<18; ++$u ) { //find utilities
+                        select $fileNodes[$n];
+                        $logic = `listConnections -type $utilityNodeNames[$u]`;
+                        if ( $logic[0] != "" ) {
+                            delete `listConnections -type $utilityNodeNames[$u]`; 
+                        }
+                    }
+                    delete $fileNodes[$n];
+                }
+            }
+        break;
+//// Delete Unused
+        case 2:
+            int $numDel = 0;
+            $errorCount = catch( $numDel = MLdeleteUnused() );
+            string $fmt = (uiRes("m_cleanUpScene.kRemovedNumUnusedRenderingNodes"));
+        
+            string $promptA = `confirmDialog
+                -title "Invisible Meshes"
+                -message "Node deletion may result in invisible models.  You may need to check your scene in wireframe view and apply any remaining materials to invisble meshes."
+                -button "OK"
+                -defaultButton "OK"`;
+            select lambert1;
+            warning "All unconnected nodes removed. Invisible meshes may have occurred.";
+        break;
+//// Delete All
+        case 3:
+            string $materials[]; mmListAllMaterials($materials);
+            string $lam[] = { "lambert1" };
+            $materials = stringArrayRemoveExact($lam, $materials);
+            select `ls -type "mesh"`;
+            hyperShade -assign lambert1;
+            delete $materials;
+            dpMenuCleanup(2); // Deletes unused Utilities after clearing materials
+        break;
+    }
+    ddoUpdateMaterials;
+}
+
+//////////////////////////
+// Material List Procs //
+////////////////////////
+
+global proc ddoUpdateMaterials() {
+    if (`window -ex ddoManagerWindow`) {
+        deleteUI ddoMaterialsGrid; 
+        ddoBuildFrameMaterials;
+        ddoUpdateIndicators;
+    }
+}
+
+global proc mmListAllMaterials(string $materials[]) {
+    $remove = { "particleCloud1" };
+    $materials = stringArrayRemoveExact($remove, (ls("-mat")));
+}
+
+global proc mmGetSelectedMaterials(string $matSelect[], string $materials[]) {
+    string $select[] = `ls -sl`;
+    mmListAllMaterials($materials);
+    if ($select[0] != "") {
+        for ($e=0; $e<`size $select`; ++$e) {
+            string $shapes[] = `listRelatives -children -f -shapes $select[$e]`;
+            if ($shapes[0] == "") { //checks if selection is a component
+                $shapes = `listRelatives -parent -f -shapes $select[$e]`;
+            }
+            if ($shapes[0] != "" ) { //if not a component, checks if it's a regular selection
+                string $SE[] = `listConnections -type shadingEngine $shapes[0]`;
+                $SE = stringArrayRemoveDuplicates($SE);
+                for ($i=0; $i<`size $SE`; ++$i) {
+                    string $surfaceShader[] = `listConnections ($SE[$i] + ".surfaceShader")`;
+                    if ($surfaceShader[0] == "" && `objExists ($SE[$i] + ".miMaterialShader")`) { 
+                        $surfaceShader = `listConnections ($SE[$i] + ".miMaterialShader")`; 
+                    }
+                    if ($surfaceShader[0] != "") { $matSelect = stringArrayCatenate($matSelect, $surfaceShader); }
+                }
+            }
+            else { //if not a component or object, must be a material
+                $matSelect[$e] = $select[$e];
+            }
+        }
+    }
+}
+
+global proc ddoUpdateIndicators() {
+    global string $mmMarkers[];
+
+    string $materials[]; string $matSelect[]; 
+    mmGetSelectedMaterials($matSelect, $materials);
+    if (`window -ex ddoManagerWindow`) {
+        //search filter override
+        if (`textField -q -text ddoSearch` == "" || `textField -q -text ddoSearch` == "Filter Materials") { 
+            textField -e -text "Filter Materials" ddoSearch;
+        }   
+        else { mmSearch($materials); }
+        //so we don't lose our marked materials
+        for ($i=0; $i<`size $mmMarkers`; ++$i) {
+            if (`image -ex ( $mmMarkers[$i] + "_Marker" )`) { image -e -vis 1 ( $mmMarkers[$i] + "_Marker" ); }
+        }
+        //if search field isnt in use    
+        if (`textField -q -text ddoSearch` == "") { textField -e -text "Filter Materials" ddoSearch; }   
+        for ($i=0; $i<`size $materials`; ++$i) {
+            if (stringArrayContains($materials[$i], $matSelect) == 1 && `image -ex ( $materials[$i] + "Indicator" )` == 1) {
+                image -e -vis 1 ( $materials[$i] + "Indicator" ); 
+            }
+            else if ( `image -ex ( $materials[$i] + "Indicator" )` == 1) { image -e -vis 0 ( $materials[$i] + "Indicator" ); }
+        }
+    }
+}
+
+global proc ddoUpdateMarkers(string $slot) {
+    global string $mmMarkers[];
+    global int $sortMode;
+    string $materials[]; mmListAllMaterials($materials);
+    int $modifier = `getModifiers`;
+    string $currentMarker[] = { $slot };
+    $mmMarkers = stringArrayRemoveDuplicates($mmMarkers);
+    if ($modifier == 1) { // holding SHIFT
+        int $bool[] = { 1, 0 };
+        //toggles marker on or off
+        image -e -vis $bool[(int)(image("-q","-vis", ( $currentMarker[0] + "_Marker" )))] ( $currentMarker[0] + "_Marker" );
+        if (`image -q -vis ( $currentMarker[0] + "_Marker" )` == 1) { stringArrayInsertAtIndex(10, $mmMarkers, $currentMarker[0]); }
+        if (`image -q -vis ( $currentMarker[0] + "_Marker" )` == 0) { $mmMarkers = stringArrayRemove($currentMarker, $mmMarkers); }
+    }
+    else if ($modifier == 4) { //holding CTRL
+        for ($o=0; $o<`size $materials`; ++$o) {
+            image -e -vis 0 ( $materials[$o] + "_Marker" );
+            clear $mmMarkers;
+        }
+    }
+    //Check for multiple selected
+    int $selected = 0;
+    for ($c=0; $c<`size $materials`; ++$c) {
+        if (`image -ex ( $materials[$c] + "_Marker")`) {
+            $selected += `image -q -vis ( $materials[$c] + "_Marker" )`;
+            if ($selected > 1) {
+                break;
+            }
+        }
+    }
+    //if zero or one material is selected, keep moving the marker to any new selections
+    if (`size $mmMarkers` < 2 && $modifier != 4 && $modifier != 1) {
+        if (`image -ex ( $mmMarkers[0] + "_Marker" )`) { image -e -vis 0 ( $mmMarkers[0] + "_Marker" ); }
+        image -e -vis 1 ( $slot + "_Marker" ); 
+        $mmMarkers[0] = $slot;
+    }
+    //hides rename/delete buttons if lambert1 is selected but not marked
+    string $matCheck[] = `ls -sl`;
+    if ($selected == 0 && $matCheck[0] == "lambert1") {
+        button -e -vis 0 ddoBtnRename;
+        button -e -vis 0 ddoBtnDelete;
+    }
+    else {
+        button -e -vis 1 ddoBtnRename;
+        button -e -vis 1 ddoBtnDelete;
+    }
+
+    if (`image -ex "lambert1_Marker"`) {
+        if ($selected == 1 && `image -q -vis "lambert1_Marker"` == 1 ) { 
+            button -e -vis 0 ddoBtnRename;
+            button -e -vis 0 ddoBtnDelete;
+        }
+    }
+    else { 
+        button -e -vis 1 ddoBtnRename;
+        button -e -vis 1 ddoBtnDelete;
+    }
+    if ($sortMode == 3) { ddoUpdateMaterials; }
+}
+
+////////////
+// Tab 1 //
+//////////
+
+global proc ddoRefreshCheck() {
+    global int $lastTab;
+    if ($lastTab == 1) { ddoUpdateMaterials; }
+    else { ddoUpdatePresets; }
+}
+
+//// Modify Selected Materials ////
+//////////////////////////////////
+
+global proc ddoBuildFrameModify() {
+    gridLayout -numberOfColumns 1 -cellWidthHeight 300 25;
+        gridLayout -numberOfColumns 2 -cellWidthHeight 280 25;
+            textField 
+                -tx "Filter Materials" 
+                -aie 1
+                -ec "if (`textField -q -tx ddoSearch` == \"\") { textField -e -tx \"Filter Materials\" ddoSearch; } setFocus ddoManagerWindow; ddoUpdateMaterials;"
+                -rfc "textField -e -tx \"\" ddoSearch" ddoSearch;
+            gridLayout -numberOfColumns 1 -cellWidthHeight 20 25;
+                button -l "X" -bgc .75 .75 .75 -c "textField -e -text \"Filter Materials\" ddoSearch; ddoUpdateMaterials;" ddoBtnClear;
+            setParent..;
+        setParent..;
+        gridLayout -numberOfColumns 4 -cellWidthHeight 75 25;
+            button -l "Reload" -ann "Updates material source files of selected materials" -c "mmModify(0, 0)";
+            button -l "Match" -ann "Selects all objects/faces to which selected materials are assigned" -c "mmModify(1, 0)";
+            button -l "Rename" -ann "Renames selected materials" -c "mmModify(2, 0)" ddoBtnRename;
+            button -l "Delete" -ann "Deletes selected materials and connected utiliy nodes" -c "mmModify(3, 1)" ddoBtnDelete;
+        setParent..;
+}
+
+global proc mmSearch(string $materials[]) {
+    string $keyword = `textField -q -text ddoSearch`;
+    string $filteredList[];
+    int $i = 0;
+
+    for ($mat in $materials){
+        string $keyword_lower = `tolower $keyword`;
+        string $mat_lower = `tolower $mat`;
+        string $findMatch = `match $keyword_lower $mat_lower `;
+        if ($findMatch == $keyword_lower ){
+            $filteredList[$i] = $mat;
+            $i++;
+        }
+    }
+    //rebuild $materials
+    string $filteredMats[];
+    for ($r=0; $r<`size $filteredList`; ++$r) {
+        $filteredMats[$r] = $materials[stringArrayFind($filteredList[$r], 0, $materials)];
+    }
+    $materials = $filteredMats;
+}
+
+global proc mmModify(int $option, int $delButton) {
+    // Second argument 
+    global string $mmMarkers[];
+    string $materials[]; string $matSelect[];
+     //2 is only used when using Delete; this prevents multiple calls to these functions
+    if ($delButton != 2) {
+        mmListAllMaterials($materials);
+        mmGetSelectedMaterials($matSelect, $materials);
+    }
+    string $original[] = `ls -sl`;
+    //finds all selected mats
+    int $selected[];
+    // get Markers
+    for ($c=0; $c<`size $materials`; ++$c) {
+        if (`image -ex ($materials[$c] + "_Marker")` && `image -q -vis ( $materials[$c] + "_Marker" )` == 1) {
+            $selected[`size $selected`] = $c;
+        }
+    }
+    for ($s=0; $s<`size $selected`; ++$s) {
+        $mmMarkers[$s] = $materials[$selected[$s]];
+    }
+
+    switch ($option) {
+        case 0:
+        // Refresh
+            if ($original[0] == "" && `size $mmMarkers` == 0) { error "No selected materials."; }
+            else if (`size $selected` == 0) { // no markers, 1 selection
+                updateFileNodeSwatch($matSelect[0]);
+            }
+            else for ($r=0; $r<`size $selected`; ++$r) { // markers present
+                updateFileNodeSwatch($materials[$selected[$r]]);
+            }
+        break;
+    
+        case 1:
+        // Match
+            if ($original[0] == "" && `size $mmMarkers` == 0) { error "No selected materials."; }
+            // no markers, multiple selections
+            if (`size $mmMarkers` == 0 && `size $matSelect` > 1) { error "No marked materials."; }
+            // no markers, 1 selection       
+            if (`size $mmMarkers` == 0 && `size $matSelect` == 1) {
+                select -r `listConnections -type shadingEngine $matSelect[0]`;
+                showEditorExact $matSelect[0];
+            }
+            // markers present
+            else if (`size $mmMarkers` > 0) {
+                select -clear;
+                for ($m=0; $m<`size $selected`; ++$m ) {
+                    select -add `listConnections -type shadingEngine $materials[$selected[$m]]`;
+                    image -e -vis 1 ( $materials[$selected[$m]] + "Indicator" );
+                }
+            }
+            string $matched[] = `ls -sl`;
+            if ($matched[0] == "") { 
+                if ($delButton == 0) { warning "Nothing assigned with selected materials."; }
+                select $original;
+            }
+        break;
+    
+        case 2:
+        // Rename
+            if ($original[0] == "" && `size $mmMarkers` == 0) { error "No selected materials."; }
+            // no markers, multiple selections
+            if (`size $mmMarkers` == 0 && `size $matSelect` > 1) { error "No marked materials."; }
+            // no markers, 1 selection       
+            if (`size $mmMarkers` == 0 && `size $matSelect` == 1) {
+                $materials[0] = $matSelect[0]; $selected[0] = 0;
+            }
+            // markers present
+            for ($n=0; $n<`size $selected`; ++$n) {
+                if ($materials[$selected[$n]] != "lambert1") { //ignores lambert1 if it's marked
+                    string $promptA = `promptDialog
+                        -title "Rename Your Material"
+                        -message ( "Rename " + $materials[$selected[$n]] + ":" )
+                        -button "OK" -button "Cancel"
+                        -defaultButton "OK" 
+                        -cancelButton "Cancel"`;
+                    if ($promptA == "OK") {
+                        int $loc = stringArrayFind($materials[$selected[$n]], 0, $mmMarkers);
+                        string $matName = `promptDialog -query -text`;
+                        if ($matName == "" && $delButton == 0) { error "Material name cannot be blank."; }
+                        else {
+                             // replaces old name with new ones so markers don't disappear
+                            $mmMarkers[$loc] = $matName;
+                            rename $materials[$selected[$n]] $matName;
+                        }
+                    }
+                }
+            }
+        break;
+    
+        case 3:
+        // Delete
+            string $object[] = `ls -sl`;
+            if (`size $mmMarkers` > 0) { $object = $mmMarkers; }
+            if (`size $mmMarkers` == 0 && `size $matSelect` > 1) { error "Select only one material or mark at least one material."; }
+            mmModify(1, 1);
+            string $select[] = `ls -sl`;
+            if ($select[0] != "" && stringArrayContains($select[0], $materials) == 0) {
+                hyperShade -assign lambert1;
+            }
+            // no markers, 1 selection
+            if (`size $mmMarkers` == 0 && `size $matSelect` == 1) {
+                $materials[0] = $matSelect[0]; $selected[0] = 0;
+            }
+            for ($d=0; $d<`size $selected`; ++$d) {
+                select $materials[$selected[$d]];
+                string $removeMarker[] = { $materials[$selected[$d]] };
+                $mmMarkers = stringArrayRemoveExact($removeMarker, $mmMarkers);
+                mmChannelControl(5, 1);
+                mmChannelControl(6, 1);
+                mmChannelControl(7, 1);
+                mmChannelControl(8, 1);
+                mmChannelControl(9, 1);
+                if ($materials[$selected[$d]] != "lambert1") { 
+                    delete `listConnections -type shadingEngine $materials[$selected[$d]]`;
+                    delete $materials[$selected[$d]]; 
+                }
+            }
+            clear $mmMarkers;
+        break;
+    }
+    ddoUpdateMaterials;
+}
+
+//// Materials in Scene ////
+///////////////////////////
+
+global proc ddoBuildFrameMaterials() {
+    int $width = 300;
+    float $matColor[];
+    string $materials[]; mmListAllMaterials($materials);
+
+    if (`textField -q -text ddoSearch` == "" || `textField -q -text ddoSearch` == "Filter Materials") { 
+        textField -e -text "Filter Materials" ddoSearch;
+        button -e -vis 0 ddoBtnClear;
+    }   
+    else { 
+        mmSearch($materials);
+        button -e -vis 1 ddoBtnClear;
+    }
+    mmCheckSortMode($materials);
+    int $count = `size $materials`;
+    int $windowSize = $count*24;
+    if ($windowSize == 0) { $windowSize = 24; }
+
+    gridLayout -numberOfColumns 1 -cellWidthHeight 275 $windowSize -p ddoMaterialsScroller ddoMaterialsGrid;
+        gridLayout -numberOfColumns 1 -cellWidthHeight 275 24;
+        for ($i=0; $i<$count; ++$i) {
+            gridLayout -numberOfColumns 2 -cellWidthHeight 200 20;
+                mmGetButtonColor($matColor, $materials[$i]);
+                button -l $materials[$i] -bgc $matColor[0] $matColor[1] $matColor[2] -c ( "if (`getModifiers` == 0) { select " + $materials[$i] + "; }  ddoUpdateMarkers( \"" + $materials[$i] + "\" ); mmFocus " + $materials[$i] );
+                gridLayout -numberOfColumns 3 -cellWidthHeight 25 20;
+                    button -l "A" -ann ( "Click to assign " + $materials[$i] + " to your selection" ) -bgc $matColor[0] $matColor[1] $matColor[2] -c ( "hyperShade -assign " + $materials[$i] + "; ddoUpdateIndicators;" );
+                    image -i "left.png" -vis 0 ( $materials[$i] + "Indicator" );
+                    image -i "SP_FileDialogBack_Disabled.png" -vis 0 ( $materials[$i] + "_Marker" );
+                setParent..;
+            setParent..;
+        }
+        setParent..;
+    setParent..;
+}
+
+global proc mmGetButtonColor(float $matColor[], string $material) {
+    if (objExists($material + ".color") && !`objectType -i "rampShader" $material` && !`objectType -i "fluidShape" $material` ) {
+        $matColor = `getAttr ( $material + ".color")`;
+    }
+    else { $matColor = { 1.0, .5, .5 }; }
+}
+
+global proc mmFocus(string $name) {
+    showEditorExact $name;
+    global string $gAETabLayoutName;
+    string $tabs[] = `tabLayout -q -tabLabelIndex $gAETabLayoutName`;
+    for ($i=0;$i<size($tabs);$i++){
+       if ($tabs[$i]==$name)
+          tabLayout -e -selectTabIndex ($i+1) $gAETabLayoutName; 
+    }
+}
+
+//// Quick Materials ////
+////////////////////////
+
+global proc ddoBuildFrameQuickMats() {
+    gridLayout -numberOfColumns 5 -cellWidthHeight 60 60;
+        gridLayout -numberOfColumns 1 -cellWidthHeight 60 34;
+            iconTextButton -style "iconOnly" -image1 "render_blinn.png" -ann "Quickly create and/or assign a Blinn material" -command "mmQuickMat(0)";
+            text -label "Blinn";
+        setParent..;
+        gridLayout -numberOfColumns 1 -cellWidthHeight 60 34;
+            iconTextButton -style "iconOnly" -image1 "render_phong.png" -ann "Quickly create and/or assign a Phong material" -command "mmQuickMat(1)";
+            text -label "Phong";
+        setParent..;
+        gridLayout -numberOfColumns 1 -cellWidthHeight 60 34;
+            iconTextButton -style "iconOnly" -image1 "render_lambert.png" -ann "Quickly create and/or assign a Lambert material" -command "mmQuickMat(2)";
+            text -label "Lambert";
+        setParent..;
+        gridLayout -numberOfColumns 1 -cellWidthHeight 60 34;
+            iconTextButton -style "iconOnly" -image1 "render_surfaceShader.png" -ann "Opens the \"Assign New Material\" Window" -command "mmQuickMat(5)";
+            text -label "Custom";
+        setParent..;
+        gridLayout -numberOfColumns 1 -cellWidthHeight 60 32;
+            iconTextButton -style "iconAndTextVertical" -l "Hypershade" -i "hsRearrange.png" -ann "Opens the Hypershade" -c "HypershadeWindow";
+            gridLayout -numberOfColumns 1 -cellWidthHeight 60 28;
+                iconTextButton -style "iconAndTextHorizontal" -l "Inputs" -i "hsUpStreamCon.png" -ann "Graphs input and output network of your selection in the Hypershade" -c "mmGraphHS;";
+            setParent..;
+        setParent..;
+    setParent..;
+}
+
+global proc mmGraphHS() {
+    if (!`window -exists hyperShadePanel1Window`) { HypershadeWindow; }
+    evalDeferred "hyperShadePanelGraphCommand(\"hyperShadePanel1\", \"showUpAndDownstream\")";
+}
+
+global proc mmQuickMat(int $option) {
+    string $type[] = { "blinn", "phong", "lambert" };
+    string $object[] = `ls -sl`;
+    
+    if ($option != 5) {
+        string $promptA = `promptDialog
+            -title "Name Your Material"
+            -message "Material Name:"
+            -button "OK" -button "Cancel"
+            -defaultButton "OK" -cancelButton "Cancel"
+            -dismissString "Cancel"`;        
+
+        if ($promptA == "OK") {
+            $matName = `promptDialog -query -text`;
+            if ($matName == "") { error "Material name cannot be blank."; }
+            else {
+                createRenderNodeCB -asShader "surfaceShader" $type[$option] "";
+                rename $matName;
+                $matRename = `ls -sl`;
+                $se = `listConnections -type shadingEngine`;
+                rename $se ( $matRename[0] + "_SG" );
+                if ( $object[0] != "" ) {
+                    if ($object[0] != "") { 
+                        select $object;
+                        hyperShade -assign $matRename;
+                    }
+                }
+                select $matRename;
+                mmFocus $matRename[0];
+                ddoUpdateMaterials;
+            }
+        }
+    }              
+    else {
+        global int $newMatScriptJob;
+        string $select[] = `ls -sl`;
+        source doCreateAssignNewMaterialTreeLister.mel;
+        if ( $select[0] == "" ) {
+            createAssignNewMaterialTreeLister "lambert1";
+        }
+        else { createAssignNewMaterialTreeLister $select[0]; }
+        if ($newMatScriptJob == 0) {
+            $newMatScriptJob = `scriptJob -p assignNewMaterialWindow -ie "mmUpdateCustomMat;"`;
+        }
+    }
+}
+
+global proc mmUpdateCustomMat() {
+    global int $newMatScriptJob;
+    if (`window -q -vis assignNewMaterialWindow` == 0) { 
+        $newMatScriptJob = 0;
+        ddoUpdateMaterials;
+        deleteUI assignNewMaterialWindow;
+    }
+}
+
+//// Channel Control ////
+////////////////////////
+
+global proc ddoBuildFrameChannelControl() {
+    gridLayout -numberOfColumns 6 -cellWidthHeight 50 60 -bgc .2 .2 .2;
+        gridLayout -numberOfColumns 1 -cellWidthHeight 50 34;
+            iconTextButton -st "iconOnly" -ann "Quickly assign a diffuse map to material's Color channel" -i1 "ddoMM/button_Diffuse.png" -l "D" -c "mmCheckForMultipleMats(0)";
+            iconTextButton -st "iconOnly" -i1 "removeRenderable.png" -ann "Deletes a material's Color channel" -c "mmCheckForMultipleMats(5)";
+        setParent..;
+        gridLayout -numberOfColumns 1 -cellWidthHeight 50 34;
+            iconTextButton -st "iconOnly" -ann "Quickly assign a tangent-space normal map to material's Bump Mapping channel" -i1 "ddoMM/button_Normal.png" -l "N" -c "mmCheckForMultipleMats(1)";
+            iconTextButton -st "iconOnly" -i1 "removeRenderable.png" -ann "Deletes a material's Bump Mapping channel" -c "mmCheckForMultipleMats(6)";
+        setParent..;
+        gridLayout -numberOfColumns 1 -cellWidthHeight 50 34;
+            iconTextButton -st "iconOnly" -ann "Quickly assign a specular map to material's Specular Color channel" -i1 "ddoMM/button_Spec.png" -l "S" -c "mmCheckForMultipleMats(2)";
+            iconTextButton -st "iconOnly" -i1 "removeRenderable.png" -ann "Deletes a material's Specular Color channel" -c "mmCheckForMultipleMats(7)";
+        setParent..;
+        gridLayout -numberOfColumns 1 -cellWidthHeight 50 34;
+            iconTextButton -st "iconOnly" -ann "Quickly assign an emissive map to material's Incandescence channel" -i1 "ddoMM/button_Emissive.png" -l "I" -c "mmCheckForMultipleMats(3)";
+            iconTextButton -st "iconOnly" -i1 "removeRenderable.png" -ann "Deletes a material's Incandescence channel" -c "mmCheckForMultipleMats(8)";
+        setParent..;
+        gridLayout -numberOfColumns 1 -cellWidthHeight 50 34;
+            iconTextButton -st "iconOnly" -ann "Quickly assign a transparency map to material's Transparency channel" -i1 "ddoMM/button_Trans.png" -l "T" -c "mmCheckForMultipleMats(4)";
+            gridLayout -numberOfColumns 2 -cellWidthHeight 25 34;            
+                iconTextButton -st "iconOnly" -i1 "removeRenderable.png" -ann "Deletes a material's Transparency channel" -c "mmCheckForMultipleMats(9)";
+                iconTextButton -st "iconOnly" -i1 "nodeGrapherDisplayNone.png" -ann "Disconnects an undesired transparency input caused by the alpha channel of a diffuse map." -c "mmCheckForMultipleMats(10);";
+            setParent..;
+        setParent..;
+        gridLayout -numberOfColumns 1 -cellWidthHeight 50 34;
+            iconTextButton -st "iconOnly" -i1 "ddoMM/button_Clear.png" -ann "Clears all channels of the selected material" -c "mmCheckForMultipleMats(-1)";
+            text -label "Clear";
+        setParent..;
+    setParent..;
+}
+
+global proc mmCheckForMultipleMats(int $option) {
+    string $materials[]; string $matSelect[];
+    mmListAllMaterials($materials);
+    mmGetSelectedMaterials($matSelect, $materials);
+    if (`window -ex mmMultiMatsWindow`) { deleteUI mmMultiMatsWindow; windowPref -remove mmMultiMatsWindow; }
+    if (`size $matSelect` > 1) {
+        float $matColor[];
+        window -title "Pick" mmMultiMatsWindow;
+            gridLayout -numberOfColumns 1 -cellWidthHeight 200 20;
+                text -l "Multiple materials detected.";
+                text -l "Choose which one to modify.";
+                for ($i=0; $i<`size $matSelect`; ++$i) {
+                    mmGetButtonColor($matColor, $matSelect[$i]);
+                    button -l $matSelect[$i] -bgc $matColor[0] $matColor[1] $matColor[2] -c ( "deleteUI mmMultiMatsWindow; windowPref -r mmMultiMatsWindow; select " + $matSelect[$i] + "; mmChannelControl( " + $option + ", 0);" );
+                }
+            setParent..;
+        showWindow mmMultiMatsWindow;
+    }
+    else { mmChannelControl($option, 0); }
+}
+
+global proc mmChannelControl(int $option, int $delButton) {
+    int $mayaVersion = `getApplicationVersionAsFloat`;
+    string $materials[]; string $matSelect[];
+    mmListAllMaterials($materials);
+    mmGetSelectedMaterials($matSelect, $materials);
+    //second argument is for Delete button: ignores all warnings for unoccupied channels
+    // 0 = Assign Diffuse //////// 5 = Remove
+    // 1 = Assign Normals //////// 6 = Remove
+    // 2 = Assign Specular /////// 7 = Remove
+    // 3 = Assign Incandescence // 8 = Remove // -1 = clear all
+    // 4 = Assign Transparency /// 9 = Remove // 10 = detach alpha
+    string $object[] = `ls -sl`;
+    string $occupiedCheck[];
+    string $channel[] = { ".color", ".normalCamera", ".specularColor", ".incandescence", ".transparency", ".color", ".normalCamera", ".specularColor", ".incandescence", ".transparency", ".transparency" };
+    string $fileTextureType[] = { "_D", "_N", "_S", "_I", "_T", "_D", "_N", "_S", "_I", "_T" };
+    string $place2Dtexture[] = { "_D_2D", "_N_2D", "_S_2D", "_I_2D", "_T_2D", "_D_2D", "_N_2D", "_S_2D", "_I_2D", "_T_2D" };
+    if ($option == -1) {
+        mmChannelControl(5, 0);
+        mmChannelControl(6, 0);
+        mmChannelControl(7, 0);
+        mmChannelControl(8, 0);
+        mmChannelControl(9, 0);
+        $option = 11;
+    }
+    else if (!`objExists ($matSelect[0] + $channel[$option])` && $delButton == 0) { print ( $matSelect[0] + $channel[$option] + " does not exist. \n"); }
+    else if (`objExists ($matSelect[0] + $channel[$option])`) { $occupiedCheck = `listConnections ( $matSelect[0] + $channel[$option] )`; }
+    //loop catch for del all
+    if ($option == 11) { ddoUpdateMaterials; }
+    else if ($option < 5) {
+        if ( $occupiedCheck[0] == "" && `objExists ( $matSelect[0] + $channel[$option] )`) {
+            createRenderNodeCB -as2DTexture "" file "";
+            rename ( $matSelect[0] + $fileTextureType[$option] );
+            string $file[] = `ls -sl`;
+            select `listConnections -t "place2dTexture" $file[0]`;
+            rename ( $matSelect[0] + $place2Dtexture[$option] );
+            defaultNavigation -connectToExisting -source $file[0] -destination ( $matSelect[0] + $channel[$option] );
+            if ($option == 1) {
+                select `listConnections -t "bump2d" $file[0]`;
+                rename ( $matSelect[0] + "_Tangent" );
+                string $tFile[] = `ls -sl`;
+                setAttr ( $tFile[0] + ".bumpInterp" ) 1;
+            }
+            showEditor $file[0];
+            string $fileTexture = ( $file[0] + ".fileTextureName" );
+            if ($mayaVersion == 2015) { evalDeferred("AEfileTextureBrowser (\"AEassignTextureCB \" + \"" + $fileTexture + "\") " + $file[0] + " image"); }
+            else if ($mayaVersion == 2014 || $mayaVersion == 2013) { evalDeferred("AEfileTextureBrowser (\"AEassignTextureCB \" + \"" + $fileTexture + "\") image"); }
+            else { error "Incompatible software version."; }
+        }
+        else if ( $occupiedCheck[0] != "") { warning ( $matSelect[0] + $channel[$option] + " already assigned." ); }
+        else if ( !`objExists ($matSelect[0] + $channel[$option])` && $delButton == 0) { warning ( $matSelect[0] + $channel[$option] + " does not exist." ); }
+    }
+    else if ($option == 10) {
+        if ($matSelect[0] == "") { error "No material selected."; }
+        if (`size $occupiedCheck` != 1) { error "No transparency channel detected."; }
+        $fileNode = `listConnections -t "file" ( $matSelect[0] + ".color" )`;
+        disconnectCallback graph1HyperShadeEd ( $fileNode[0] + ".outTransparency" ) ( $matSelect[0] + ".transparency" );
+        $object = $matSelect;
+    }
+    else if ($option >= 5) {
+        if ( $occupiedCheck[0] != "" ) {
+            $object = $matSelect;
+            string $delBump2d[];
+            string $delFile[] = `listConnections ( $matSelect[0] + $channel[$option] )`;
+            if ($option == 6) { 
+                $delBump2d = `listConnections -t "bump2d" ( $matSelect[0] + ".normalCamera" )`; 
+                $delFile = `listConnections -t "file" $delBump2d[0]`;
+            }
+            if ( $delFile[0] != "" ) {
+                string $delFile2d[] = `listConnections -t "place2dTexture" $delFile[0]`;
+                if ($delFile[0] != "") { delete $delFile; }
+                if ($delFile2d[0] != "") { delete $delFile2d; }
+                if ($delBump2d[0] != "") { delete $delBump2d; }
+            }
+        }        
+    }
+    select $matSelect;
+    if ($option != -1 && $delButton == 0) { ddoUpdateMaterials; }
+}
+
+////////////
+// Tab 2 //
+//////////
+
+//// dDo Material Presets ////
+/////////////////////////////
+
+global proc ddoBuildFramePresets() {
+    global string $dDoMatsMain[];
+    global string $customMats[];
+    global string $leftCol[];
+    global string $rightCol[];
+    global float $matColor[];
+    global float $specColor[];
+    global float $cosinePower[];
+    string $unloadedLeft[];
+    string $unloadedRight[];
+    string $dDoMatsMaster[] = stringArrayCatenate($dDoMatsMain, $customMats);
+    int $width = 300;
+    int $loc;
+    int $colLength;
+    string $materials[]; mmListAllMaterials($materials);
+    $unloadedLeft = stringArrayRemoveExact($materials, $leftCol); //gets list for tab2
+    $unloadedRight = stringArrayRemoveExact($materials, $rightCol); //gets list for tab2
+    
+    gridLayout -numberOfColumns 2 -cellWidthHeight 137 (`size $leftCol` * 25) -p ddoPresetScroller ddoPresetGrid;
+        gridLayout -numberOfColumns 1 -cellWidthHeight 137 25;
+            if ($unloadedLeft[0] != "") { //if a preset still exists
+                for ($l=0; $l<`size $unloadedLeft`; ++$l) {
+                    int $loc = stringArrayFind($unloadedLeft[$l], 0, $dDoMatsMaster); //checks for array index
+                    int $colorLoc = ($loc * 3); //for RGB values
+                    gridLayout -numberOfColumns 2 -cellWidthHeight 102 25;
+                        string $buttonCommand = "mmCreatePreset(\"" + $unloadedLeft[$l] + "\");";
+                        button -l $unloadedLeft[$l] -ann ( "Creates the " + $unloadedLeft[$l] + " material preset" ) -bgc $matColor[$colorLoc] $matColor[$colorLoc+1] $matColor[$colorLoc+2] -c ( $buttonCommand );
+                        gridLayout -numberOfColumns 1 -cellWidthHeight 25 25;
+                            string $buttonCommand = "mmAssignPreset(\"" + $unloadedLeft[$l] + "\");";
+                            button -l "A" -ann "Creates and assigns this material preset to your selection" -bgc $matColor[$colorLoc] $matColor[$colorLoc+1] $matColor[$colorLoc+2] -c ( $buttonCommand ) ($unloadedLeft[$l]);
+                        setParent..;
+                    setParent..;
+                }
+            }
+            else if ($unloadedLeft[0] == "" && $unloadedRight[0] == "") { text -l "All dDo presets loaded."; }
+        setParent..;
+        gridLayout -numberOfColumns 1 -cellWidthHeight 137 25;
+            if ($unloadedRight[0] != "") { //if a preset still exists
+                for ($r=0; $r<`size $unloadedRight`; ++$r) {
+                    int $loc = stringArrayFind($unloadedRight[$r], 0, $dDoMatsMaster);
+                    int $colorLoc = ($loc * 3);
+                    gridLayout -numberOfColumns 2 -cellWidthHeight 112 25;
+                        string $buttonCommand = "mmCreatePreset(\"" + $unloadedRight[$r] + "\");";
+                        button -l $unloadedRight[$r] -ann ( "Creates the " + $unloadedRight[$r] + " material preset" ) -bgc $matColor[$colorLoc] $matColor[$colorLoc+1] $matColor[$colorLoc+2] -c ( $buttonCommand );
+                        gridLayout -numberOfColumns 1 -cellWidthHeight 25 25;
+                            string $buttonCommand = "mmAssignPreset(\"" + $unloadedRight[$r] + "\");";
+                            button -l "A" -ann "Creates and assigns this material preset to your selection" -bgc $matColor[$colorLoc] $matColor[$colorLoc+1] $matColor[$colorLoc+2] -c ( $buttonCommand ) ($unloadedRight[$r]);                            
+                        setParent..;
+                    setParent..;
+                }
+            }
+        setParent..;
+    setParent..;
+}
+
+global proc ddoUpdatePresets() {
+    if (`window -ex ddoManagerWindow`) {
+        deleteUI ddoPresetGrid;
+        ddoBuildFramePresets;
+    }
+}
+
+global proc mmCreatePreset(string $selectedButton) {
+    global string $dDoMatsMain[];
+    global string $customMats[];
+    global float $matColor[];
+    global float $specColor[];
+    global float $cosinePower[];
+    string $preset = $selectedButton;
+    string $dDoMatsMaster[];
+    $dDoMatsMaster = stringArrayCatenate($dDoMatsMain, $customMats);
+    int $loc = stringArrayFind($preset, 0, $dDoMatsMaster);
+    int $matSpecLoc = ( $loc * 3 );
+
+    if (`objExists $selectedButton`) {
+        error "Material already exists.";
+    }
+    createRenderNodeCB -asShader "surfaceShader" phong "";
+    rename $preset;
+    $se = `listConnections -type shadingEngine`;
+    rename $se ( $preset + "_SG" );
+    setAttr ($preset + ".color" ) -type double3 $matColor[$matSpecLoc] $matColor[$matSpecLoc+1] $matColor[$matSpecLoc+2];
+    setAttr ($preset + ".cosinePower" ) $cosinePower[$loc];
+    setAttr ($preset + ".specularColor" ) -type double3 $specColor[$matSpecLoc] $specColor[$matSpecLoc+1] $specColor[$matSpecLoc+2];
+    select $preset;
+    print ( $preset + " material created.\n" );
+    ddoUpdatePresets; //this redraws the Add Materials tab which instantly removes a selection from the list
+    tabLayout -e -sti 2 ddoTabs;
+
+}
+
+global proc mmAssignPreset(string $selection) {
+    global string $dDoMatsMain[];
+    string $matSelect[];
+    string $select[] = `ls -sl`;
+    mmCreatePreset($selection);
+    if ($select[0] != "" && !stringArrayContains($select[0], $dDoMatsMain)) {
+        select $select;
+        hyperShade -assign $selection;
+        select $selection;
+    }
+    mmFocus($selection);
+}
+
+//// Contact/Update ////
+///////////////////////
+
+global proc ddoBuildFrameContact() {
+    gridLayout -numberOfColumns 2 -cellWidthHeight 150 25 -p ddoContact ddoContactGrid;
+        iconTextButton -style "iconAndTextHorizontal" -i1 "ddoMM/icon_DP.png" -l "DennisPorter3D.com" -bgc .0 .0 .0 -c "system(\"shell start http://dennisporter3d.com/mel.htm#ddo\");";
+        iconTextButton -style "iconAndTextHorizontal" -i1 "ddoMM/icon_Quixel.png" -l "Quixel.se" -bgc 1 1 1 -c "system(\"shell start www.quixel.se\");";
+    setParent..;
+}

@@ -1,0 +1,435 @@
+/*
+				Guils Poly Noise v.2.0
+				----------------------
+						for Maya 4.5
+ 						by Guillaume ROCHERON ( January 2003 )
+						infos & suggestions : rch@clubinternet.fr
+
+
+* DESCRIPTION :		Generate noise on polygonal objects 
+
+* UPDATE ( v.2.0 ) : 	Works now in component mode ( to apply noise only on selected vertex )
+			There is now 3 noise types :	- On Point : Method implented in v.1.0
+							- On Point Smoothed : the same but with a smooth function
+							- Box Enveloppe : Faster mode with better results - usefull for heavy models.
+
+* INSTALLATION : 	1 / Copy GuilsNoise.mel into your script directory ( c:\Documents&Settings\My Documents\Maya\4.0\scripts )
+	       		2 / Copy GuilsNoise.xpm into your icons directory ( c:\Documents&Settings\My Documents\Maya\4.0\prefs\icons )
+	       		3 / Source the script then type GuilsNoiseInstall in the command line.       
+
+
+
+*/
+
+global proc GNcheck () { 
+	
+	string $GNselection [] = `ls -sl`;
+	
+	if ( size ($GNselection) == 0 ) {
+		error "Please select an object or vertex\n";	
+
+	} else
+	
+	{
+		$GNselType = `nodeType $GNselection [0]`;
+		
+		if ( $GNselType == "transform" ) {
+			GNobjMode;
+		} else 
+		{
+				GNcompMode;
+		}
+	}
+}
+
+global proc GNobjMode () {
+	
+	string $GNselection [] = `ls -sl`;
+	int $GNnoiseType [] = `textScrollList -q -sii GNnoiseType`;
+
+	float $GNxValue = `floatSliderGrp -q -v NoiseX`;
+	float $GNyValue = `floatSliderGrp -q -v NoiseY`;
+	float $GNzValue = `floatSliderGrp -q -v NoiseZ`;
+
+	int $GNvtx [] = `polyEvaluate -v`;
+	int $GNtotalVtx = $GNvtx [0];
+
+
+	if ( $GNnoiseType [0] != 3 ) {	
+	
+	
+		progressWindow
+        			-title "Guils Noise Process..."
+       				-progress 0
+	  			-max ( $GNvtx [0] )
+       				-status	( "Step : 0/" + $GNvtx [0])
+       				-isInterruptable true;
+
+	
+		for ( $i = 0; $i < $GNvtx [0]; $i ++ ) {
+		
+			
+			progressWindow 	-edit
+              				-progress $i
+        				-status ("Step : " + $i + "/" + $GNvtx [0]);		
+
+	      		if ( `progressWindow -query -isCancelled` ) break;
+	
+		
+			float $GNxRand = rand ( -$GNxValue , $GNxValue );
+			float $GNyRand = rand ( -$GNyValue , $GNyValue );
+			float $GNzRand = rand ( -$GNzValue , $GNzValue );
+			move -r $GNxRand $GNyRand $GNzRand  ( $GNselection [$i] + ".vtx[" + $i + "]" );
+		}
+	
+		progressWindow -endProgress;
+	
+		if ( $GNnoiseType [0] == 2 ) {
+			int $GNsmoothVal = `intSliderGrp -q -v GNsmooth`;
+			string $GNaverage [] = `polyAverageVertex -i $GNsmoothVal ($GNselection [0] + ".vtx[0:" + ($GNtotalVtx - 1 ) + "]" )`;
+			rename $GNaverage [0] GNaverage;
+			select -r $GNselection [0];
+
+			select -r ( $GNselection [0] + ".vtx[0:" + ($GNtotalVtx - 1 ) + "]" );
+			sets -n GNVertex;
+ 			addAttr -ln ("GNinfoParent") -dt "string" GNVertex;
+			setAttr -type "string" ( "GNVertex.GNinfoParent" ) $GNselection [0];
+		
+			GNpartialDelHist;	
+			select -r $GNselection [0];
+			
+		}
+		
+	} else
+	{
+		
+		int $GNboxX = `intSliderGrp -q -v GNboxX`;
+		int $GNboxY = `intSliderGrp -q -v GNboxY`;
+		int $GNboxZ = `intSliderGrp -q -v GNboxZ`;
+
+		select -r $GNselection [0];
+		lattice  -divisions $GNboxX $GNboxY $GNboxZ -objectCentered true -ldv 2 2 2;
+		rename GNbox;
+
+		for ( $i = 0; $i < $GNboxX ; $i++ ) {
+
+			for ( $u = 0; $u < $GNboxY ; $u++ ) {
+
+				for ( $v = 0; $v < $GNboxZ ; $v++ ) { 					
+					
+					float $GNxRand = rand ( -$GNxValue , $GNxValue );
+					float $GNyRand = rand ( -$GNyValue , $GNyValue );
+					float $GNzRand = rand ( -$GNzValue , $GNzValue );
+	
+					move -r $GNxRand $GNyRand $GNzRand ( "GNbox.pt [" + $i + "] [" + $u + "] [" + $v + "]" );
+				}
+			}
+		}
+	
+		
+		select -r ( $GNselection [0] + ".vtx[0:" + ($GNtotalVtx - 1 ) + "]" );
+		sets -n GNVertex;
+		addAttr -ln ("GNinfoParent") -dt "string" GNVertex;
+		setAttr -type "string" ( "GNVertex.GNinfoParent" ) $GNselection [0];
+		
+		GNpartialDelHist;	
+		select -r $GNselection [0];
+	
+	}
+	
+	if ( `objExists GNVertex` == 1 ) 
+		delete GNVertex;
+
+}
+
+global proc GNcompMode () {
+
+	string $GNselection [] = `ls -sl`;
+	string $GNobj [] = `ls -hl`;
+	select -r $GNobj [0];
+	int $GNtotalNumVtx []= `polyEvaluate -v`;
+	
+	select -r $GNselection;
+	sets -n GNVertex;
+
+	int $GNnoiseType [] = `textScrollList -q -sii GNnoiseType`;
+
+	float $GNxValue = `floatSliderGrp -q -v NoiseX`;
+	float $GNyValue = `floatSliderGrp -q -v NoiseY`;
+	float $GNzValue = `floatSliderGrp -q -v NoiseZ`;
+
+	int $GNprog = 0;
+
+	if ( $GNnoiseType [0] != 3 ) {	
+	
+		int $GNvtx = size ($GNselection);
+	
+		progressWindow
+        			-title "Guils Noise Process..."
+       				-progress 0
+	  			-max ( $GNvtx )
+       				-status	( "Step : 0/" + $GNvtx)
+       				-isInterruptable true;
+
+		
+		for ( $i = 0; $i < $GNtotalNumVtx [0]; $i++ ) {
+			
+			int $GNcheckList = `sets -im GNVertex ($GNobj [0] + ".vtx[" + $i + "]")`;
+		
+			if ( $GNcheckList == 1 ) {
+		
+				$GNprog = $GNprog + 1;
+				
+				progressWindow 	-edit
+              					-progress $GNprog
+        					-status ("Step : " + $GNprog + "/" + $GNvtx);		
+
+	      			if ( `progressWindow -query -isCancelled` ) break;
+	
+		
+				float $GNxRand = rand ( -$GNxValue , $GNxValue );
+				float $GNyRand = rand ( -$GNyValue , $GNyValue );
+				float $GNzRand = rand ( -$GNzValue , $GNzValue );
+				move -r  $GNxRand $GNyRand $GNzRand  ($GNobj [0] + ".vtx[" + $i + "]");
+			
+			}
+		}
+	
+		progressWindow -endProgress;
+	
+		if ( $GNnoiseType [0] == 2 ) {
+			int $GNsmoothVal = `intSliderGrp -q -v GNsmooth`;
+			string $GNaverage [] = `polyAverageVertex -i $GNsmoothVal $GNselection`;
+			rename $GNaverage [0] GNaverage;
+
+ 			addAttr -ln ("GNinfoParent") -dt "string" GNVertex;
+			setAttr -type "string" ( "GNVertex.GNinfoParent" ) $GNobj [0];
+			select -r $GNselection;
+			GNpartialDelHist;	
+		}
+
+		
+	} else
+	{
+		
+		int $GNboxX = `intSliderGrp -q -v GNboxX`;
+		int $GNboxY = `intSliderGrp -q -v GNboxY`;
+		int $GNboxZ = `intSliderGrp -q -v GNboxZ`;
+
+		select -r $GNselection;
+		lattice  -divisions $GNboxX $GNboxY $GNboxZ -objectCentered true -ldv 2 2 2;
+		rename GNbox;
+
+		for ( $i = 0; $i < $GNboxX ; $i++ ) {
+
+			for ( $u = 0; $u < $GNboxY ; $u++ ) {
+
+				for ( $v = 0; $v < $GNboxZ ; $v++ ) { 					
+					
+					float $GNxRand = rand ( -$GNxValue , $GNxValue );
+					float $GNyRand = rand ( -$GNyValue , $GNyValue );
+					float $GNzRand = rand ( -$GNzValue , $GNzValue );
+	
+					move -r $GNxRand $GNyRand $GNzRand ( "GNbox.pt [" + $i + "] [" + $u + "] [" + $v + "]" );
+				}
+			}
+		}
+	
+			select -r $GNselection;
+
+ 			addAttr -ln ("GNinfoParent") -dt "string" GNVertex;
+ 			setAttr -type "string" ( "GNVertex.GNinfoParent" ) $GNobj [0];
+
+			GNpartialDelHist;
+		
+	}
+	
+	if ( `objExists GNVertex` == 1 ) 
+		delete GNVertex;
+
+	select -r $GNselection;
+	doMenuComponentSelection($GNobj [0], "vertex");
+	changeSelectMode -component;
+
+}
+
+global proc GNpartialDelHist () {
+	
+	string $GNset = "GNVertex";
+	string $GNparentObj = `getAttr ($GNset + ".GNinfoParent" ) `;
+	select -r $GNparentObj;
+	int $GNsize []= `polyEvaluate -v`;
+	
+	
+	float $GNxCoord [];
+	float $GNyCoord [];
+	float $GNzCoord [];
+	
+	for ( $i = 0; $i < $GNsize [0]; $i ++ ) {
+		
+		int $GNcheckList = `sets -im GNVertex ($GNparentObj + ".vtx[" + $i + "]")`;
+
+		if ( $GNcheckList == 1 ) {
+		
+			float $GNpos [] = `pointPosition ($GNparentObj + ".vtx[" + $i + "]")`;
+		
+			$GNxCoord [$i] = $GNpos [0];
+			$GNyCoord [$i] = $GNpos [1];
+			$GNzCoord [$i] = $GNpos [2];
+		}
+	}
+	
+
+	if ( `objExists GNbox` == 1 ) 
+		delete GNbox;
+		
+	if ( `objExists GNaverage` == 1 )
+		delete GNaverage;
+	
+	for ( $i = 0; $i < $GNsize [0]; $i ++ ) {
+
+		int $GNcheckList = `sets -im GNVertex ($GNparentObj + ".vtx[" + $i + "]")`;
+
+		if ( $GNcheckList == 1 ) {
+
+			move -rpr -spr $GNxCoord [$i] $GNyCoord [$i] $GNzCoord [$i] ($GNparentObj + ".vtx[" + $i + "]");
+		}
+	}
+
+}
+
+global proc GuilsNoise () {
+
+string $GNwindow = "GNwin";
+			
+if (`window -exists $GNwindow` )
+	deleteUI $GNwindow;
+	
+
+		window -tlb on -width 450 -height 350 -title "Guils Poly Noise v.2.0" $GNwindow; 
+			columnLayout -adjustableColumn true GuilsNoiseGeneral;
+				separator -height 12 -st none ;
+
+				frameLayout -label " Noise Parameters : " -collapse false -collapsable false FrameNoiseParam;
+					columnLayout -adjustableColumn true ColumnNoisePara;
+
+						separator -height 8 -st none ;
+
+						rowLayout -nc 2 -cw2 100 220 ;
+						
+						text "  Noise Type : ";
+
+						textScrollList -ams off -w 130 -h 42 GNnoiseType ;
+						textScrollList -e -append "On Point" -append "On Point Smoothed" -append "Box Enveloppe" -sii 3
+								-sc ( "	columnLayout -e -vis off \"ColumnPara1\"; columnLayout -e -vis off \"ColumnPara2\"; columnLayout -e -vis off \"ColumnPara3\";int $GNtypSel [] = `textScrollList -q -sii GNnoiseType`; columnLayout -e -vis on ( \"ColumnPara\" + $GNtypSel [0]) " )
+								GNnoiseType;
+
+					setParent ColumnNoisePara;
+
+
+					separator -height 8 -st none ;
+
+
+					columnLayout  -vis off -adjustableColumn true ColumnPara1;
+						
+						separator -st none -h 12;
+						text -align center -l "No parameters for this noise type";
+						separator -st none -h 75;
+
+					setParent ColumnNoisePara;
+
+	
+					columnLayout  -vis off -adjustableColumn true ColumnPara2;
+						separator -st none -h 12;
+						intSliderGrp -field true -l "Smooth Value" -v 2 -min 1 -max 200 -fmx 1000  GNsmooth;
+
+						separator -st none -h 69;
+
+					setParent ColumnNoisePara;
+
+	
+					columnLayout  -vis on -adjustableColumn true ColumnPara3;
+						separator -st none -h 4;
+						
+						text -l "Faster for heavy model than On Point mode";
+						
+						separator -st none -h 7;
+						
+						intSliderGrp -field true -l "Box X definition" -v 10 -min 2 -max 10 -fmx 100  GNboxX;
+						intSliderGrp -field true -l "Box Y definition" -v 10 -min 2 -max 10 -fmx 100  GNboxY;
+						intSliderGrp -field true -l "Box Z definition" -v 10 -min 2 -max 10 -fmx 100  GNboxZ;
+
+						separator -st none -h 10;
+
+
+					setParent ColumnNoisePara;
+				
+
+				setParent GuilsNoiseGeneral;
+
+
+
+				frameLayout -label " Noise Values : " -collapse false -collapsable false FrameNoise;
+
+					columnLayout -adjustableColumn true ColumnNoise;
+
+						separator -height 8 -st none ;
+	
+
+						floatSliderGrp
+								-label "X Value : " -field true -precision 3
+								-value 1 -minValue 0 -maxValue 2 -fmx 500 -step .1
+								NoiseX;
+
+						floatSliderGrp
+								-label "Y Value : " -field true -precision 3
+								-value 1 -minValue 0 -maxValue 2 -fmx 500 -step .1
+								NoiseY;
+
+						floatSliderGrp
+								-label "Z Value : " -field true -precision 3
+								-value 1 -minValue 0 -maxValue 2 -fmx 500 -step .1
+								NoiseZ;
+
+	
+				setParent GuilsNoiseGeneral;
+				
+				separator -height 10 -st none ;
+
+				rowLayout -nc 2 -cw2 220 220 ;
+	
+					button 	-l "Generate Noise" -w 220 -h 30
+						-c "GNcheck";
+					button -l "Close" -w 220 -h 30 -c ( "window -e -vis off " + $GNwindow );
+
+				setParent GuilsNoiseGeneral;
+
+	showWindow $GNwindow;
+
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////// GUILS NOISE INSTALL /////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////
+
+global proc GuilsNoiseInstall () {
+
+
+global string $gShelfTopLevel;
+string $selTab = ( $gShelfTopLevel + "|" + `tabLayout -q -selectTab $gShelfTopLevel` );
+
+
+shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -label "Guils Poly Noise" 
+        -image1 "GuilsNoise.xpm" 
+        -style "iconOnly" 
+	-parent $selTab
+ 	-command "GuilsNoise";
+}

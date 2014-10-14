@@ -1,0 +1,1155 @@
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//    
+/*           --- nnCrv2Poly ---             */
+//
+//        Version 1.1 (first Release)
+//        Last Update: 5/8/2013
+
+//            About the Author:
+//                My name is Nelio Naut and I am a 2012 SCAD graduate currently 
+//                working as a Freelance Artist. I am a Character Setup Artist/TD
+//                with a vivid passion for the trial and tribulations of Rigging
+//                and all technical matters revolving around CG Production.
+
+//                DISCLAIMER:
+//                This tool does not have any rules against student or commercial use, 
+//                but if you use the tool and are happy with it, please credit me somewhere.
+//                Also feel free to send me links to works using the tool as well as bug reports 
+//                or suggestions to my email(see below). You are also welcome to visit my website
+//                where I will have access to free rigs and tools as I go about making them. 
+
+
+//        CONTACT
+//        ©2013 Nelio Naut
+//        www.nelionaut.com
+//        email: nelionaut@gmail.com
+
+
+//        CREDITS
+//        J. Adam Burke
+//        For his code layout for the help window
+
+
+//            PURPOSE: 
+//                To create renderable curves with interesting animations for better rig presentations
+
+/* 
+::        Usage: 
+::        Place the "nnCrv2Poly.mel" in your script folder
+::        Place the Folder "nnCrv2Poly_icons" in your ".../prefs/icons" Folder
+::        In Maya:
+::
+::          source nnCrv2Poly.mel
+::
+::        The Script will auto launch
+::        Click on the banner to create a shelfButton to call the Tool
+*/
+
+//        Happy 3D-ing!!
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//----------------------------------------------------------PART x:UI Creation Start----------------------------------------------------------\\
+
+global proc nnCrvs2Poly ()
+{    
+    //initiate the UI
+    if (`window -ex "crvToPolyUIWin"`) deleteUI "crvToPolyUIWin";
+
+    string $UI = `window -bgc .3 .3 .3 -mb 1 -t "Crv To Poly 1.0" -in "cr2Pl" -wh 300 600 -rtf 1 -tlb 1 -s 0 -mxb 0 crvToPolyUIWin`;
+
+    menu -l "Help";
+            menuItem -l "Help" -c "crv2PolyHelp;";
+			menuItem -l "Website" -c ("showHelp -a \"http://www.nelionaut.com\";" );
+	menu -l "Delete";		
+            menuItem -l "Delete All" -c "delAll;";			
+
+    string $form = `formLayout -width 200 -numberOfDivisions 300 myForm`;
+        string $txt = `text -w 200 -bgc .5 .5 .5 -fn "boldLabelFont" -label "Select Crvs to Convert"`;
+
+
+    setParent $form;
+    
+    symbolButton -image "nnCrv2Poly_icons/crv2Poly_banner.png" -c "c2pShlfBtnCheck;" bannerBtn;
+
+    button -w 200 -bgc .6 .6 .6 -l "Preview Poly's" -c "previewParser;" previewBnt;
+    
+    string $txtSeperator = `text -w 200 -h 5 -bgc .4 .4 .4 -fn "boldLabelFont" -l "---------------------------------------"`;
+          
+        // Edit Mode
+        button -w 50 -bgc .8 .8 .8 -l "Edit \n Off" -ann "Make sure a view is focused" -c "eBtnTgl;" edOffBtn;
+        // Buttons for Normals
+        button -w 150 -h 20 -bgc .9 .9 .9 -l "Toggle Align To Normals" -c "algnNrm;" nrmBtn;
+        button -w 50 -h 17 -bgc .9 .9 .9 -l "X" -c "algnNrmX;" xNrmBtn;
+        button -w 50 -h 17 -bgc .9 .9 .9 -l "Y" -c "algnNrmY" yNrmBtn;
+        button -w 50 -h 17 -bgc .9 .9 .9 -l "Z" -c "algnNrmZ;" zNrmBtn;
+        
+    // adjustable float sliders
+    floatSliderGrp -l "Thickness" -f 1
+        -minValue 0 -maxValue 5
+        -fieldMinValue 0 -fieldMaxValue 100
+        -value 2
+        -cw3 60 30 100
+        -dc "hi_off;cThcknss;" 
+        -cc "hi_on;cThcknss;"
+        thcknsFltGrp;
+    floatSliderGrp -l "Smooth" -f 1
+        -minValue 0 -maxValue 10
+        -fieldMinValue 0 -fieldMaxValue 100
+        -value 0
+        -cw3 60 30 100 
+        -dc "hi_off;cSmth;"
+        -cc "hi_on;cSmth;"
+        smthFltGrp;   
+    floatSliderGrp -l "Resolution" -f 1
+        -minValue 0 -maxValue 2
+        -fieldMinValue 0 -fieldMaxValue 3
+        -value 1
+        -cw3 60 30 100 
+        -dc "hi_off;cRes;"
+        -cc "hi_on;cRes;"
+        resFltGrp; 
+    
+    string $txtSeperator2 = `text -w 200 -h 5 -bgc .4 .4 .4 -fn "boldLabelFont" -l "---------------------------------------"`;
+    string $animationHeader = `text -w 200 -bgc .5 .5 .5 -fn "boldLabelFont" -label "Animation"`;
+    
+    // Input for animation frames
+    checkBox -v 1 -l "Use Time Slider" -onc "onFrame;" -ofc "offFrame;" frameBtn;
+        string $startTxt = `text -w 100 -bgc .36 .922 .36 -fn "boldLabelFont" -label "Start Frame"`;
+        string $endTxt = `text -w 100 -bgc .922 .36 .36 -fn "boldLabelFont" -label "End Frame"`;
+    
+    //Time Slider data
+    int $startFrame = `playbackOptions -q -min`;
+    int $endFrame = `playbackOptions -q -max`;
+    
+    intFieldGrp -numberOfFields 2
+    -en 0
+    -value1 $startFrame -value2 $endFrame 
+    -cw2 95 95
+    frameIntFld;
+    
+    // extra animation options
+    checkBox -l "Random Seed" randBtn;
+    checkBox -l "Switch Direction" -onc "offRandDirection" -ofc "onRandDirection" directBtn;
+    checkBox -l "Random Direction" -onc "offDirection" -ofc "onDirection" randDirectBtn; 
+       
+    button -w 90 -h 20 -bgc .922 .36 .36 -l "Reset Anim" -c "animResetParser;" animResetBtn;     
+    button -w 200 -h 20 -bgc .8 .8 .8 -l "Animate" -c "animParser;" -ann "" animBtn;
+    
+    string $txtSeperator3 = `text -w 200 -h 5 -bgc .4 .4 .4 -fn "boldLabelFont" -l "---------------------------------------"`;
+        button -w 200 -h 50 -bgc .95 .95 .95 -l "\-----------------------------\n|      Convert To Poly      |\n-----------------------------" -c "cPolyParser;" -ann "Convert All Selected Strokes to Poly's" cPolyBtn;
+
+    string $txtColor = `text -w 200 -bgc .5 .5 .5 -fn "boldLabelFont" -label "---------------Shader---------------"`; 
+
+        
+        button -w 200 -h 25 -bgc .95 .95 .95 -l "Make New Shader" -c "newShdrParser"  -ann "Creates New Shader and Applies it to Selected" cShdrBtn;
+            colorSliderGrp 
+                -label "" 
+                -rgb 1 0 0
+                -cw3 0 50 140
+                -h 25
+                -dc "hi_off;shdrSldrParser;"
+                -cc "hi_on;shdrSldrParser;"
+                clrSldr1;
+        string $txtGlow = `text -w 200 -bgc .5 .5 .5 -fn "boldLabelFont" -label "--------------Add Glow--------------"`; 
+            floatSliderGrp -label "" -field true
+                -minValue -0.0 -maxValue 1.0
+                -fieldMinValue -0.0 -fieldMaxValue 1.0
+                -cw3 0 50 140
+                -pre 3
+                -value 0
+                -cc "glowSldrParser;"
+                glowFltSldr;
+
+   
+    formLayout -e
+    
+    //components for preview
+        -attachForm $txt "left" 0
+        -attachForm $txt "top" 55  
+        -attachForm previewBnt "left" 0
+        -attachForm previewBnt "top" 70  
+        -attachForm $txtSeperator "left" 0
+        -attachForm $txtSeperator "top" 95
+        
+        -attachForm edOffBtn "left" 0
+        -attachForm edOffBtn "top" 100
+
+        -attachForm nrmBtn "left" 50
+        -attachForm nrmBtn "top" 100        
+        -attachForm xNrmBtn "left" 50
+        -attachForm xNrmBtn "top" 119
+        -attachForm yNrmBtn "left" 100
+        -attachForm yNrmBtn "top" 119
+        -attachForm zNrmBtn "left" 150
+        -attachForm zNrmBtn "top" 119
+
+        // sliders 
+        -attachForm thcknsFltGrp "left" 0
+        -attachForm thcknsFltGrp "top" 140  
+        -attachForm smthFltGrp "left" 0
+        -attachForm smthFltGrp "top" 160  
+        -attachForm resFltGrp "left" 0
+        -attachForm resFltGrp "top" 180  
+        -attachForm $txtSeperator2 "left" 0
+        -attachForm $txtSeperator2 "top" 200
+
+        //animation buttons
+        -attachForm $animationHeader "left" 0
+        -attachForm $animationHeader "top" 207 
+        -attachForm frameBtn "left" 50
+        -attachForm frameBtn "top" 220 
+         
+        -attachForm $startTxt "left" 0
+        -attachForm $startTxt "top" 237 
+        -attachForm $endTxt "left" 100
+        -attachForm $endTxt "top" 237 
+                       
+        -attachForm frameIntFld "left" 3
+        -attachForm frameIntFld "top" 250         
+        -attachForm directBtn "left" 3
+        -attachForm directBtn "top" 270
+        -attachForm randDirectBtn "left" 3
+        -attachForm randDirectBtn "top" 290 
+        -attachForm randBtn "left" 103
+        -attachForm randBtn "top" 270
+       
+        -attachForm animResetBtn "left" 110
+        -attachForm animResetBtn "top" 287           
+        -attachForm animBtn "left" 0
+        -attachForm animBtn "top" 307     
+
+        -attachForm $txtSeperator3 "left" 0
+        -attachForm $txtSeperator3 "top" 325 
+        -attachForm cPolyBtn "left" 0
+        -attachForm cPolyBtn "top" 330 
+
+                       
+        -attachForm $txtColor "left" 0
+        -attachForm $txtColor "top" 382 
+        -attachForm clrSldr1 "left" 0
+        -attachForm clrSldr1 "top" 420
+               
+        -attachForm cShdrBtn "left" 0        //cShdr stands for create shader
+        -attachForm cShdrBtn "top" 396
+        -attachForm $txtGlow "left" 0
+        -attachForm $txtGlow "top" 445 
+        -attachForm glowFltSldr "left" 0
+        -attachForm glowFltSldr "top" 460
+
+    
+    $form; // End the edit on this formLayout
+
+    // display the created window
+    showWindow $UI;
+
+}
+
+//----------------------------------------------------------PART x: UI Creation End----------------------------------------------------------\\
+//----------------------------------------------------------PART xx:UI Proc Start------------------------------------------------------------\\
+
+/*..........................................................................................................................................*/
+/*...........................................................PART 1: Preview Poly...........................................................*/
+/*..........................................................................................................................................*/
+
+///////////////////////  **Notes**
+//                   //  Hides everything but oplygons/nurbs and strokes
+// Toggles Edit Mode //  Deselects masks to only be able to click on
+//                   //  Strokes, making editing easier
+///////////////////////..........................................................................................>
+global proc eBtnTgl()
+{
+    // Use a constant value to know the state of the button On/Off
+    float $edBtn[] = `button -q -bgc edOffBtn`; 
+    
+    // Get panel with focus
+    string $panelFc = `getPanel -wf`;
+    
+    // If statements for state toggle
+    //On
+    if ( $edBtn[0] == .8){
+            button -e -bgc .2 .2 .2 -l "Edit \n On" edOffBtn;
+            window -e -bgc .2 .2 .2 crvToPolyUIWin;
+            modelEditor -e -allObjects 0 $panelFc;
+            modelEditor -e -pm 1 -ns 1 -str 1 $panelFc;
+            warning "_--------------------Edit Mode On--------------------_";
+            setObjectPickMask "Marker" 0;
+            setObjectPickMask "Joint" 0;
+            setObjectPickMask "Surface" 0;
+            setObjectPickMask "Deformer" 0;
+            setObjectPickMask "Dynamic" 0;
+            setObjectPickMask "Rendering" 0;
+            setObjectPickMask "Other" 0;  
+        }
+        
+    //Off    
+    if ( $edBtn[0] == .2){
+            button -e -bgc .8 .8 .8 -l "Edit \n Off" edOffBtn;
+            window -e -bgc .3 .3 .3 crvToPolyUIWin;
+            modelEditor -e -allObjects 1 $panelFc;
+            warning "_--------------------Edit Mode Off--------------------_";
+            setObjectPickMask "Marker" 1;
+            setObjectPickMask "Joint" 1;
+            setObjectPickMask "Surface" 1;
+            setObjectPickMask "Deformer" 1;
+            setObjectPickMask "Dynamic" 1;
+            setObjectPickMask "Rendering" 1;
+            setObjectPickMask "Other" 1;
+        }
+}
+
+//------------------------------------------------------UI Condition Procs End-----------------------------------------------------\\
+//------------------------------------------------------UI Condition Procs Start-----------------------------------------------------\\
+
+
+//////////////////////  **Notes**
+//                  //  Use paint Effects to attach Strokes to Curves
+//   Preview poly   //  Edit Stroke information so poly's can inheret
+//                  //  Transforms and Animations.
+//////////////////////..........................................................................................>
+global proc pPoly()
+{
+    
+    // select curves
+    string $crvSel [] = `ls -sl`;
+    string $selShapes [] = `pickWalk -d down`;
+    int $selSize = size($selShapes);
+
+    // store strokes in custom groups for clean outliner
+    
+    if ( `objExists nnCrv2Poly` == 1) {
+            if (`objExists nnTempStrokes` == 0){
+                group -em -w -n "nnTempStrokes";
+                parent nnTempStrokes nnCrv2Poly;
+            }
+            if (`objExists nnFinalStrokes` == 0){
+                group -em -w -n "nnFinalStrokes";
+                parent nnFinalStrokes nnCrv2Poly;
+            }
+            if (`objExists nnPolyCrvs` == 0){
+                group -em -w -n "nnPolyCrvs";
+                parent nnPolyCrvs nnCrv2Poly;
+            }
+            
+        }else{
+            group -em -w -n "nnCrv2Poly";
+            group -em -w -n "nnTempStrokes";
+            parent nnTempStrokes nnCrv2Poly;
+            group -em -w -n "nnFinalStrokes";
+            parent nnFinalStrokes nnCrv2Poly;
+            group -em -w -n "nnPolyCrvs";
+            parent nnPolyCrvs nnCrv2Poly;
+        }
+    
+    // Loops for converting crvs to editable strokes
+    int $i;    
+    for ( $i=0; $i<$selSize; ++$i)
+        {
+            select $selShapes[$i];
+            AttachBrushToCurves;
+            string $tempSel[] = `ls -sl`;
+            parent $tempSel nnTempStrokes;
+            rename $tempSel ("nn_" + $tempSel[0]);
+        } 
+
+    select -hi nnTempStrokes;
+    select -tgl nnTempStrokes;
+    print "_---------------------Preview Started---------------------_";
+}
+
+/////////////////////////////////
+//test proc for debug of UI    //
+proc test()                    //
+{                              //
+    print "it worked!";        //
+}                              //
+/////////////////////////////////............................................................>
+
+///////////////////////  **Notes**
+//                   //  Edits the Strokes Normal Attribute to get a better
+//   Align Normals   //  Wrap of the Stroke on Curve
+//                   // 
+///////////////////////..........................................................................................>
+    global proc algnNrm() 
+    {
+        string $nrmSel[] = `pickWalk -d "down"`;
+        for ($each in $nrmSel)
+            {
+                int $attr = `getAttr ($each + ".useNormal")`;
+                if ( $attr == 0)
+                    {
+                        setAttr ($each + ".useNormal") 1;
+                    }else{
+                        setAttr ($each + ".useNormal") 0;
+                    }
+            }
+        
+    }
+    global proc algnNrmX()
+    {
+        string $nrmSel[] = `ls -sl`;
+        for ($each in $nrmSel)
+        {
+            setAttr ($each + ".normalX") 1;
+            setAttr ($each + ".normalY") 0;
+            setAttr ($each + ".normalZ") 0;
+        }
+    }
+    global proc algnNrmY()
+    {
+        string $nrmSel[] = `ls -sl`;
+        for ($each in $nrmSel)
+        {
+            setAttr ($each + ".normalX") 0;
+            setAttr ($each + ".normalY") 1;
+            setAttr ($each + ".normalZ") 0;
+        }
+    }
+    global proc algnNrmZ()
+    {
+        string $nrmSel[] = `ls -sl`;
+        for ($each in $nrmSel)
+        {
+            setAttr ($each + ".normalX") 0;
+            setAttr ($each + ".normalY") 0;
+            setAttr ($each + ".normalZ") 1;
+        }
+    }
+    
+    ////////////////////////////////////////////////////////////////////////
+    // Highlighting procs
+    global proc hi_off()
+    {
+        string $panelFc = `getPanel -wf`;
+        modelEditor -e -sel 0 -manipulators 0 $panelFc;
+    }
+    global proc hi_on()
+    {
+        string $panelFc = `getPanel -wf`;
+        modelEditor -e -sel 1 -manipulators 1 $panelFc;
+    }
+    //
+    ///////////////////////////////////////////////////////////////////////
+    // Edit Drag Command procs using User data from UI
+    global proc cThcknss()
+    {
+        string $shpeSel[] = `pickWalk -d "down"`; 
+        int $selSize = `size($shpeSel)`;
+        float $thicknessFlt = `floatSliderGrp -q -v thcknsFltGrp`;   
+            
+        for ($e=0; $e<$selSize; ++$e )
+        {
+            string $strBrsh[] = `listConnections $shpeSel[$e]`;
+            setAttr ($strBrsh[0] + ".globalScale") $thicknessFlt;
+        }
+    }
+    global proc cSmth()
+    {
+        string $shpeSel[] = `pickWalk -d "down"`; 
+        int $selSize = `size($shpeSel)`;
+        float $smoothFlt = `floatSliderGrp -q -v smthFltGrp`;  
+            
+        for ($e=0; $e<$selSize; ++$e )
+        {
+            setAttr ($shpeSel[$e] + ".smoothing") $smoothFlt;
+        }
+    }
+    global proc cRes()
+    {
+        string $shpeSel[] = `pickWalk -d "down"`; 
+        int $selSize = `size($shpeSel)`;
+        float $resFlt = `floatSliderGrp -q -v resFltGrp`;   
+            
+        for ($e=0; $e<$selSize; ++$e )
+        {
+            setAttr ($shpeSel[$e] + ".sampleDensity") $resFlt;
+        }
+    }
+
+/*..........................................................................................................................................*/
+/*...........................................................PART 2: Animation..............................................................*/
+/*..........................................................................................................................................*/
+
+/////////////////////////  **Notes**
+//                     //  
+//   Animation Procs   //  
+//                     // 
+/////////////////////////..........................................................................................>
+    global proc onFrame()
+    {
+        intFieldGrp -e -en 0 frameIntFld;
+    }
+    global proc offFrame()
+    {
+        //Time Slider data
+        int $startFrame = `playbackOptions -q -min`;
+        int $endFrame = `playbackOptions -q -max`;
+        
+        intFieldGrp -e -en 1 -v1 $startFrame -v2 $endFrame frameIntFld; 
+    }
+   
+   global proc onRandDirection()
+    {
+        checkBox -e -en 1 randDirectBtn;
+    }
+   global proc offRandDirection()
+    {
+        checkBox -e -en 0 randDirectBtn;
+    }
+   global proc onDirection()
+    {
+        checkBox -e -en 1 directBtn;
+    }
+   global proc offDirection()
+    {
+        checkBox -e -en 0 directBtn;
+    }
+
+
+/////////////////////  **Notes**
+//                 //  
+//   Logic Procs   //  
+//Preview/Animation// 
+/////////////////////..........................................................................................>
+global proc previewParser()
+{
+    string $test[]= `ls -sl`;
+    if ($test[0] == "") 
+        {
+            warning "Nothing Selected!! Please Select Curves to Preview";  
+        }else{
+            pPoly;
+            print "OK!\n";
+        }
+}
+
+global proc animParser()
+{
+    string $test[]= `ls -sl`;
+    if ($test[0] == "") 
+        {
+            warning "Nothing Selected!! Please Select Strokes to Animate";  
+        }else{
+            makeAnim;
+            print "OK!\n";
+        }
+}
+
+global proc animResetParser()
+{
+    string $test[]= `ls -sl`;
+    if ($test[0] == "") 
+        {
+            warning "Nothing Selected!! Please Select Strokes to Remove Animation";  
+        }else{
+            animPrompt;
+            print "OK!\n";
+        }
+}
+
+/////////////////////////  **Notes**
+//                     //  If statements for parsing through all the selectable options in
+//   Make Animation    //  The UI. For dandomizing and flipping directions of the animated
+//                     //  Objects.
+/////////////////////////..........................................................................................>
+    global proc makeAnim()
+    {
+        string $animSel[] = `pickWalk -d "down"`;
+        int $selSize = size($animSel);
+     
+        for ( $e=0; $e<$selSize; ++$e) 
+        {
+            if ( `checkBox -q -v frameBtn` == 1)
+                {              
+                    if (`checkBox -q -v randBtn` == 1)
+                        {
+                            if (`checkBox -q -v directBtn` == 1)
+                                {
+                                    // Animation with timeslider and random and flipped direction
+                        
+                                    int $startFrame = `playbackOptions -q -min`;
+                                    int $endFrame = `playbackOptions -q -max`;
+                                    setAttr ($animSel[$e] + ".mxc") 0;
+                            
+                                    int $randStart = `rand $startFrame ($endFrame / 2)`;
+                                    int $randEnd = `rand ($endFrame / 2) $endFrame`;
+                            
+                                    setKeyframe -t $randStart ($animSel[$e] + ".mxc");
+                                    currentTime $randEnd;
+                                    setAttr ($animSel[$e] + ".mxc") 1;
+                                    setKeyframe -t $randEnd ($animSel[$e] + ".mxc");
+                                }else{
+                                    if (`checkBox -q -v randDirectBtn` == 1)
+                                        {
+                                            // Animation with timeslider and random with random Direction
+                                    
+                                            int $randInt = `rand 1 3`;                                        //output of 1 or 2, 50/50 chance
+                                            if ($randInt == 1)
+                                                {
+                                                    int $startFrame = `playbackOptions -q -min`;              // min clip
+                                                    int $endFrame = `playbackOptions -q -max`;
+                                                    setAttr ($animSel[$e] + ".mnc") 1;
+                            
+                                                    int $randStart = `rand $startFrame ($endFrame / 2)`;
+                                                    int $randEnd = `rand ($endFrame / 2) $endFrame`;
+                            
+                                                    setKeyframe -t $randStart ($animSel[$e] + ".mnc");
+                                                    currentTime $randEnd;
+                                                    setAttr ($animSel[$e] + ".mnc") 0;
+                                                    setKeyframe -t $randEnd ($animSel[$e] + ".mnc");
+                                                }else{
+                                                    int $startFrame = `playbackOptions -q -min`;            //max clip
+                                                    int $endFrame = `playbackOptions -q -max`;
+                                                    setAttr ($animSel[$e] + ".mxc") 0;
+                            
+                                                    int $randStart = `rand $startFrame ($endFrame / 2)`;
+                                                    int $randEnd = `rand ($endFrame / 2) $endFrame`;
+                            
+                                                    setKeyframe -t $randStart ($animSel[$e] + ".mxc");
+                                                    currentTime $randEnd;
+                                                    setAttr ($animSel[$e] + ".mxc") 1;
+                                                    setKeyframe -t $randEnd ($animSel[$e] + ".mxc");
+                                                }    
+                                        }else{
+                                            // Animation with timeslider and random
+                        
+                                            int $startFrame = `playbackOptions -q -min`;
+                                            int $endFrame = `playbackOptions -q -max`;
+                                            setAttr ($animSel[$e] + ".mnc") 1;
+                            
+                                            int $randStart = `rand $startFrame ($endFrame / 2)`;
+                                            int $randEnd = `rand ($endFrame / 2) $endFrame`;
+                            
+                                            setKeyframe -t $randStart ($animSel[$e] + ".mnc");
+                                            currentTime $randEnd;
+                                            setAttr ($animSel[$e] + ".mnc") 0;
+                                            setKeyframe -t $randEnd ($animSel[$e] + ".mnc");
+                                        }    
+                                }    
+                        }else{
+                            if (`checkBox -q -v directBtn` == 1)
+                                {
+                                    // Animation with timeslider and plain vanilla code with flipped direction
+                       
+                                    int $startFrame = `playbackOptions -q -min`;
+                                    int $endFrame = `playbackOptions -q -max`;
+                                    setAttr ($animSel[$e] + ".mxc") 0;
+                                    setKeyframe -t $startFrame ($animSel[$e] + ".mxc");
+                                    currentTime $endFrame;
+                                    setAttr ($animSel[$e] + ".mxc") 1;
+                                    setKeyframe -t $endFrame ($animSel[$e] + ".mxc");
+                                }else{
+                                    if (`checkBox -q -v randDirectBtn` == 1)
+                                        {
+                                            // Animation with timeslider and plain vanilla code with random direction
+                       
+                                            int $randInt = `rand 1 3`;
+                                            if ($randInt == 1)
+                                                {                                                                        //min clip
+                                                    int $startFrame = `playbackOptions -q -min`;
+                                                    int $endFrame = `playbackOptions -q -max`;
+                                                    setAttr ($animSel[$e] + ".mnc") 1;
+                                                    setKeyframe -t $startFrame ($animSel[$e] + ".mnc");
+                                                    currentTime $endFrame;
+                                                    setAttr ($animSel[$e] + ".mnc") 0;
+                                                    setKeyframe -t $endFrame ($animSel[$e] + ".mnc");
+                                                }else{                                                                   //max clip
+                                                    int $startFrame = `playbackOptions -q -min`;
+                                                    int $endFrame = `playbackOptions -q -max`;
+                                                    setAttr ($animSel[$e] + ".mxc") 0;
+                                                    setKeyframe -t $startFrame ($animSel[$e] + ".mxc");
+                                                    currentTime $endFrame;
+                                                    setAttr ($animSel[$e] + ".mxc") 1;
+                                                    setKeyframe -t $endFrame ($animSel[$e] + ".mxc");
+                                                }
+                                        }else{
+                                            // Animation with timeslider and plain vanilla code
+                       
+                                            int $startFrame = `playbackOptions -q -min`;
+                                            int $endFrame = `playbackOptions -q -max`;
+                                            setAttr ($animSel[$e] + ".mnc") 1;
+                                            setKeyframe -t $startFrame ($animSel[$e] + ".mnc");
+                                            currentTime $endFrame;
+                                            setAttr ($animSel[$e] + ".mnc") 0;
+                                            setKeyframe -t $endFrame ($animSel[$e] + ".mnc");
+                                        }    
+                                }    
+                        }
+                }else{
+                    if (`checkBox -q -v randBtn` == 1)
+                        {
+                            if (`checkBox -q -v directBtn` == 1)
+                                {
+                                    // Animation with custom frames and random with flipped direction
+                        
+                                    int $startFrame = `intFieldGrp -q -v1 frameIntFld`;
+                                    int $endFrame = `intFieldGrp -q -v2 frameIntFld`;
+                                    setAttr ($animSel[$e] + ".mxc") 0;
+                            
+                                    int $randStart = `rand $startFrame ($endFrame / 2)`;
+                                    int $randEnd = `rand ($endFrame / 2) $endFrame`;
+                            
+                                    setKeyframe -t $randStart ($animSel[$e] + ".mxc" );
+                                    currentTime $randEnd;
+                                    setAttr ($animSel[$e] + ".mxc") 1;
+                                    setKeyframe -t $randEnd ($animSel[$e] + ".mxc");
+                                }else{
+                                    if (`checkBox -q -v randDirectBtn` == 1)
+                                    {
+                                        // Animation with custom frames and random with random directions
+                        
+                                        int $randInt = `rand 1 3`;
+                                        if ($randInt == 1)
+                                            {                                                                    //min clip
+                                                int $startFrame = `intFieldGrp -q -v1 frameIntFld`;
+                                                int $endFrame = `intFieldGrp -q -v2 frameIntFld`;
+                                                setAttr ($animSel[$e] + ".mnc") 1;
+                                
+                                                int $randStart = `rand $startFrame ($endFrame / 2)`;
+                                                int $randEnd = `rand ($endFrame / 2) $endFrame`;
+                            
+                                                setKeyframe -t $randStart ($animSel[$e] + ".mnc" );
+                                                currentTime $randEnd;
+                                                setAttr ($animSel[$e] + ".mnc") 0;
+                                                setKeyframe -t $randEnd ($animSel[$e] + ".mnc");
+                                            }else{                                                               //max clip
+                                                int $startFrame = `intFieldGrp -q -v1 frameIntFld`;
+                                                int $endFrame = `intFieldGrp -q -v2 frameIntFld`;
+                                                setAttr ($animSel[$e] + ".mxc") 0;
+                                
+                                                int $randStart = `rand $startFrame ($endFrame / 2)`;
+                                                int $randEnd = `rand ($endFrame / 2) $endFrame`;
+                            
+                                                setKeyframe -t $randStart ($animSel[$e] + ".mxc" );
+                                                currentTime $randEnd;
+                                                setAttr ($animSel[$e] + ".mxc") 1;
+                                                setKeyframe -t $randEnd ($animSel[$e] + ".mxc");
+                                            }
+                                    }else{
+                                        // Animation with custom frames and random
+                        
+                                        int $startFrame = `intFieldGrp -q -v1 frameIntFld`;
+                                        int $endFrame = `intFieldGrp -q -v2 frameIntFld`;
+                                        setAttr ($animSel[$e] + ".mnc") 1;
+                                
+                                        int $randStart = `rand $startFrame ($endFrame / 2)`;
+                                        int $randEnd = `rand ($endFrame / 2) $endFrame`;
+                            
+                                        setKeyframe -t $randStart ($animSel[$e] + ".mnc" );
+                                        currentTime $randEnd;
+                                        setAttr ($animSel[$e] + ".mnc") 0;
+                                        setKeyframe -t $randEnd ($animSel[$e] + ".mnc");
+                                    }
+                                }    
+                        }else{
+                            if (`checkBox -q -v directBtn` == 1)
+                                {
+                        
+                                    //Animation with custom frames and vanilla code and flipped direction
+                        
+                                    int $startFrame = `intFieldGrp -q -v1 frameIntFld`;
+                                    int $endFrame = `intFieldGrp -q -v2 frameIntFld`;
+                                    setAttr ($animSel[$e] + ".mxc") 0;
+                                    setKeyframe -t $startFrame ($animSel[$e] + ".mxc" );
+                                    currentTime $endFrame;
+                                    setAttr ($animSel[$e] + ".mxc") 1;
+                                    setKeyframe -t $endFrame ($animSel[$e] + ".mxc");
+                                }else{
+                                    if (`checkBox -q -v randDirectBtn` == 1)
+                                        {
+                                            //Animation with custom frames and vanilla code with random directions
+                        
+                                            int $randInt = `rand 1 3`;
+                                            if ($randInt == 1)
+                                                {                                                                    //min clip
+                                                    int $startFrame = `intFieldGrp -q -v1 frameIntFld`;
+                                                    int $endFrame = `intFieldGrp -q -v2 frameIntFld`;
+                                                    setAttr ($animSel[$e] + ".mnc") 1;
+                                                    setKeyframe -t $startFrame ($animSel[$e] + ".mnc" );
+                                                    currentTime $endFrame;
+                                                    setAttr ($animSel[$e] + ".mnc") 0;
+                                                    setKeyframe -t $endFrame ($animSel[$e] + ".mnc");
+                                                }else{                                                              //max clip
+                                                    int $startFrame = `intFieldGrp -q -v1 frameIntFld`;
+                                                    int $endFrame = `intFieldGrp -q -v2 frameIntFld`;
+                                                    setAttr ($animSel[$e] + ".mxc") 0;
+                                                    setKeyframe -t $startFrame ($animSel[$e] + ".mxc" );
+                                                    currentTime $endFrame;
+                                                    setAttr ($animSel[$e] + ".mxc") 1;
+                                                    setKeyframe -t $endFrame ($animSel[$e] + ".mxc");
+                                                }
+                                        }else{
+                                            //Animation with custom frames and vanilla code
+                        
+                                            int $startFrame = `intFieldGrp -q -v1 frameIntFld`;
+                                            int $endFrame = `intFieldGrp -q -v2 frameIntFld`;
+                                            setAttr ($animSel[$e] + ".mnc") 1;
+                                            setKeyframe -t $startFrame ($animSel[$e] + ".mnc" );
+                                            currentTime $endFrame;
+                                            setAttr ($animSel[$e] + ".mnc") 0;
+                                            setKeyframe -t $endFrame ($animSel[$e] + ".mnc");
+                                        }
+                                }
+                        }    
+                }
+        }       
+    }
+    
+    // Allows the User to confirm their deletion
+    global proc animPrompt()
+    {
+        string $input = `confirmDialog -title "Confirm" -message "                            Are you sure?\nThis Will Delete All Animations From Selected Objects." 
+                         -button "Yes" -button "No" -defaultButton "Yes" 
+                         -bgc .2 .2 .2
+                         -cancelButton "No" -dismissString "No"`;
+
+        if ($input == "Yes") 
+            {
+                animReset;
+                warning "Animation Deleted Successfully Deleted!\n";
+            }else{     
+                warning "Preserving existing animations\n";
+            }
+    }
+    
+    // Deletes all animation within 0 to 1000
+    global proc animReset()
+    {
+        string $animSel[] = `pickWalk -d "down"`;
+        int $selSize = size($animSel);
+        
+        for ( $e=0; $e<$selSize; ++$e)
+            {
+                cutKey -time "0:1000" -attribute mnc -option keys $animSel[$e];
+                cutKey -time "0:1000" -attribute mxc -option keys $animSel[$e];
+                setAttr ($animSel[$e] + ".mnc") 0;
+                setAttr ($animSel[$e] + ".mxc") 1;
+            }
+    }    
+
+/*.............................................................................................................................................*/
+/*...........................................................PART 3: Convert To Poly...........................................................*/
+/*.............................................................................................................................................*/
+ 
+///////////////////////////  **Notes**
+//                       //  Selects and converts all strokes to poly's, it sorts and assigns a new shader
+//   Create Poly Procs   //  Using the Ui data. Sorts and Names all results for cleanliness.
+//                       // 
+///////////////////////////..........................................................................................>
+    global proc cPolyParser()
+    {
+        string $test[]= `ls -sl`;
+        if ($test[0] == "")
+            {
+                warning "Please Select Strokes to Convert!!";
+            }else{ 
+                string $input = `confirmDialog -title "Confirm" -message "                            Are you sure?\nObjects Will Not be Editable After Conversion" 
+                                 -button "Yes" -button "No" -defaultButton "Yes" 
+                                 -bgc .2 .2 .2
+                                 -cancelButton "No" -dismissString "No"`;
+
+                if ($input == "Yes") 
+                    {
+                        cPoly;
+                        warning "Converted Successfully!\n";
+                    }else{     
+                        warning "Second Thoughts huh?\n";
+                    }
+            }        
+    }
+    
+    global proc cPoly()
+    {  
+        //Create this groups shaders and Assign UI color
+        float $uiColor[] = `colorSliderGrp -q -rgb clrSldr1`;
+        float $uiGlow = `floatSliderGrp -q -v glowFltSldr`; 
+            string $shdr = `shadingNode -asShader -n "crv2Poly_shdr_1" lambert`;
+                setAttr ($shdr + ".color") -type double3 $uiColor[0] $uiColor[1] $uiColor[2];
+                setAttr ($shdr + ".translucenceDepth") 1;
+                setAttr ($shdr + ".translucence") .2;
+                setAttr ($shdr + ".translucenceFocus") 0;
+                setAttr ($shdr + ".glowIntensity") $uiGlow;
+        
+        select -r -hi nnTempStrokes;
+        select -tgl nnTempStrokes; 
+        string $selGrp[] = `pickWalk -d "down"`;
+        int $selSize = size($selGrp);
+            
+        // Assign created Shader to individual objects and delete the old shader
+        for ($e=0; $e<$selSize; ++$e)
+        {
+            select $selGrp[$e];
+            doPaintEffectsToPoly( 1,0,1,1,100000);
+            string $tempSel[]= `pickWalk -d "down"`;
+            string $tmpObj[] = `pickWalk -d "up"`; 
+            string $tempSelGrp[]= `pickWalk -d "up"`;                                       //takes the shape node
+
+                //Move associated stroke to the safe group
+                string $tmpSelStroke[] = `listConnections $tempSel`;
+                parent $tmpSelStroke[0] nnFinalStrokes;
+                setAttr ($tmpSelStroke[0] + ".visibility") 0;
+
+                                    
+            string $tempShdr[] = `listConnections -type shadingEngine $tempSel[0]`;         //Finds the SG node
+            string $surfaceShdr[] = `listConnections ($tempShdr[0] + ".surfaceShader")`;    //Stores the material
+                delete $surfaceShdr $tempShdr;                                              //Delete default shader  
+                select $tempSel;
+                hyperShade -assign $shdr; 
+                    parent $tmpObj nnPolyCrvs; 
+                    rename $tempSel "nn_PolyCrv_Shape_1";
+                    string $rNameObj= `rename $tmpObj "nn_PolyCrv_1"`;
+                        delete $tempSelGrp;
+                    rename $tmpSelStroke[0] ($rNameObj + "_stroke");
+                    
+        }
+    
+    //create a disp layer for scene management
+    if ( `objExists Crv2PolyVis` != 1)
+        {
+            select -r nnPolyCrvs;
+            createDisplayLayer -name "Crv2PolyVis" -number 1 -nr;
+        }
+   
+    print "All Set Boss!!!";
+    }
+    
+/*..........................................................................................................................................*/
+/*...........................................................PART 4: Shaders................................................................*/
+/*..........................................................................................................................................*/
+
+///////////////////////  **Notes**
+//                   //  These procs Allow the tweaking of Shaders using the UI. It also allows for
+//   Make Shaders    //  The assignment of new shaders as well as increasing the glow attr.
+//                   //  
+///////////////////////..........................................................................................>
+
+global proc newShdrParser()
+{
+    string $test[]= `ls -sl`;
+    if ($test[0] == "") 
+        {
+            warning "Nothing Selected!! Please Select Objects to CApply Shader";  
+        }else{
+            nShdr;
+            print "OK!\n";
+        }
+}
+    global proc nShdr()
+    {
+        string $sel[] = `ls -sl`;
+        //Create new shader using UI preset
+        float $uiColor[] = `colorSliderGrp -q -rgb clrSldr1`;
+        float $uiGlow = `floatSliderGrp -q -v glowFltSldr`; 
+            string $shdr = `shadingNode -asShader -n "crv2Poly_shdr_1" lambert`;
+                setAttr ($shdr + ".color") -type double3 $uiColor[0] $uiColor[1] $uiColor[2];
+                setAttr ($shdr + ".translucenceDepth") 1;
+                setAttr ($shdr + ".translucence") .2;
+                setAttr ($shdr + ".translucenceFocus") 0;
+                setAttr ($shdr + ".glowIntensity") $uiGlow;
+                
+        select $sel;
+        hyperShade -assign $shdr;        
+    }
+
+
+//Shader slider procs.......................................................................................................
+global proc shdrSldrParser()
+{
+    string $test[]= `ls -sl`;
+    if ($test[0] == "") 
+        {
+            warning "Nothing Selected!! Please Select Objects to Edit Shader";  
+        }else{
+            colorSldr;
+            print "OK!\n";
+        }
+}
+    global proc colorSldr()
+    {
+        string $sel[] = `pickWalk -d "down"`;
+        
+        //obtain the shader of the 1st selected object
+        string $shdrSG[] = `listConnections -type shadingEngine $sel[0]`;
+        string $Shdr[] = `listConnections ($shdrSG[0] + ".surfaceShader")`;
+        
+        //change the attr of selected shader
+        float $uiColor[] = `colorSliderGrp -q -rgb clrSldr1`;
+            setAttr ($Shdr[0] + ".color") -type double3 $uiColor[0] $uiColor[1] $uiColor[2];
+    }
+
+global proc glowSldrParser()
+{
+    string $test[]= `ls -sl`;
+    if ($test[0] == "") 
+        {
+            warning "Nothing Selected!! Please Select Objects to Edit Shader";  
+        }else{
+            glowSldr;
+            print "OK!\n";
+        }
+}
+    global proc glowSldr()
+    {
+        string $sel[] = `pickWalk -d "down"`;
+        
+        //obtain the shader of the 1st selected object
+        string $shdrSG[] = `listConnections -type shadingEngine $sel[0]`;
+        string $Shdr[] = `listConnections ($shdrSG[0] + ".surfaceShader")`;
+        
+        float $uiGlow = `floatSliderGrp -q -v glowFltSldr`;
+            setAttr ($Shdr[0] + ".glowIntensity") $uiGlow;
+         
+    }
+
+///////////////
+//
+//  Delete All
+//
+///////////////........................>
+global proc delAll()
+{
+    //Purge all nnCrv2Poly nodes
+    
+    delete nnCrv2Poly;
+    select "*crv2Poly_shdr_*";
+    string $sel[] = `ls -sl`;
+    int $selSize = size($sel);
+    
+    for ($e=0; $e<$selSize; ++$e)
+    {
+        string $tmpDel = $sel[$e]; 
+        string $shdrSG[] = `listConnections $tmpDel`;
+        delete $shdrSG[2] Crv2PolyVis $tmpDel;
+        
+        print ("Deleted " + $tmpDel + " Successfully!!");
+    }
+}
+
+/*............................................................................................................................................*/
+//----------------------------------------------------------------Shelf Button----------------------------------------------------------------\\
+/*............................................................................................................................................*/
+
+global proc c2pShlfBtnCheck ()
+{
+    // Check for ShelfButton of UI
+    // If nothing is found
+    // Ask to make one
+    string $c2pBtn;
+    string $crntShlf;
+
+    //Get Current Shelf
+    global string $gShelfTopLevel;
+
+    if (`shelfButton -exists c2pUiBtn`)
+        {
+            warning "_--------------------------------------Button Already Exists--------------------------------------_";
+        }else{
+		    // create a confirm dialog 
+	        string $response = `confirmDialog -title "Crv2Poly: Shelf Button" 
+			                   -message "Would You Like To Make A Shelf Button?"
+			                   -button "OMG YES!!" 
+			                   -button "NO! I Do NOT Want An Awesome Button!!"
+			                   -defaultButton "OMG YES!!"
+			                   -cancelButton "NO! I Do NOT Want An Awesome Button!!"
+			                   -dismissString "NO! I Do NOT Want An Awesome Button!!"`;
+		
+            // check response	  
+		    if( $response == "OMG YES!!" ) 
+		        {
+    		        if (`tabLayout -exists $gShelfTopLevel`)
+                        {
+                            string $crntShlf = `tabLayout -q -st $gShelfTopLevel`;
+                            string $KitBtn = `shelfButton                      	                        	                                                                      
+                                              -command "source nnCrv2Poly.mel; print \"_-----Scripted Loaded-----_\""
+                                              -image1 "nnCrv2Poly_icons/crv2Poly_shlfBtn_off.png" 
+                                              -hi "nnCrv2Poly_icons/crv2Poly_shlfBtn_on.png"  
+                                              -annotation "Crv2Poly UI"
+                                              -imageOverlayLabel ""
+                                              -overlayLabelColor 0 0 0
+                                              -overlayLabelBackColor 0 0 0 0 
+                                              -ebg 1
+                                              -bgc 0 0 0
+                                              -parent $crntShlf 
+                                              c2pUiBtn`;
+                                              
+                            print "Awesome!!\n";
+                        }else{
+                            error "Please Make A Shelf First!!";
+                        }
+                }else if( $response == "NO! I Do NOT Want An Awesome Button!!" ) 
+		            {
+			            warning "Lame-o Alert!";    
+		            }	
+            }
+}
+
+
+/*............................................................................................................................................*/
+//----------------------------------------------------------------HelpWindow------------------------------------------------------------------\\
+/*............................................................................................................................................*/
+
+
+
+global proc crv2PolyHelp() 
+{
+		if (`window -ex "crv2PolyHelpWin"`) deleteUI "crv2PolyHelpWin";
+		
+		if (!`window -q -ex crv2PolyHelpWin`)
+		    {
+		        window -s 0 -tlb 1 -t "nnCrv2Poly Help" -h 400 -w 300 crv2PolyHelpWin;
+		
+			    columnLayout -rs 1 -adj 1 -w 200 -cat "both" 0;
+			    text -al "center" -label (
+			    " nnCrv2Poly is a tool that allows you to easily convert\n"
+			    +" animation aurves to polygons for rendering.\n"
+			    +" Extra flare for rig presentations.\n");
+			    scrollLayout -cr true -w 300 -h 270 crv2PolyHelpScrl;
+			    columnLayout -rs 1 -adj 1 -w 200 -cat "both" 0;
+			    text -al "left" -font "boldLabelFont" -label "\n Note\n";
+			    text -al "left" -label (
+			    	 "    1. All actions can be undone with ctrl+z\n");
+			    text -al "left" -font "boldLabelFont" -label " Using Preview\n";
+			    text -al "left" -label (
+			    	 "    1. Select the curves you wish to convert.\n"
+			    	+"    2. Click the 'Preview' Button to show editable strokes.\n"
+				    +"    3. Click on 'Edit' to enter Edit Mode for easy picking.\n"
+				    +"    4. With strokes selected use the sliders or buttons to\n"
+			    	+"        edit the look of selected strokes.\n");
+			    text -al "left" -font "boldLabelFont" -label " Using Animation\n";
+			    text -al "left" -label (
+			    	 "    1. Select the trokes you wish to add animations to. \n"
+			    	+"    2. Select your animation options:\n\n"
+			    	+"          i. Use Time Slider - When ON it uses start and end \n"
+			    	+"             frames from the current scene. When Off the  \n"
+			    	+"             user can specify the start and end frame.  \n\n"
+			    	+"         ii. Switch Direction - Changes draw on animtion\n"
+			    	+"             from clockwise to counter-clockwise.\n \n"
+			    	+"         iii. Random Direction - It randomizes the\n"
+			    	+"             directions of multiple strokes. \n\n"
+			    	+"         iv. Random Seed - Randomizes the start and end\n"
+			    	+"             frames of the animation for individual \n"
+			    	+"             strokes.\n\n"
+			    	+"          v. Reset Anim - Clears all animations from\n"
+			    	+"             selected strokes.\n \n"
+			    	+"    3. Click the 'Animate' button to add animations. \n");
+
+			    text -al "left" -font "boldLabelFont" -label " Converting and Finalizing\n";
+			    text -al "left" -label (
+			    	 "    1. Hitting the 'Convert' button will convert all \n"
+			    	+"        the selected preview strokes into polygons.\n"
+			    	+"    2. It will also:\n\n"
+				    +"          i. Assign a shader with the color set in the UI.\n"
+				    +"         ii. Organize and name all created Nodes\n"
+				    +"        iii. Create and assign a display layer.\n\n"
+				    +"    4. You can also edit the color of the shaders or\n"
+			    	+"        even assign new ones to created polygons.\n"
+			    	+"    5. If you wish to get rid of all nnCrv2Poly nodes \n"
+			    	+"        created, use the menu button called 'Delete'.\n");
+    			setParent..;
+		    	setParent..;
+		    	rowLayout -nc 1 -w 200;
+		    		text -label "                     nnCrv2Poly.mel ©2013 Nelio Naut\n                     http://www.nelionaut.com\n                     Version 1.0";
+		    	scrollLayout -e -h 270 crv2PolyHelpScrl;
+		    	showWindow crv2PolyHelpWin;
+			}
+}
+ // Auto call the UI

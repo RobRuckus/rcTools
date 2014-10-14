@@ -1,0 +1,206 @@
+//----------------------------------------------------------------------------------
+//    Created  by Zabelin V.V    05.04.2001
+//    Script for "unroll" any curve
+//    using
+//    	1.copy script to your maya script folder
+//	2.in command line type 
+//		unroll	
+//	3. draw any NURBS curve in "side" window in clockwise direction
+//	4.adjust parameters in script window
+//	5.press "unroll" button
+//	6. set (or animate) parameter "scroll", added to your curve parameters.
+// 	
+//	explanations
+//	script create blend shape between source curve and straight line the same length
+// ----------------distant between two cv point of curve
+
+global proc float distBetweenCV(string $curveName,int $firstCV,int $secCV){
+
+float $a[3],$b[3];
+float	$result;
+$a=`pointPosition -w ($curveName+".cv["+($firstCV)+"]")`;
+$b=`pointPosition -w ($curveName+".cv["+($secCV)+"]")`;
+$result=sqrt(($b[0]-$a[0])*($b[0]-$a[0]) + ($b[1]-$a[1])*($b[1]-$a[1]) + ($b[2]-$a[2])*($b[2]-$a[2]));
+return $result;
+}; //--------------end of distBetweenCV--------
+
+//----------------distant between two projection of cv points
+// proj = 0  -  x- projection
+//           1  -  y- projection
+//           2  -  z- projection
+
+global proc float distBetweenCVproj(string $curveName,int $firstCV,int $secCV,int $proj){
+
+float $a[3],$b[3];
+float	$result;
+
+$a=`pointPosition -w ($curveName+".cv["+($firstCV)+"]")`;
+$a[$proj]=0;
+$b=`pointPosition -w ($curveName+".cv["+($secCV)+"]")`;
+$b[$proj]=0;
+
+$result=sqrt(($b[0]-$a[0])*($b[0]-$a[0]) + ($b[1]-$a[1])*($b[1]-$a[1]) + ($b[2]-$a[2])*($b[2]-$a[2]));
+return $result;
+}; //--------------end of distBetweenCVproj--------
+
+global proc scrollCurve(string $curveName,float $angleBias,int $delCurves){
+
+string 	$cName[];
+$cName[0]=$curveName;
+
+int	 	$CVNumber;
+$CVNumber = `getAttr -size ($cName[0] +".controlPoints")`;
+
+float 		$rotCenter[3], $cvPoint[3];
+int 		$i,$j;
+float		$rotAngle;
+vector	$rotVector;
+
+string 	$ttName[];
+float		$angleArray[],$chordArray[];
+$angleArray[0]=0;
+$chordArray[0]=0;
+
+//creat in-between curves
+int 	$inBetween=-1;
+int 	$intermedia,$k;
+
+for ($i=0;$i<($CVNumber-1);$i++) {
+	$j=$i+1;
+	//calculate rot angle
+	$rotCenter=`pointPosition -w ($cName[$inBetween+1]+".cv["+($i)+"]")`;
+	$rotCenter[0]=0;
+
+	$cvPoint=`pointPosition -w ($cName[$inBetween+1]+".cv["+($j)+"]")`;
+	$cvPoint[0]=0;
+	
+	$rotVector=<<0,($cvPoint[1]-$rotCenter[1]),($cvPoint[2]-$rotCenter[2])>>;
+
+	$rotAngle=`angle $rotVector <<0,0,1>>`;
+	$rotAngle=rad_to_deg($rotAngle);
+	if ($rotVector.y<0)
+		$rotAngle=-$rotAngle;
+		
+	$intermedia=floor(abs($rotAngle)/$angleBias)+1;
+	for ($k=0;$k<$intermedia;$k++){
+		$inBetween+=1;
+		//dublicate current curve
+		$ttName=`duplicate ($cName[$inBetween])`;
+		$cName[$inBetween+1]=$ttName[0];
+		clear $ttName;	
+		
+		// calculate array paremeter for futher animCurve;
+		$angleArray[$inBetween+1]=$angleArray[$inBetween]+abs($rotAngle)/$intermedia;
+		$chordArray[$inBetween+1]=$chordArray[$inBetween]+distBetweenCVproj($cName[$inBetween+1],$i,$j,0)/$intermedia;
+		
+		select -r ($cName[$inBetween+1]+".cv["+($j)+":"+($CVNumber-1)+"]");
+		rotate -r -p ($rotCenter[0]) ($rotCenter[1]) ($rotCenter[2]) -ws ($rotAngle/$intermedia) 0 0 ;
+		};	
+	};
+
+//create speed curve
+string $animCurveAngle=`createNode animCurveUU -n angleCurve`;
+string $animCurveChord=`createNode animCurveUU -n chordCurve`;
+
+float	$x,$ang,$crd;
+
+for ($i=0;$i<=($inBetween+1);$i++){
+	$x=$i/($inBetween+1.);
+	$ang=100.*$angleArray[$i]/$angleArray[($inBetween+1)];
+	$chd=100.*$chordArray[$i]/$chordArray[($inBetween+1)];
+	select -r $animCurveAngle;
+	setKeyframe -f ($ang) -v ($x) -itt "spline" -ott "spline";
+	select -r $animCurveChord;
+	setKeyframe -f ($chd) -v ($x) -itt "spline" -ott "spline";
+	};
+	
+//create blend shapes
+
+string $comStr="blendShape -tc 0 -ib";
+for ($i=1;$i<=($inBetween+1.);$i++){
+	$comStr+=" ";
+	$comStr+=$cName[$i];
+	};
+$comStr+=" ";
+$comStr+=$cName[0];	
+string $blendShapeName[];
+$blendShapeName=eval($comStr);
+
+//create user-defined atributes and make conection
+
+string $blendTwoAttrName=`createNode blendTwoAttr`;
+
+if ( !`objExists ($cName[0]+".scrollPercent")` )
+	addAttr -ln scrollPercent -at double -k 1 -min 0 -max 100 ($cName[0]);
+if (!`objExists ($cName[0]+".blendPercent")`)	
+	addAttr -ln blendPercent -at double -k 1 -min 0 -max 1 ($cName[0]);
+
+connectAttr -f ($cName[0]+".scrollPercent") ($animCurveAngle+".input");
+connectAttr -f ($cName[0]+".scrollPercent") ($animCurveChord+".input");
+
+connectAttr -f ($animCurveAngle+".output") ($blendTwoAttrName+".input[0]");
+connectAttr -f ($animCurveChord+".output") ($blendTwoAttrName+".input[1]");
+connectAttr -f ($cName[0]+".blendPercent") ($blendTwoAttrName+".attributesBlender");
+
+string $tempStr=$blendShapeName[0]+"."+$cName[$inBetween+1];
+connectAttr -f ($blendTwoAttrName+".output") ($tempStr);
+
+// deleting intermedia curves;
+if ($delCurves)
+	for ($i=1;$i<=($inBetween+1);$i++)
+		delete $cName[$i];
+
+};                       //end of scrollCurve;
+
+global proc unroll(){
+
+waitCursor -state on;
+string 	$window = "scrollWindow";
+if (!`window -exists $window`)
+	makeScrollWindow($window);
+
+showWindow $window;
+waitCursor -state off;
+};
+
+global proc makeScrollWindow(string $window){
+	    window -title "Unroll  Window"
+	-titleBar true
+	-minimizeButton true
+	-maximizeButton false
+	-sizeable true
+	$window;
+
+columnLayout -rs 5 -adjustableColumn true;
+intSliderGrp -cw3 100 80 220 -l "Angle bias" -minValue 5 -maxValue 30 -field true -fmn 5 -fmx 180 -s 10 -v 15 angleBiasStr;
+checkBoxGrp -l "" -ncb 1  -l1 "Delete intermediate curves" -cw2 100 300 delCurvesStr;
+separator;
+rowLayout -numberOfColumns 2
+	-adj 1
+       	-columnAlign2 "center" "center"
+	-columnAttach2 "both" "both"; 
+
+    button 
+	-l "Unroll/Roll Up"
+	-c "doUnroll()";
+	
+    button
+	-l "Close"
+	-c ("window -e -vis 0 " + $window);
+};
+
+
+global proc doUnroll(){
+
+float 	$angleBias=`intSliderGrp -q -v angleBiasStr`;
+int 	$delCurves=`checkBoxGrp -q -v1 delCurvesStr`;
+
+string $selection[]=`ls -sl`;
+string $selCurves[]=`filterExpand -sm 9 ($selection)`;
+clear	 $selection;
+
+string $item;
+for ($item in $selCurves)
+	scrollCurve($item,$angleBias,$delCurves);
+	
+};

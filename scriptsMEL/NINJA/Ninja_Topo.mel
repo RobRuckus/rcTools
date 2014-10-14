@@ -1,0 +1,989 @@
+string $NinjaTopo_Version = "Ninja Topo V 1.3";
+int $NinjaTopo_UIWidth = 250;
+int $Topo_AutoWeldID;
+int $Topo_AutoConformID;
+string $TopoMesh;
+string $LastTopoCommand;
+string $ClosestPointOnMeshNode;
+
+global proc NinjaTopo_CreateShader()
+{
+	if (`objExists "NinjaTopo_TargetShader"` == 0)
+	{
+		$NinjaTopo_TargetShader = `shadingNode -name "NinjaTopo_TargetShader" -asShader lambert`;
+		$NinjaTopo_TargetShader_SG = `sets -renderable true -noSurfaceShader true -empty -name "NinjaTopo_TargetShader_SG"`;//create a Shading Group node
+		connectAttr -force ($NinjaTopo_TargetShader  + ".outColor") ($NinjaTopo_TargetShader_SG + ".surfaceShader");//connects material node to Shading Group node
+		setAttr "NinjaTopo_TargetShader.color" -type double3 .5 .5 .5 ;
+		setAttr "NinjaTopo_TargetShader.transparency" -type double3 .01 .01 .01;
+	}
+
+	if (`objExists "NinjaTopo_TopoShader"` == 0)
+	{
+		$NinjaTopo_TopoShader = `shadingNode -name "NinjaTopo_TopoShader" -asShader lambert`;
+		$NinjaTopo_TopoShader_SG = `sets -renderable true -noSurfaceShader true -empty -name "NinjaTopo_TopoShader_SG"`;//create a Shading Group node
+		connectAttr -force ($NinjaTopo_TopoShader  + ".outColor") ($NinjaTopo_TopoShader_SG + ".surfaceShader");//connects material node to Shading Group node
+		setAttr "NinjaTopo_TopoShader.color" -type double3 1 1 1 ;
+		setAttr "NinjaTopo_TopoShader.transparency" -type double3 .1 .1 .1;
+    }
+
+}
+
+global proc NinjaTopo_ResetShaders()
+{
+	if (`objExists "NinjaTopo_TargetShader"` == 1)
+	{
+		setAttr "NinjaTopo_TargetShader.color" -type double3 .5 .5 .5 ;
+		setAttr "NinjaTopo_TargetShader.transparency" -type double3 .01 .01 .01;
+	}
+
+	if (`objExists "NinjaTopo_TopoShader"` == 1)
+	{
+
+		setAttr "NinjaTopo_TopoShader.color" -type double3 1 1 1 ;
+		setAttr "NinjaTopo_TopoShader.transparency" -type double3 .1 .1 .1;
+    }
+
+}
+
+global proc NinjaTopo_AssignTopoShader()
+{
+	$Sel = `ls -sl -fl -l`;
+	sets -e -forceElement NinjaTopo_TopoShader_SG $Sel[0];
+}
+
+global proc NinjaTopo_SetEdgeDisplay()
+{
+	$EdgeDisplay = `checkBox -q -v TargetEdgeDisplay`;
+	string $TargetMesh = `textField -q -tx ReTopo_TargetMesh`;
+
+	if ($EdgeDisplay == 1 && $TargetMesh != "")
+	{
+		string $TargetMeshShape[] = `listRelatives -s $TargetMesh`;
+		setAttr ($TargetMeshShape[0] + ".displayEdges") 2;
+    }
+
+	if ($EdgeDisplay == 0 && $TargetMesh != "")
+	{
+		string $TargetMeshShape[] = `listRelatives -s $TargetMesh`;
+		setAttr ($TargetMeshShape[0] + ".displayEdges") 0;
+    }
+}
+
+global proc NinjaTopo_SetTopoMeshDisplay()
+{
+	$Sel = `ls -sl -fl -l`;
+	string $SelShape[] = `ls -sl -o -dag -ni -type "mesh"`;
+	$DoubleSided = `checkBox -q -v MeshDoubleSidedDisplay`;
+	print $DoubleSided;
+
+	if ($DoubleSided == 1)
+	{
+		setAttr ($SelShape[0] + ".doubleSided") 1;
+    }
+
+	if ($DoubleSided == 0)
+	{
+		setAttr ($SelShape[0] + ".doubleSided") 0;
+    }
+
+}
+
+
+global proc NinjaTopo_SetTargetDisplay (string $Display)
+{
+	string $TargetMesh = `textField -q -tx ReTopo_TargetMesh`;
+	if ($Display == "Hide")
+	{
+		hide $TargetMesh;
+    }
+
+	if ($Display == "Show")
+	{
+		showHidden $TargetMesh;
+    }
+
+	if ($Display == "MakeLive")
+	{
+		if ($TargetMesh != "")
+		{
+			makeLive $TargetMesh;
+		}
+		else
+		{
+			makeLive -n;
+        }
+    }
+}
+
+global proc NinjaTopo_AddTarget()
+{
+	$Sel = `ls -sl -fl -l`;
+
+	if (`size $Sel` != 0)
+	{
+		textField -e -tx $Sel[0] ReTopo_TargetMesh;
+	}
+
+
+}
+
+
+global proc NinjaTopo_AddTopoMesh()
+{
+	$Sel = `ls -sl -fl -l`;
+
+	if (`size $Sel` != 0)
+	{
+		textField -e -tx $Sel[0] ReTopo_TopoMesh;
+	}
+
+
+
+}
+global proc NinjaTopo_CloseCurve()
+{
+	$SelCurve = `ls -sl -fl -l`;
+	closeCurve -ch 1 -ps 2 -rpo 1 -bb 0.5 -bki 0 -p 0.1 ;
+	select $SelCurve;
+
+}
+
+global proc NinjaTopo_OffsetCurve()
+{
+	$CurveOffset = `floatField -q -v ReTopo_CurveOffset`;
+	$LSeg = `intField -q -v  ReTopo_LSeg`;
+	$WSeg = `intField -q -v  ReTopo_WSeg`;
+
+	$TargetMesh = `textField -q -tx ReTopo_TargetMesh`;
+	$SelCurve = `ls -sl -fl -l`;
+	$CurveA = `offsetCurve  -ch on -rn false -cb 2 -st true -cl true -cr 0 -d ($CurveOffset / 2) -tol 0.01 -sd 5 -ugn false  $SelCurve[0] `;
+	$CurveB = `offsetCurve  -ch on -rn false -cb 2 -st true -cl true -cr 0 -d (-$CurveOffset / 2) -tol 0.01 -sd 5 -ugn false  $SelCurve[0] `;
+	$NewMesh = `loft -ch 1 -u 0 -c 0 -ar 1 -d 3 -ss 1 -rn 0 -po 1 -rsn true $CurveA $CurveB`;
+	string $modifier[] = `listHistory`;
+	setAttr ($modifier[1] + ".format") 2;
+	setAttr ($modifier[1] + ".polygonType") 1;
+	setAttr ($modifier[1] + ".uType") 3;
+	setAttr ($modifier[1] + ".vType") 3;
+	setAttr ($modifier[1] + ".uNumber") $LSeg;
+	setAttr ($modifier[1] + ".vNumber") $WSeg ;
+
+	transferAttributes -transferPositions 1 -searchMethod 3  $TargetMesh $NewMesh[0];
+	//Clean UP
+	delete -ch $NewMesh[0];
+	delete $CurveA $CurveB;
+
+}
+
+global proc NinjaTopo_Loft()
+{
+	$LSeg = `intField -q -v  ReTopo_LSeg`;
+	$WSeg = `intField -q -v  ReTopo_WSeg`;
+
+	$TargetMesh = `textField -q -tx ReTopo_TargetMesh`;
+
+	$NewMesh = `loft -ch 1 -u 0 -c 0 -ar 1 -d 3 -ss 1 -rn 0 -po 1 -rsn true `;
+	string $modifier[] = `listHistory`;
+	setAttr ($modifier[1] + ".format") 2;
+	setAttr ($modifier[1] + ".polygonType") 1;
+	setAttr ($modifier[1] + ".uType") 3;
+	setAttr ($modifier[1] + ".vType") 3;
+	setAttr ($modifier[1] + ".uNumber") $LSeg;
+	setAttr ($modifier[1] + ".vNumber") $WSeg ;
+
+	transferAttributes -transferPositions 1 -searchMethod 3  $TargetMesh $NewMesh[0];
+}
+
+global proc NinjaTopo_ContextCreatePoint()
+{
+	draggerContext 	-e -pr "sketchPlane" -space "screenSpace" TopoContextExtrude;
+
+	string $TargetMesh = `textField -q -tx ReTopo_TargetMesh`;
+	$meshShape = `listRelatives -s $TargetMesh`;
+
+	float $pressPosition[] = `draggerContext -query -anchorPoint TopoContextExtrude`;
+	print ("Press: " + $pressPosition[0] + " " + $pressPosition[1] + " "+ $pressPosition[2] + "\n");
+
+	// create Closest Point on Mesh Node
+	$ClosestPointOnMeshNode = createNode("closestPointOnMesh");
+	$ClosestPointOnMeshNode = `rename $ClosestPointOnMeshNode "NinjaTopoPointOnMesh"`;
+	connectAttr("-force",$meshShape[0]+".worldMesh[0]",$ClosestPointOnMeshNode+".inMesh");
+	connectAttr("-force",$meshShape[0]+".worldMatrix[0]",$ClosestPointOnMeshNode+".inputMatrix");
+
+	//setToolTo CreatePolySphereCtx;
+
+	// Set the position to the Dragger Context position
+	setAttr($ClosestPointOnMeshNode + ".inPosition",$pressPosition[0],$pressPosition[1],$pressPosition[2]);
+	float $PointLocation[] = getAttr($ClosestPointOnMeshNode + ".position");
+
+	// Create a Locator at closet point
+	spaceLocator -p $PointLocation[0] $PointLocation[1] $PointLocation[2];
+	//xform -a -ws -t $PointLocation[0] $PointLocation[1] $PointLocation[2] $Verts[$a];
+
+	delete $ClosestPointOnMeshNode;
+
+}
+
+
+
+global proc NinjaTopo_ContextExtrude()
+{
+	draggerContext 	-cursor "crossHair"
+					-pr "boundingSphere"
+					-pc "NinjaTopo_ContextCreatePoint"
+					-space "world"
+					TopoContextExtrude;
+
+	setToolTo TopoContextExtrude;
+
+
+}
+
+global proc NinjaTopo_ExtrudeEdge()
+{
+	global string $ClosestPointOnMeshNode;
+	float $mayaVersion = `getApplicationVersionAsFloat` ;
+	$TargetMesh = `textField -q -tx ReTopo_TargetMesh`;
+
+	$Sel = `ls -hl`;
+	$SelEdge = `filterExpand -sm 32`;
+	$Offset = `floatField -q -v ReTopo_CurveOffset`;
+
+
+	if ($mayaVersion > 2011)
+	{
+		polyExtrudeEdge -constructionHistory 1 -keepFacesTogether 1 -divisions 1 -twist 0 -taper 1 -offset $Offset -thickness 0 -smoothingAngle 30;
+	}
+
+	else
+	{
+
+		$ExtrudeCommand = `polyExtrudeEdge -constructionHistory 1 -keepFacesTogether 1 -divisions 1 -smoothingAngle 30 $SelEdge`;
+		setAttr ($ExtrudeCommand[0] + ".localTranslate") -type double3 0 ($Offset * -1) 0 ;
+
+    }
+
+	$SelEdge = `ls -sl -fl`;
+	$Selection = `ls -sl -fl -l`;
+	$Verts = `polyListComponentConversion -toVertex $Selection`;
+	$Verts = `ls -fl -l $Verts`;//flatten edge array
+
+	for ($a = 0; $a < `size $Verts` ; $a++)
+		{
+			$VertPosition = `xform -q -ws -t $Verts[$a]`;
+			setAttr($ClosestPointOnMeshNode + ".inPosition",$VertPosition[0],$VertPosition[1],$VertPosition[2]);
+			float $PointLocation[] = getAttr($ClosestPointOnMeshNode + ".position");
+			xform -a -ws -t $PointLocation[0] $PointLocation[1] $PointLocation[2] $Verts[$a];
+        }
+	//transferAttributes -transferPositions 1 -searchMethod 3  $TargetMesh $Sel[0];
+
+	NinjaTopo_AutoWeld;
+
+	select $SelEdge;
+	//transferAttributes -transferPositions 1 -searchMethod 3  $TargetMesh $Sel[0];
+	delete -ch $Sel[0];
+
+}
+
+global proc NinjaTopo_ExtrudeEdgeAlongCurve()
+{
+	$Sel = `ls -sl -fl -l`;
+	$SelectedEdges = `filterExpand -sm 32`;
+	string $SelectedCurve ;
+	int $numSpans;
+	for ($v = 0; $v < `size $Sel` ; $v++)
+		{
+
+			string $ObjectType = "nil";
+			string $list[] = `listRelatives -s $Sel[$v]`;
+
+			if (`size $list` != 0)
+			{
+				$ObjectType =`objectType $list[0]`;
+
+				if ($ObjectType == "nurbsCurve")
+				{
+					$SelectedCurve = $Sel[$v];
+					$numSpans = `getAttr( $SelectedCurve + ".spans")`;
+				}
+
+            }
+
+        }
+
+	polyExtrudeEdge -constructionHistory 1 -keepFacesTogether 1 -divisions $numSpans -twist 0 -taper 1 -offset 0 -thickness 0 -smoothingAngle 30 -inputCurve $SelectedCurve  $SelectedEdges;
+}
+
+
+global proc NinjaTopo_AverageVerts()
+{
+	$TargetMesh = `textField -q -tx ReTopo_TargetMesh`;
+	$Sel = `ls -hl`;
+	if (`size $Sel` == 0)
+		{
+			$Sel = `ls -sl -l`;
+		}
+	polyAverageVertex -i 100 -ch 1 ;
+	transferAttributes -transferPositions 1 -searchMethod 3  $TargetMesh $Sel[0];
+}
+
+global proc NinjaTopo_SlideEdge()
+{
+	$SelEdges = `ls -sl`;
+	float $SlideDist = `floatSliderGrp -q -v NinjaTopo_EdgeSlideDist`;
+	//print $SlideDist;
+	polySlideEdge -ed  $SlideDist -d 1 $SelEdges[0];
+}
+
+global proc NinjaTopo_StartStopNinjaTopo()
+{
+	global string $ClosestPointOnMeshNode;
+	global int $NinjaTopo_UIWidth;
+	$Sel = `ls -sl -fl -l`;
+	global int $Topo_AutoConformID;
+	string $TargetMesh = `textField -q -tx ReTopo_TargetMesh`;
+
+	$Topo_AutoConform  = `button -q -l ReTopo_AutoConform`;
+
+	if ($TargetMesh == "" && `size $Sel` !=0)
+	{
+
+		$TargetMesh = $Sel[0];
+		textField -e -tx $Sel[0] ReTopo_TargetMesh;
+
+		if ($Topo_AutoConform == "Start Ninja Topo" )
+		{
+			//Create Closest point on mesh node
+			$meshShape = `listRelatives -s $TargetMesh`;
+			float $mayaVersion = `getApplicationVersionAsFloat` ;
+			if ($mayaVersion < 2011)
+			{
+				loadPlugin nearestPointOnMesh.mll;
+				$ClosestPointOnMeshNode = createNode("nearestPointOnMesh");
+				$ClosestPointOnMeshNode = `rename $ClosestPointOnMeshNode "NinjaTopoPointOnMesh"`;
+				connectAttr("-force",$meshShape[0]+".worldMesh[0]",$ClosestPointOnMeshNode+".inMesh");
+
+            }
+
+			else
+			{
+				$ClosestPointOnMeshNode = createNode("closestPointOnMesh");
+				$ClosestPointOnMeshNode = `rename $ClosestPointOnMeshNode "NinjaTopoPointOnMesh"`;
+				connectAttr("-force",$meshShape[0]+".worldMesh[0]",$ClosestPointOnMeshNode+".inMesh");
+				connectAttr("-force",$meshShape[0]+".worldMatrix[0]",$ClosestPointOnMeshNode+".inputMatrix");
+			}
+
+			NinjaTopo_SetEdgeDisplay;
+			makeLive $TargetMesh;
+			$Topo_AutoConformID = `scriptJob -e idle ("NinjaTopo_ConformMesh") -p NinjaTopoMain`;
+			button -e -l "Stop Ninja Topo" -w $NinjaTopo_UIWidth -bgc .5 0 0 ReTopo_AutoConform;
+			NinjaTopo_CreateShader;
+			sets -e -forceElement NinjaTopo_TargetShader_SG $TargetMesh;
+			//displaySurface -xRay 1 $TargetMesh;
+		}
+
+    }
+
+	if ($Topo_AutoConform == "Stop Ninja Topo")
+		{
+			string $TargetMeshShape[] = `listRelatives -s $TargetMesh`;
+			setAttr ($TargetMeshShape[0] + ".displayEdges") 0;
+			scriptJob -k $Topo_AutoConformID;
+			button -e -l "Start Ninja Topo" -w $NinjaTopo_UIWidth  -bgc 0 .5 0 ReTopo_AutoConform;
+			select -cl;
+			makeLive -n;
+			//displaySurface -xRay 0 $TargetMesh;
+			textField -e -tx "" ReTopo_TargetMesh;
+			delete $ClosestPointOnMeshNode;
+		}
+}
+
+global proc NinjaTopo_ConformMesh()
+
+{
+
+	global string $ClosestPointOnMeshNode;
+	$TargetMesh = `textField -q -tx ReTopo_TargetMesh`;
+	string $Selection[] = `ls -sl -fl -l`;
+	global string $LastTopoCommand;
+	string $UndoCommand = `undoInfo -q -un`;
+
+
+	string $Sel[] = `ls -hl`;
+		if (`size $Sel` == 0)
+		{
+			$Sel = `ls -sl -fl -l`;
+		}
+
+
+	if (startsWith ($UndoCommand, "mould")  )
+	{
+		transferAttributes -transferPositions 1 -searchMethod 3  $TargetMesh $Sel[0];
+		delete -ch $Sel[0];
+		$LastTopoCommand = $UndoCommand;
+    }
+
+	if ($UndoCommand != $LastTopoCommand && $UndoCommand != "NinjaTopo_ConformMesh" && startsWith ($UndoCommand, "select") != 1 )
+	{
+			//Check to see if $Sel is a mesh
+			string $SelShape[] ={};
+			string $ShapeType = "";
+
+			if (`size $Sel` != 0 && $Selection[0] != $Sel[0] )
+			{
+				$SelShape = `listRelatives -s $Sel[0]`;
+				$ShapeType = `objectType -isType "mesh" $SelShape[0]`;
+			}
+
+			//if $Sel is a mesh continue
+			if (`size $Sel` != 0 && $ShapeType == 1 )
+			{
+
+				sets -e -forceElement NinjaTopo_TopoShader_SG $Sel[0];
+				$Verts = `polyListComponentConversion -toVertex $Selection`;
+				$Verts = `ls -fl -l $Verts`;//flatten edge array
+
+				for ($a = 0; $a < `size $Verts` ; $a++)
+				{
+					$VertPosition = `xform -q -ws -t $Verts[$a]`;
+					setAttr($ClosestPointOnMeshNode + ".inPosition",$VertPosition[0],$VertPosition[1],$VertPosition[2]);
+					float $PointLocation[] = getAttr($ClosestPointOnMeshNode + ".position");
+					xform -a -ws -t $PointLocation[0] $PointLocation[1] $PointLocation[2] $Verts[$a];
+                }
+
+				NinjaTopo_AutoWeld;
+				delete -ch $Sel[0];
+				$LastTopoCommand = $UndoCommand;
+				//print $Sel;
+				select $Selection;
+				//delete $pomNode;
+			}
+	}
+}
+
+global proc NinjaTopo_ForceConform()
+{
+	$Selection = `ls -sl -fl -l`;
+	global string $ClosestPointOnMeshNode;
+	$Verts = `polyListComponentConversion -toVertex $Selection`;
+	$Verts = `ls -fl -l $Verts`;//flatten edge array
+
+	for ($a = 0; $a < `size $Verts` ; $a++)
+		{
+			$VertPosition = `xform -q -ws -t $Verts[$a]`;
+			setAttr($ClosestPointOnMeshNode + ".inPosition",$VertPosition[0],$VertPosition[1],$VertPosition[2]);
+			float $PointLocation[] = getAttr($ClosestPointOnMeshNode + ".position");
+			xform -a -ws -t $PointLocation[0] $PointLocation[1] $PointLocation[2] $Verts[$a];
+        }
+}
+
+
+global proc NinjaTopo_AutoWeld()
+{
+
+	$AutoWeld = `checkBox -q -v ReTopo_AutoWeld`;
+	$WeldDist = `floatField -q -v Topo_WeldDist`;
+	if ($AutoWeld == 1)
+		{
+			$Sel = `ls -hl`;
+			if (`size $Sel` == 0)
+			{
+				$Sel = `ls -sl -l`;
+			}
+
+			if (`size $Sel` != 0 )
+			{
+				polyMergeVertex -d $WeldDist -am 1 -ch 1 $Sel[0];
+
+            }
+		}
+
+
+}
+
+global proc NInjaTopo_Symmetry(string $Axis)
+{
+	$Sel = `ls -sl -fl -l`;
+	$TargetMesh = `textField -q -tx ReTopo_TargetMesh`;
+	$TargetBounds = `polyEvaluate -b $TargetMesh`; //xmin xmax ymin ymax zmin zmax
+	$TargetMidX = (($TargetBounds[0] + $TargetBounds[1]) /2 );
+	$TargetMidY = (($TargetBounds[2] + $TargetBounds[3]) /2 );
+	$TargetMidZ = (($TargetBounds[4] + $TargetBounds[5]) /2 );
+
+	//set Pivot
+	xform -piv $TargetMidX $TargetMidY $TargetMidZ;
+	string $MirrorMesh[] = `instance $Sel`;
+
+	if ($Axis == "x")
+	{
+		scale -r -1 1 1 $MirrorMesh;
+	}
+
+	if ($Axis == "y")
+	{
+		scale -r 1 -1 1 $MirrorMesh;
+	}
+
+	if ($Axis == "z")
+	{
+		scale -r 1 1 -1 $MirrorMesh;
+	}
+
+	setAttr ($MirrorMesh[0] + ".opposite") 0;
+}
+
+global proc NinjaTopo_RebuildCurve()
+{
+	$SelCurve = `ls -sl -fl`;
+	$Curve_Segments = `intField -q -v NinjaTopo_RebuildSegments`;
+	//$CurveType = `radioButtonGrp -q -select Ninja_SplineRebuildType`;
+	//print $CurveType;
+	$KeepOriginal = `checkBox -q -v checkBox_RebuildCurveKeepOriginal`;
+	for ($l = 0 ;$l < `size $SelCurve`; $l++)
+		{
+			$newCurve = `rebuildCurve -ch 0 -rpo (($KeepOriginal -1) * -1) -rt 0 -end 1 -kr 0 -kcp 0 -kep 0 -kt 0 -s $Curve_Segments -d 1 -tol 0 $SelCurve[$l]`;
+
+    	}
+
+	select $SelCurve;
+}
+
+global proc NinjaTopo_Sculpt(string $SculptMode)
+{
+	$TargetMesh = `textField -q -tx ReTopo_TargetMesh`;
+	$Sel = `ls -hl`;
+		if (`size $Sel` == 0)
+		{
+			$Sel = `ls -sl -l`;
+		}
+	select $Sel;
+	SculptGeometryTool;
+
+	if ($SculptMode == "Smooth")
+	{
+		artPuttyCtx -e -mtm "smooth" `currentCtx`;
+    }
+
+	if ($SculptMode == "Relax")
+	{
+		artPuttyCtx -e -mtm "relax" `currentCtx`;
+    }
+
+	if ($SculptMode == "Pinch")
+	{
+		artPuttyCtx -e -mtm "pinch" `currentCtx`;
+    }
+
+}
+
+global proc NinjaTopo_AlignAxis(string $Axis)
+{
+	//string $Axis = `iconTextRadioCollection -q -sl Ninja_AlignAxis`;
+	string $Sel[] = `ls -hl -l`;
+
+
+	////////Align Objects
+	if (`size $Sel` == 0)
+	{
+		if ($Axis == "MinX")
+		{
+			align -atl -x min;
+
+		}
+
+		if ($Axis == "MinY")
+		{
+			align -atl -y min;
+
+		}
+
+		if ($Axis == "MinZ")
+		{
+			align -atl -z min;
+		}
+
+
+
+		if ($Axis == "MidX")
+			{
+				align -atl -x mid;
+				//move -a -ws -moveX (($Vert_Extents[0] + $Vert_Extents[3]) / 2);
+			}
+
+		if ($Axis == "MidY")
+			{
+				align -atl -y mid;
+				//move -a -ws -moveY (($Vert_Extents[1] + $Vert_Extents[4]) / 2);
+			}
+
+		if ($Axis == "MidZ")
+			{
+				align -atl -z mid;
+					//move -a -ws -moveZ (($Vert_Extents[2] + $Vert_Extents[5]) / 2);
+			}
+
+
+
+		if ($Axis == "MaxX")
+				{
+					align -atl -x max;
+					//move -a -ws -moveX $Vert_Extents[3];
+				}
+
+			if ($Axis == "MaxY")
+				{
+					align -atl -y max;
+					//move -a -ws -moveY $Vert_Extents[4];
+				}
+
+			if ($Axis == "MaxZ")
+				{
+					align -atl -z max;
+					//move -a -ws -moveZ $Vert_Extents[5];
+				}
+
+
+    }//end object Align
+
+
+	////////Align Components
+	if (`size $Sel` != 0)
+	{
+		$Components = `ls -sl -fl`;
+		float $Vert_Extents[] = `exactWorldBoundingBox $Components`;
+
+			if ($Axis == "MinX")
+				{
+					move -a -ws -moveX $Vert_Extents[0];
+				}
+
+			if ($Axis == "MinY")
+				{
+					move -a -ws -moveY $Vert_Extents[1];
+				}
+
+			if ($Axis == "MinZ")
+				{
+					move -a -ws -moveZ $Vert_Extents[2];
+				}
+
+
+
+			if ($Axis == "MidX")
+				{
+					move -a -ws -moveX (($Vert_Extents[0] + $Vert_Extents[3]) / 2);
+				}
+
+			if ($Axis == "MidY")
+				{
+					move -a -ws -moveY (($Vert_Extents[1] + $Vert_Extents[4]) / 2);
+				}
+
+			if ($Axis == "MidZ")
+				{
+					move -a -ws -moveZ (($Vert_Extents[2] + $Vert_Extents[5]) / 2);
+				}
+
+
+			if ($Axis == "MaxX")
+				{
+					move -a -ws -moveX $Vert_Extents[3];
+				}
+
+			if ($Axis == "MaxY")
+				{
+					move -a -ws -moveY $Vert_Extents[4];
+				}
+
+			if ($Axis == "MaxZ")
+				{
+					move -a -ws -moveZ $Vert_Extents[5];
+				}
+
+
+    }//end object Align
+}
+
+global proc NinjaTopo_SaveTopoShelf(string $ShelfFileName, string $ShelfUIName)
+{
+	$NinjaShelfDir = `internalVar -userAppDir`;
+	float $mayaVersion = `getApplicationVersionAsFloat` ;
+	$NinjaShelfDir = ($NinjaShelfDir + "NinjaDojo/Shelves" + $mayaVersion + "/");
+	sysFile -makeDir $NinjaShelfDir;
+	saveShelf $ShelfUIName ($NinjaShelfDir + $ShelfFileName);
+}
+
+global proc Ninja_ExploreTopoShelf()
+{
+	$NinjaShelfDir = `internalVar -userAppDir`;
+	float $mayaVersion = `getApplicationVersionAsFloat` ;
+	$NinjaShelfDir = ($NinjaShelfDir + "NinjaDojo/Shelves" + $mayaVersion + "/");
+	$NinjaShelfDir = substituteAllString($NinjaShelfDir, "/", "\\");
+	system ("explorer " + $NinjaShelfDir);
+}
+
+global proc Build_frame_ReTopoDisplaySettings()
+{
+	global int $NinjaTopo_UIWidth;
+	frameLayout -bs "etchedIn" -label "Display Settings"  -width ($NinjaTopo_UIWidth + 5) -cl false -cll true frame_ReTopoDisplaySettings;
+		columnLayout;
+
+
+			text -l "Target Display Settings:";
+			rowColumnLayout -nc 3 -cw 1 ($NinjaTopo_UIWidth/3) -cw 2 ($NinjaTopo_UIWidth/3) -cw 3 ($NinjaTopo_UIWidth/3);
+				button -l "Hide Target" -h 20 -c "NinjaTopo_SetTargetDisplay Hide";
+				button -l "Show Target" -h 20 -c "NinjaTopo_SetTargetDisplay Show";
+				button -l "Make Live"   -h 20 -c "NinjaTopo_SetTargetDisplay MakeLive";
+			setParent..;
+
+			//rowColumnLayout -nc 2 -cw 1 ($NinjaTopo_UIWidth/2) -cw 2 ($NinjaTopo_UIWidth/2);
+				checkBox -l "Display Only HardEdge" -v 0 -cc "NinjaTopo_SetEdgeDisplay" TargetEdgeDisplay ;
+				//checkBox -l "Display Only HardEdge" -cc "NinjaTopo_SetEdgeDisplay" TargetEdgeDisplay;
+			//setParent..;
+			attrColorSliderGrp -cw4 75 50 100 1 -sb 0 -at ("NinjaTopo_TargetShader.color");
+			attrColorSliderGrp -cw4 75 50 100 1 -sb 0 -at ("NinjaTopo_TargetShader.transparency");
+
+			separator -height 4 -width $NinjaTopo_UIWidth;
+
+			text -l "Topo Mesh Settings:";
+				checkBox -l "Double Sided" -v 1 -cc "NinjaTopo_SetTopoMeshDisplay" MeshDoubleSidedDisplay;
+			attrColorSliderGrp -cw4 75 50 100 1 -sb 0 -at ("NinjaTopo_TopoShader.color");
+			attrColorSliderGrp -cw4 75 50 100 1 -sb 0 -at ("NinjaTopo_TopoShader.transparency");
+			//button -l "Assign Topo Shader" -w $NinjaTopo_UIWidth -h 20 -c "NinjaTopo_AssignTopoShader";
+			button -l "Reset Shaders" -width $NinjaTopo_UIWidth -h 20 -c ("NinjaTopo_ResetShaders");
+
+
+		setParent..;
+	setParent..;
+}
+
+global proc string Build_frame_ReTopoSettings()
+{
+	global float $NinjaMesh_ButtonColor[];
+	global int $NinjaTopo_UIWidth;
+	$HelpText = (
+				"----------------------------------------------------Re Topo-------------------------------------------------*\n"+
+				"\n"
+				);
+	frameLayout -bs "etchedIn" -label "Settings"  -width ($NinjaTopo_UIWidth + 5) -cl false -cll true frame_ReTopoSettings;
+		popupMenu;
+			menuItem -l "Interactive Help" -c ("Build_NinjaHelpTopic frame_ReTopoSettings 1");
+			columnLayout;
+
+				text -l "Target Mesh:";
+				textField -tx "" -w $NinjaTopo_UIWidth ReTopo_TargetMesh;
+				button -l "Start Ninja Topo" -w $NinjaTopo_UIWidth -h 30  -bgc 0 .5 0 -c ("NinjaTopo_StartStopNinjaTopo") ReTopo_AutoConform;
+
+				rowColumnLayout -nc 3 -cw 1 100 -cw 2 75 -cw 3 75;
+					checkBox -l "Auto Weld" -v 1  ReTopo_AutoWeld;
+					text -l "Weld Distance";
+					floatField -v .01 Topo_WeldDist;
+					checkBox -l "snap to live Verts" -onc "manipMoveContext -e -snapLivePoint true Move" -ofc "manipMoveContext -e -snapLivePoint false Move";
+				setParent..;
+
+				rowColumnLayout -nc 6 -cw 1 40 -cw 2 50 -cw 3 40 -cw 4 30 -cw 5 40 -cw 6 30;
+					text -l "Offset:";
+					floatField -v 2 ReTopo_CurveOffset;
+					text -l "L Seg:";
+					intField -v 1 ReTopo_LSeg;
+					text -l "W Seg:";
+					intField -v 1 ReTopo_WSeg;
+				setParent..;
+			setParent ..;//parent columLayout
+	setParent ..;//parent frameLayout -bs "etchedIn"
+	return $HelpText;
+}
+
+global proc Build_frame_ReTopoTools()
+{
+	global int $NinjaTopo_UIWidth;
+	frameLayout -bs "etchedIn" -label "ReTopo Tools"  -width ($NinjaTopo_UIWidth + 5) -cl false -cll true frame_ReTopoTools;
+		columnLayout;
+			button -l "Force Conform" -w $NinjaTopo_UIWidth -h 24 -c ("NinjaTopo_ForceConform");
+			button -l "Attach Objects" -w $NinjaTopo_UIWidth -h 20 -c ("NinjaMesh_Attach");
+
+			rowColumnLayout -nc 3 -cw 1 ($NinjaTopo_UIWidth/3) -cw 2 ($NinjaTopo_UIWidth/3) -cw 3 ($NinjaTopo_UIWidth/3);
+				button -l "Symmetry X" -w ($NinjaTopo_UIWidth/3) -h 20 -c ("NInjaTopo_Symmetry x");
+				button -l "Symmetry Y" -w ($NinjaTopo_UIWidth/3) -h 20 -c ("NInjaTopo_Symmetry y") ;
+				button -l "Symmetry Z" -w ($NinjaTopo_UIWidth/3) -h 20 -c ("NInjaTopo_Symmetry z");
+
+				iconTextButton -l "Align X" -bgc .5 .25 .25 -style "textOnly" -w ($NinjaTopo_UIWidth/3) -h 20 -rpt 1 -c ("NinjaTopo_AlignAxis MidX");
+				iconTextButton -l "Align Y" -bgc .25 .55 .25 -style "textOnly" -w ($NinjaTopo_UIWidth/3) -h 20 -rpt 1-c ("NinjaTopo_AlignAxis MidY") ;
+				iconTextButton -l "Align Z" -bgc .25 .25 .5 -style "textOnly" -w ($NinjaTopo_UIWidth/3) -h 20 -rpt 1-c ("NinjaTopo_AlignAxis MidZ");
+			setParent..;
+			separator -height 4 -width $NinjaTopo_UIWidth;
+			//rowColumnLayout -nc 6 -cw 1 ($NinjaTopo_UIWidth/6) -cw 2 ($NinjaTopo_UIWidth/6) -cw 3 ($NinjaTopo_UIWidth/6) -cw 4 ($NinjaTopo_UIWidth/6) -cw 5 ($NinjaTopo_UIWidth/6) -cw 6 ($NinjaTopo_UIWidth/6);
+			//paneLayout;
+			shelfLayout -w $NinjaTopo_UIWidth -h 120 shelfLayout_NinjaTopoShelf;
+				popupMenu;
+					menuItem -l "Save Topo Shelf" -c ("NinjaTopo_SaveTopoShelf NinjaTopoShelf shelfLayout_NinjaTopoShelf");
+					menuItem -l "Explore" -c ("Ninja_ExploreTopoShelf");
+
+			$NinjaShelfDir = `internalVar -userAppDir`;
+			float $mayaVersion = `getApplicationVersionAsFloat` ;
+			$NinjaShelfDir = ($NinjaShelfDir + "NinjaDojo/Shelves" + $mayaVersion + "/");
+			$TestFile = `filetest -e ($NinjaShelfDir + "NinjaTopoShelf.mel")`;
+			if ($TestFile == 1)
+			{
+
+				eval (" source " + "\"" + $NinjaShelfDir +  "NinjaTopoShelf.mel" + "\""  );
+				eval ("NinjaTopoShelf");
+			}
+
+			else
+			{
+				shelfButton -image1 "polyCreateFacet.xpm" 	-w 32 -h 32 -c ("CreatePolygonTool");
+				shelfButton -image1 "polyExtrudeEdge.xpm" 	-w 32 -h 32 -c ("NinjaTopo_ExtrudeEdge");
+				shelfButton -image1 "polySplitEdgeRing.xpm" -w 32 -h 32 -c ("SplitEdgeRingTool");
+				shelfButton -image1 "polySplitFacet.xpm" 	-w 32 -h 32 -c ("InteractiveSplitTool");
+            }
+
+			setParent..;
+			//setParent..;
+
+		setParent..;
+	setParent..;
+}
+
+
+global proc Build_frame_ReTopoCurves()
+{
+	global int $NinjaTopo_UIWidth;
+
+	frameLayout -bs "etchedIn" -label "Curve Tools"  -width ($NinjaTopo_UIWidth + 5) -cl false -cll true frame_ReTopoCurves;
+		columnLayout;
+
+			rowColumnLayout -nc 6 -cw 1 ($NinjaTopo_UIWidth/6) -cw 2 ($NinjaTopo_UIWidth/6) -cw 3 ($NinjaTopo_UIWidth/6) -cw 4 ($NinjaTopo_UIWidth/6) -cw 5 ($NinjaTopo_UIWidth/6) -cw 6 ($NinjaTopo_UIWidth/6);
+				shelfButton -l "EP" -h 55 -style "iconAndTextVertical" -ann "EP Curve" -image1 "curveEP.xpm" -c("EPCurveTool") -dcc ("EPCurveToolOptions");
+				shelfButton -l "CV" -h 55 -style "iconAndTextVertical" -ann "CV Curve" -image1 "curveCV.xpm" -c("CVCurveTool") -dcc ("CVCurveToolOptions");
+				shelfButton -l "Bezier" -h 55 -style "iconAndTextVertical" -ann "Bezier Curve" -image1 "curveBezier.xpm" -c("curveBezierToolScript 4") -dcc ("CreateBezierCurveToolOptions;");
+				shelfButton -l "Loft" -h 55 -style "iconAndTextVertical" -ann "Loft" -image1 "skin.xpm" -c("NinjaTopo_Loft") ;
+			setParent ..; //parent rowLayout
+
+
+
+			//rowColumnLayout -nc 2 -cw 1 ($NinjaTopo_UIWidth/2) -cw 2 ($NinjaTopo_UIWidth/2);
+				button -l "Offset Curve" -w $NinjaTopo_UIWidth -h 20 -c ("NinjaTopo_OffsetCurve");
+				button -l "Extrude Edge Along Curve" -w $NinjaTopo_UIWidth -h 20 -c ("NinjaTopo_ExtrudeEdgeAlongCurve");
+			//setParent..;
+			button -l "Open/Close Curve" -w $NinjaTopo_UIWidth -h 20 -c ("NinjaTopo_CloseCurve");
+
+			rowColumnLayout -nc 2 -cw 1 200 -cw 2 50;
+				button -label "Rebuild Curve (Uniform)" -h 20 -c ("NinjaTopo_RebuildCurve()");
+				intField -v 8 -h 20 NinjaTopo_RebuildSegments;
+			setParent ..; //parent rowLayout
+
+		setParent..;
+	setParent..;
+}
+
+global proc Build_frame_ReTopoSculpt()
+{
+	global int $NinjaTopo_UIWidth;
+	frameLayout -bs "etchedIn" -label "Sculpt Tools"  -width ($NinjaTopo_UIWidth + 5) -cl false -cll true frame_ReTopoSculpt;
+		columnLayout;
+			rowColumnLayout -nc 6 -cw 1 ($NinjaTopo_UIWidth/6) -cw 2 ($NinjaTopo_UIWidth/6) -cw 3 ($NinjaTopo_UIWidth/6) -cw 4 ($NinjaTopo_UIWidth/6) -cw 5 ($NinjaTopo_UIWidth/6) -cw 6 ($NinjaTopo_UIWidth/6);
+				shelfButton -l "Smooth" -st "iconAndTextVertical" -image1 "sculptSmooth.xpm" -h 55 -c ("NinjaTopo_Sculpt Smooth");
+				shelfButton -l "Relax " -st "iconAndTextVertical" -image1 "sculptRelax.xpm" -h 55 -c ("NinjaTopo_Sculpt Relax");
+				shelfButton -l "Pinch " -st "iconAndTextVertical" -image1 "sculptPinch.xpm" -h 55 -c ("NinjaTopo_Sculpt Pinch");
+			setParent..;
+		setParent..;
+	setParent..;
+}
+
+global proc Build_frame_ReTopoPoly()
+{
+	global int $NinjaTopo_UIWidth;
+	frameLayout -bs "etchedIn" -label "Poly Tools"  -width ($NinjaTopo_UIWidth + 5) -cl false -cll true frame_ReTopoPoly;
+		columnLayout;
+			rowColumnLayout -nc 6 -cw 1 ($NinjaTopo_UIWidth/6) -cw 2 ($NinjaTopo_UIWidth/6) -cw 3 ($NinjaTopo_UIWidth/6) -cw 4 ($NinjaTopo_UIWidth/6) -cw 5 ($NinjaTopo_UIWidth/6) -cw 6 ($NinjaTopo_UIWidth/6);
+				shelfButton -l "Create" -st "iconAndTextVertical" -image1 "polyCreateFacet.xpm" -w ($NinjaTopo_UIWidth/6) -h 55 -c ("CreatePolygonTool");
+				shelfButton -l "Append" -st "iconAndTextVertical" -image1 "polyAppendFacet.xpm" -w ($NinjaTopo_UIWidth/6) -h 55 -c ("setToolTo polyAppendFacetContext");
+				shelfButton -l "Normals" -st "iconAndTextVertical" -image1 "polyNormal.xpm"     -w ($NinjaTopo_UIWidth/6) -h 55 -c ("ReversePolygonNormals");
+			setParent..;
+		setParent..;
+	setParent..;
+}
+
+global proc Build_frame_ReTopoEdge()
+{
+	global int $NinjaTopo_UIWidth;
+	frameLayout -bs "etchedIn" -label "Edge Tools"  -width ($NinjaTopo_UIWidth + 5) -cl false -cll true frame_ReTopoEdge;
+		columnLayout;
+			rowColumnLayout -nc 6 -cw 1 ($NinjaTopo_UIWidth/6) -cw 2 ($NinjaTopo_UIWidth/6) -cw 3 ($NinjaTopo_UIWidth/6) -cw 4 ($NinjaTopo_UIWidth/6) -cw 5 ($NinjaTopo_UIWidth/6) -cw 6 ($NinjaTopo_UIWidth/6);
+				shelfButton -l "Extrude" 	-st "iconAndTextVertical" -image1 "polyExtrudeEdge.xpm" 	-w ($NinjaTopo_UIWidth/6) -h 55 -c ("NinjaTopo_ExtrudeEdge");
+				shelfButton -l "Loop" 		-st "iconAndTextVertical" -image1 "polySplitEdgeRing.xpm" 	-w ($NinjaTopo_UIWidth/6) -h 55 -c ("SplitEdgeRingTool");
+				shelfButton -l "Split" 		-st "iconAndTextVertical" -image1 "polySplitFacet.xpm" 		-w ($NinjaTopo_UIWidth/6) -h 55 -c ("InteractiveSplitTool");
+				shelfButton -l "Bridge" 	-st "iconAndTextVertical" -image1 "polyBridge.xpm" 			-w ($NinjaTopo_UIWidth/6) -h 55 -c ("polyBridgeEdge -ch 1 -divisions 0 -twist 0 -taper 1 -curveType 0 -smoothingAngle 30");
+				shelfButton -l "Slide" 		-st "iconAndTextVertical" -image1 "slideEdgeTool.xpm" 		-w ($NinjaTopo_UIWidth/6) -h 55 -c ("SlideEdgeTool");
+			setParent..;
+		//floatSliderGrp -cal 1 "left" -cw3 50 45 100 -l "Slide Edge" -pre 2  -minValue .0 -maxValue 1 -value .5 -fieldMinValue 0 -fieldMaxValue 1 -ss 1 -field true -adjustableColumn3 3   -dc ("NinjaTopo_SlideEdge") -cc ("NinjaTopo_SlideEdge") NinjaTopo_EdgeSlideDist;
+		setParent..;
+	setParent..;
+}
+
+
+global proc Build_frame_ReTopoVertex()
+{
+	global int $NinjaTopo_UIWidth;
+	frameLayout -bs "etchedIn" -label "Vertex Tools"  -width ($NinjaTopo_UIWidth + 5) -cl false -cll true frame_ReTopoVertex;
+		columnLayout;
+			rowColumnLayout -nc 6 -cw 1 ($NinjaTopo_UIWidth/6) -cw 2 ($NinjaTopo_UIWidth/6) -cw 3 ($NinjaTopo_UIWidth/6) -cw 4 ($NinjaTopo_UIWidth/6) -cw 5 ($NinjaTopo_UIWidth/6) -cw 6 ($NinjaTopo_UIWidth/6);
+				shelfButton -l "Merge" 		-st "iconAndTextVertical" -image1 "polyMergeToCenter.xpm" 	-w ($NinjaTopo_UIWidth/6) -h 55 -c ("MergeToCenter");
+				shelfButton -l "Target" 	-st "iconAndTextVertical" -image1 "polyMergeVertex.xpm" 	-w ($NinjaTopo_UIWidth/6) -h 55 -c ("MergeVertexTool");
+				shelfButton -l "Average" 	-st "iconAndTextVertical" -image1 "polyAverageVertex.xpm" 	-w ($NinjaTopo_UIWidth/4) -h 55 -c ("NinjaTopo_AverageVerts");
+				//shelfButton -l "Instert Edge Loop" 	-st "iconOnly" -image1 "polySplitFacet.xpm" -w ($NinjaTopo_UIWidth/4) -h 32 -c ("InteractiveSplitTool");
+			setParent..;
+		setParent..;
+	setParent..;
+}
+
+
+global proc Build_frame_ReTopoSelect()
+{
+	global int $NinjaTopo_UIWidth;
+	frameLayout -bs "etchedIn" -label "Select Tools"  -width ($NinjaTopo_UIWidth + 5) -cl false -cll true frame_ReTopoSelect;
+		columnLayout;
+			rowColumnLayout -nc 6 -cw 1 ($NinjaTopo_UIWidth/6) -cw 2 ($NinjaTopo_UIWidth/6) -cw 3 ($NinjaTopo_UIWidth/6) -cw 4 ($NinjaTopo_UIWidth/6) -cw 5 ($NinjaTopo_UIWidth/6) -cw 6 ($NinjaTopo_UIWidth/6);
+				shelfButton -l "Loop" 	-st "iconAndTextVertical" -image1 "polySelectEdgeLoop.xpm" -w ($NinjaTopo_UIWidth/6) -h 55 -c ("SelectEdgeLoopSp");
+				shelfButton -l "Ring" 	-st "iconAndTextVertical" -image1 "polySelectEdgeRing.xpm" -w ($NinjaTopo_UIWidth/6) -h 55 -c ("SelectEdgeRingSp");
+			setParent..;
+		setParent..;
+	setParent..;
+}
+
+global proc Ninja_Topo_UI(string $NinjaParent)
+{
+
+	global string $NinjaTopo_Version;
+	float $mayaVersion = `getApplicationVersionAsFloat` ;
+	NinjaTopo_CreateShader;
+
+ 		$Ninja_Top0_Main = `columnLayout -p $NinjaParent NinjaTopoMain`;
+			Build_frame_ReTopoSettings;
+			Build_frame_ReTopoDisplaySettings;
+			Build_frame_ReTopoTools;
+			Build_frame_ReTopoCurves;
+			Build_frame_ReTopoVertex;
+			Build_frame_ReTopoEdge;
+			Build_frame_ReTopoPoly;
+			Build_frame_ReTopoSculpt;
+			Build_frame_ReTopoSelect;
+		setParent..;
+
+}
+
+
+global proc Ninja_Topo()
+{
+
+	global string $NinjaTopo_Version;
+	if ((`window -ex Ninja_Topo_UI`) == true) deleteUI  Ninja_Topo_UI;
+	$Ninja_Topo_UI =`window -title $NinjaTopo_Version Ninja_Topo_UI`;
+	scrollLayout NinjaTopo_MainScrollLayout;//Main Scroll Layout
+		eval ("Ninja_Topo_UI NinjaTopo_MainScrollLayout");
+	setParent..;
+
+	showWindow Ninja_Topo_UI;
+
+
+}

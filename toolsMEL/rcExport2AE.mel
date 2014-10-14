@@ -1,0 +1,498 @@
+/*
+# Script copyright (C) Rob Coakley. 
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+VERSION HISTORY
+	V2.0.0- Import Through JSX LOST MAC SUPPORT 
+	V1.9.9 - Optimize and Repair Focal Length Glitch Working on JScript to fix Naming Issue
+	V1.9.8- Reworked Interface and Optimized Procedure for Baking Multiple Object Selections
+	V1.9.6- Fixed an Issue with Animated Focal Length and Aim Constrained Cameras
+	V1.9.5- Added Focal Length Connection if Animated and Fixed issue with locked attributes
+	V1.9.1- Rewrote Baking to Handle Motion Path Cameras (fixed slow baking)
+	V1.7.0- Fixed Camera Aperture Matching
+	V1.5.0- Fixed issue with unknown nodes kicking error and not exporting Added Multi-Application Support Interface Update 
+	V1.2.0- Fixed error when baking namespace of referenced objects. updated to work with default win7 64bit location of CS5 breaks when updating an object that originally had "null*" (just delete the baked object before updating)
+*/
+
+//tell application "Adobe After Effects CS3" 
+//DoScriptFile \"/var/tmp/AfterFx123.jsx\" 
+//end tell 
+
+//ReturnStrings
+global proc string sysPlatform(){
+	string $os = `about -os` ;
+	string $sysPlatform;
+	if (`gmatch $os "*win*"` ) $sysPlatform = "win";
+	if (`gmatch $os "*nt*"`) $sysPlatform = "win";
+	if (`gmatch $os "*mac*"`) $sysPlatform = "mac";
+	return $sysPlatform;
+	}
+		
+global proc string runAEScript(string $name){
+	string $command ="";
+	string $option =  `optionMenu -q -sl xportOptionMenu`;
+		string $runAE_mac = "osascript \" ";
+    		$runAE_mac += "tell application ";
+		switch ($option){//MAC Location
+			case "1" : $runAE_mac += "\\\"Adobe After Effects CS5\"";
+				break;
+			case "2" : 
+				$runAE_mac += "\"Adobe After Effects CS6\"";
+				break;
+			case "3" : 
+				$runAE_mac += "\"Adobe After Effects CC 2014\"";
+				break;
+			}
+		$runAE_mac += "DoScriptFile ";
+		$runAE_mac += "\""+$name+".jsx\"";
+		$runAE_mac += "end tell\"";
+		
+	if (sysPlatform() == "mac")  $command = $runAE_mac;
+	else $command = spawnAE()+ " -r " + `toNativePath($name +".jsx")`;
+		return $command;
+	}
+		
+global proc string spawnAE(){// After Effects Location on your machine 
+    //MAC Location
+    		string $option =  `optionMenu -q -sl xportOptionMenu`;
+		
+    		string $spawnAE_mac = "open -a ";
+		switch ($option){//MAC Location
+			case "1" : $spawnAE_mac += "Adobe After Effects CS5";
+				break;
+			case "2" : 
+				$spawnAE_mac += "Adobe After Effects CS6";
+				break;
+			case "3" : 
+				$spawnAE_mac += "Adobe After Effects CC 2014";
+				break;
+			}
+		
+    //WIN Location
+		string $spawnAE_win   = "start C:\\Program Files\\Adobe\\";
+		switch ( $option){//MAC Location
+			case "1": 
+				$spawnAE_win += "Adobe After Effects CS5";
+				break;
+			case "2" : 
+				$spawnAE_win += "Adobe After Effects CS6";
+				break;
+			case "3" : 
+				$spawnAE_win += "Adobe After Effects CC2014";
+				break;
+			}
+		$spawnAE_win += "\\Support Files\\AfterFX.exe";
+    //OS Finder
+		string $os = `about -os`;
+		string $spawnAE;  
+		if (`gmatch $os "*win*"`) $spawnAE = $spawnAE_win;  // 64bit Win7
+		if (`gmatch $os "*nt*"`)  $spawnAE = $spawnAE_win;  // 32bit WinXP    
+		if (`gmatch $os "*mac*"`) $spawnAE = $spawnAE_mac;  // MAC 10 +
+    return $spawnAE;
+	}
+global proc string [] renderCams(){
+	string $renderCam[];
+	for($each in `ls -ca`) if (`getAttr($each +".renderable")`){
+		string $relatives[]=`listRelatives -p -f $each`;
+		$renderCam[size($renderCam)]= $relatives[0];
+		}
+	return $renderCam;
+	}
+	
+//Procedures
+global proc btnCmdBake(){
+	string $sel[];
+	if (`checkBox -q -v  checkABSNaming`) $sel=`ls -l -sl`; else $sel=`ls -sl`;
+	if (`checkBox -q -v checkUseRenderCam`) for ($each in `renderCams`) $sel[size ($sel)]=$each;
+	if ( ! size ($sel )== 0){//Error Checking
+	//CREATE COMPATIBLE DUPLICATE OBJECTS IN SET
+	for ($each in $sel){
+		string $sansNullPrefix=$each;//Fix Prefix "null_"
+		if (`startsWith $each "null_"`) $sansNullPrefix= stringRemovePrefix($sansNullPrefix,"null_"); 
+		string $sansNS=$sansNullPrefix; //Fix Invalid ":"
+		if (`gmatch $sansNullPrefix "*:*"`){  
+			string $split[];
+			tokenize $sansNullPrefix ":" $split;
+			int $i = (size($split)-1); 
+			$sansNS = ($split[$i]);} 
+
+		string $validName=$sansNS;//Fix Invalid "|"
+		if (`gmatch $validName "|"`){
+			$validName= `substituteAllString $sansNS "|" "_"` ; 
+			$validName= stringRemovePrefix($validName,"_");}
+		string $copy[];
+		//Determine Type
+		if (`objExists ($each +".focalLength")`){  // IS A CAMERA
+			if (`objExists ($validName +"_baked")`) delete ($validName +"_baked");//Delete Existing Baked Object
+			//Duplicate and Name 
+			$copy= `duplicate -un -n ($validName+"_temp")  $each `;
+			//Fix Grouping to World
+			string $parents[]=`listRelatives -p $copy[0]`;
+			if ( ! size ($parents) ==0) parent -w -r $copy[0] ; 
+			for ($att in $copy) {
+				if ( `gmatch $att "*twist*"`) delete $parents;//HACK FOR AIMED CAMERAS TODO FIX THIS 
+				}
+			// Clean Locked Channels
+			string $lockedChannels[]= `listAttr -l $copy [0]`;
+			for ($locked in $lockedChannels) setAttr -l off ($copy[0] +"."+ $locked); 
+			// Clean Connected Transforms  
+			string $Channels[]= `listAttr -st "translateX" -st "translateY" -st "translateZ" -st "rotateX" -st "rotateY" -st "rotateZ" -st "scaleX" -st "scaleY" -st "scaleZ" $copy[0]`;
+			for ($channel in $Channels) {
+				setAttr -k on ($copy[0]+"." +$channel);
+				breakConnection ($copy[0]+"." +$channel);
+				}
+			// Make Bake Camera UnRenderable
+			setAttr ($copy[0] +".renderable") 0 ;
+		   }
+		else { //IS A POSITION 
+			if (`objExists ("null_"+ $validName +"_baked")`) delete ("null_"+ $validName +"_baked");
+			$copy= `spaceLocator -n ($validName+"_temp")`;
+			// Constrain Selected
+			
+			}
+		if  ( ! `objExists AE_SET`) sets -n "AE_SET" -em ; if  ( ! `objExists AE_BAKESET`) sets -n "AE_BAKESET" -em ;
+		parentConstraint $each $copy[0];
+		sets -add "AE_SET" $copy[0];
+	}
+	 
+	//BAKE BAKESET
+	float $minTime; float $maxTime;
+	if (`checkBox -q -v checkBakeTime`){
+		$minTime=`textFieldGrp -q -tx textMinTime`;
+		$maxTime=`textFieldGrp -q -tx textMaxTime`;
+		}
+	else{
+		$minTime=`playbackOptions -q -minTime`;
+		$maxTime= `playbackOptions -q -maxTime`;
+		}
+	toggleView "0";
+	bakeResults -simulation 1 -sampleBy 1 -time ($minTime+":"+$maxTime) -shape 1 {"AE_SET"};
+	toggleView "1"; 
+	
+	//RENAME TO BAKESET TO BAKED
+	for($every in `sets -q "AE_SET"`){
+		sets -remove "AE_SET" $every;
+		sets -add "AE_BAKESET" $every;
+		delete  -constraints $every;
+		//REMOVE BAKED ATT
+		if ( ! `checkBox -q -v checkTx`)
+			{
+			breakConnection ($every +".translateX");
+			breakConnection ($every +".translateY");
+			breakConnection ($every +".translateZ");
+			}
+		if ( ! `checkBox -q -v checkRx`)
+			{
+			breakConnection ($every +".rotateX");
+			breakConnection ($every +".rotateY");
+			breakConnection ($every +".rotateZ");
+			}
+		if ( ! `checkBox -q -v checkSx`)
+			{
+			breakConnection ($every +".scaleX");
+			breakConnection ($every +".scaleY");
+			breakConnection ($every +".scaleZ");
+			}	
+			
+		breakConnection($every +".visibility");
+		string $objName= ` substituteAllString $every "_temp" ""` ;
+		if (`objExists ($every +".focalLength")`)//IS A CAMERA
+		  {  
+		     rename ($every) ($objName + "_baked");// Rename locator to "null_*baked"
+		  }
+		else//IS A POSITION
+		  { 
+		    // print "every:"; print ($every+"\n"); print "$objName:"; print ($objName+"\n");
+		    rename ($every) ("null_"+$objName + "_baked");
+		    // rename ("null_"+ $objName+"_bakedShape") ($objName) ;
+		  }
+		}
+	   delete "AE_SET" ;  
+	   refreshAEUI;
+	}
+	else confirmDialog  -t "rcExport2AE" -ma "center"-m "Nothing Selected!" ;
+	}
+global proc btnCmdExport(){
+	if (`optionMenu -q -sl xportOptionMenu`==4)
+		{
+		string $absName[]=`fileDialog2 -ff "*.ma"`;
+		string $name= substituteAllString($absName[0],".ma","");
+		writeMA $name;
+		writeJSX $name;
+		confirmDialog -title "Export" -ma "center"-message ("Run Script:\n" + $name+".jsx" +"\n in After Effects");
+		}
+	else
+		{
+		promptDialog  -title "Export" -ma "center" -m "Comp Name:" -tx "CAM2AE" -button "Export";
+		string $name    = `promptDialog -query -text`;
+		string $name= (`workspace -q -rd`) +"data/"+ $name;
+		writeMA $name;
+		writeJSX $name;
+		
+		//string $spawn=spawnAE()+ " -r " + `toNativePath($name +".jsx")`;
+		print `runAEScript($name)`;
+		system `runAEScript($name)`;
+		}
+	//Exit Out When Complete
+	//if (`window -exists AE_ExportWindow`) deleteUI AE_ExportWindow; select -cl;
+	}
+//WRITE
+global proc writeJSX(string $name){
+	string $cmd;
+	$cmd += "for(var index=1;index<=app.project.numItems;index++){ //RENAME OLD \n";
+	$cmd += "	var theComp=app.project.item(index);\n";
+	$cmd += "		if   (theComp.name==\""+basenameEx($name)+"\")\n";
+	$cmd += "    	{ theComp.name = theComp.name + \"_old_DELETE\"; }\n";
+	$cmd += "	}\n";
+	$cmd += " //IMPORT   \n";   
+	$cmd += " app.project.importFile(new ImportOptions(File(\""+$name+".ma\")));\n";
+	$cmd += " for (var index =1; index <=app.project.numItems; index++)//RENAME CURRENT\n";
+	$cmd += "     {\n";  
+	$cmd += "         var theItem=app.project.item(index);\n";
+	$cmd += "         if   (theItem.name==\""+basenameEx($name)+"\")\n";
+	$cmd += "             {\n";
+	$cmd += "                 for (var compIndex=1; compIndex<= theItem.numLayers; compIndex++)\n";
+	$cmd += "                     { \n"; 
+	$cmd += "                         var theLayer = theItem.layer(compIndex).name.replace(\"_bakedShape\",\"\");\n";
+	$cmd += "                         var newLayer = theLayer.replace(\"null_\",\"\");\n";
+	$cmd += "                         theItem.layer(compIndex).name=newLayer;\n";
+	$cmd += "                      }\n";
+	$cmd += "              }\n";
+	$cmd += "          if   (theItem.name==\"Solids\")\n";
+	$cmd += "             { \n";
+	$cmd += "                for (var solidIndex= 1; solidIndex <= theItem.numItems; solidIndex ++)\n";
+	$cmd += "                {\n";
+	$cmd += "                     var theSolid=theItem.item(solidIndex).name.replace(\"_bakedShape\",\"\");\n";
+	$cmd += "                    theItem.item(solidIndex).name = theSolid\n";
+	$cmd += "                }\n";
+	$cmd += "            }  \n";      
+	$cmd += "     }\n";
+	int $fd= `fopen ($name + ".jsx") "w"`;
+	fprint  $fd ($cmd);
+	fclose $fd;
+	}	
+global proc writeMA(string $name){
+	//Set Camera 1080
+	
+	int $camWidth= `getAttr defaultResolution.width`; 
+	int $camHeight= `getAttr defaultResolution.height`;
+	int $camAspect=`getAttr defaultResolution.deviceAspectRatio`;
+	
+	if(`checkBox -q -v chkBoxForce1080`){
+		setAttr defaultResolution.width 1920;
+		setAttr defaultResolution.height 1080;
+		setAttr defaultResolution.deviceAspectRatio (1920/float(1080));
+	
+	}	
+	//Scale
+	string $workingUnits = `currentUnit -q`;
+	if (`checkBox -q -v chkBoxScale`) currentUnit -l "mm";
+	//FileFormatWorkaround
+	string $filetype[]=`file -q -type`;
+	if ($filetype[0]== "mayaBinary") file -type "mayaAscii";
+	//EXPORT
+	select AE_BAKESET;
+	file -force -options "v=0" -typ "mayaAscii" -es (`toNativePath($name + ".ma")`);
+	//RETURN SCENE TO DEFAULTS
+	currentUnit -l $workingUnits;
+	
+	if(`checkBox -q -v chkBoxForce1080`){
+	setAttr defaultResolution.width $camWidth;
+	setAttr defaultResolution.height $camHeight;
+	setAttr defaultResolution.deviceAspectRatio $camAspect;
+	
+	
+	}
+ }
+ 
+//BackEnd
+global proc rcDelUnknownNodes(){//in rcToolBox
+	string $unknownNodes[]= `ls -type "unknown"`;
+	string $delDecision = `confirmDialog -icn "warning" -message $unknownNodes -messageAlign "center" 
+		-button "Delete"
+		-button "Cancel"
+		-defaultButton "Delete"
+		-cancelButton "Cancel"
+		-dismissString "Cancel"`;
+	if ($delDecision == "Delete") delete `ls -type "unknown"`;
+	}
+
+global proc rcfilmOffsetNull(string $selCamera){//WIP for Shake Animation
+	if( `objExists ("null_filmOffset")`) delete ("null_filmOffset");
+	spaceLocator -n "null_filmOffset";
+	expression -s " int $y=`getAttr \"defaultResolution.height\"`; null_filmOffset.translateY=cameraShape1.verticalShake*$y*-1;";
+	expression -s " int $x=`getAttr \"defaultResolution.width\"`; null_filmOffset.translateX=cameraShape1.horizontalShake*$x*-1;";
+	
+  }	
+global proc breakConnection( string $destName ) // If the specified name is the destination of a connection, then delete that connection.
+ {
+ 	 if ( `connectionInfo -isDestination $destName` )
+ 	 { string $destination = `connectionInfo -getExactDestination $destName`;
+	  // When deleting a src connection from a character, you must remove
+	  // the item from the character set or the character will no longer
+	  // work consistently: bug 127212
+	  string $srcConn[] = `listConnections -s 1 -d 0 -type character $destination`;
+	  if (size($srcConn)) {
+	   string $warnMsg = ("Removed \'"+$destination+"\' from character \'"+$srcConn[0]+"\'.");
+	   warning($warnMsg);
+	   character -e -rm $srcConn[0] $destination;
+	  }
+  
+  string $sArr[1] = `ls -ro $destination`;
+  if (size($sArr)) {
+   string $src = `connectionInfo -sourceFromDestination $destination`;
+   disconnectAttr $src $destination;
+  } else {
+   delete -icn $destination;
+  }
+ }
+ } 
+global proc toggleView(int $value){//PY IS BETTER
+	string $modelPanels[] = `getPanel -vis`;
+	string $emptySelConn = `selectionConnection`; 
+	for( $panel in $modelPanels ) if( `getPanel -to $panel` == "modelPanel" ) {
+		isolateSelect -state (!$value) $panel;
+		if( $value ) modelEditor -e -mlc $emptySelConn $panel;
+		}
+	if( !$value ) deleteUI $emptySelConn;
+	}
+	
+global proc scrlAESelect(){
+	select `iconTextScrollList -q -si listAEObj`;
+	
+	}
+global proc refreshAEUI(){//update UI
+	//Object List and Export Button
+	button -e -en 0 -bgc .267 .267 .267 btnAEExport;
+	iconTextScrollList -e -ams 1 -sc "scrlAESelect" -ra listAEObj;
+	if  ( `objExists AE_BAKESET`) {
+		for ($obj in `sets -q AE_BAKESET`){ //Turn ON Export Buttton If Camera Exists
+			iconTextScrollList -e -a $obj  listAEObj;
+			if (`objExists ($obj +".focalLength")`) button -e -bgc .75 .75 .75 -en 1 btnAEExport;
+			}
+	}
+	//Timeline Overide
+	if (`checkBox -q -v checkBakeTime`){
+		textFieldGrp -e -vis 1 textMinTime;
+		textFieldGrp -e -vis 1 textMaxTime;
+		}
+	else {
+		textFieldGrp -e -vis 0 textMinTime;
+		textFieldGrp -e -vis 0 textMaxTime;
+	}
+	//Set Camera 1080 CheckBox
+	if ( `getAttr defaultResolution.width` == "1920" && `getAttr defaultResolution.height` == "1080" ) checkBox -e -en 0 chkBoxForce1080; 
+	else checkBox -e -en 1 chkBoxForce1080;
+	}
+
+//UI
+global proc rcExport2AE(){//UI
+	int $btnW= 220; int $btnH= 35; int $chkH = 16; //UI Settings
+	int $scaleMA = 0; int $is1080;
+	if ( `getAttr defaultResolution.width` == "1920" && `getAttr defaultResolution.height` == "1080" ) $is1080 = 1;
+
+	//Create default location of Ascii file for After Effects
+	string $Ae_MAFolderLocation=(`workspace -q -rd`)+"data/"; 
+	if (!`filetest -d $Ae_MAFolderLocation`) sysFile -makeDir $Ae_MAFolderLocation;
+	
+	//BuildUI
+	if (`window -exists AE_ExportWindow`) deleteUI AE_ExportWindow;
+
+	window -tlb 1 -tlc 1 1 -s 1  -title "Export2AE" AE_ExportWindow;
+	//tabLayout -imw 0 -imh 0  AE_Tabs;
+	formLayout   AE_Export;
+	columnLayout  -w ($btnW+10) AE_Column;	
+	
+	separator -h 5 -st "in" -vis 1;
+	gridLayout -numberOfColumns 2 -cellWidthHeight 115 13;
+	separator -h 15 -st "in" -vis 1;separator -h 15 -st "in" -vis 1;
+	//text  -align "right" -l "Maya Scene:";  text -align "left" -l"";
+	text -fn "boldLabelFont"  -align "right"  -l (" CURRENT UNITS:   "); text -fn "boldLabelFont" -align "left" -l  `currentUnit -q`;
+	text -fn "boldLabelFont" -align "right"  -l (" CURRENT FPS:   "); text -fn "boldLabelFont" -align "left" -l `currentUnit -q -time`;
+	text -fn "boldLabelFont" -align "right"  -l (" RESOLUTION:   "); text -fn "boldLabelFont" -align "left" -l (`getAttr defaultResolution.width` +"x" + `getAttr defaultResolution.height`);
+	separator -h 15 -st "in" -vis 1;separator -h 15 -st "in" -vis 1;
+	setParent..;
+	
+	text -h 20 -fn "obliqueLabelFont" -l " Bake:" -align center;
+	checkBox -h $chkH -label " Renderable Cameras" -ann "Bake Renderable Cameras"  -vis 1 -v 0  checkUseRenderCam;
+	checkBox -h $chkH -label " Remove Namespace" -en 0 -ann "Removes the Prefix on Reference or Imported Objects" -cc refreshAEUI -vis 0 -v 1  checkRemoveNS;
+	checkBox -h $chkH -label " Force Long Names" -ann "Name each Baked Object With Prefix of Its Parents" -v 0  checkABSNaming;
+
+	checkBox -h $chkH -label " Overide Time" -v 0  -cc refreshAEUI checkBakeTime;
+	rowColumnLayout -numberOfColumns 2;
+	textFieldGrp -l "Start:" -cl2 "right" "left" -cw2 30 35  -tx (`playbackOptions -q -minTime`) textMinTime;
+	textFieldGrp -l "End:" -cl2 "right" "left" -cw2 25 35  -tx (`playbackOptions -q -maxTime`) textMaxTime;
+	setParent"..";
+	
+	rowColumnLayout -numberOfColumns 3  ;
+	checkBox -h $chkH -label " Translate" -ann "Bake Translations"-v 1 checkTx;
+	checkBox -h $chkH -label " Rotate" -ann "Bake Rotations"-v 1 checkRx;
+	checkBox -h $chkH -label " Scale" -ann "Bake Scale"-v 0 checkSx;
+	setParent "..";
+	
+	separator -h 5 -st "in" -vis 1;
+	button  -l "Bake Selected "  -bgc .75 .75 .75 -w $btnW -h $btnH -align "center" -c "btnCmdBake;";
+	separator -h 5 -st "in" -vis 1;
+	
+	text  -h 20 -l "  Objects Going to After Effects:";
+	iconTextScrollList -w $btnW -h 380 listAEObj;
+	text -h 20 -fn "obliqueLabelFont" -l " Export:" -align center;
+	checkBox -h $chkH -label "  Export Camera at 1080" -ann "Set Render Global Camera to \n 1920x1080" -cc refreshAEUI -v 1  chkBoxForce1080;
+	checkBox -h $chkH -label "  Change Units to mm" -ann "Scales Scene Down \n for more appropriate After Effects Units" -en 1 -v 1 -cc refreshAEUI chkBoxScale;
+	checkBox -h $chkH -label "  Delete Baked Objects" -ann "Delete Baked Objects After Export" -v 0 -vis 0 chkBoxDelObj;
+	
+	
+	separator -h 10 -style "in";
+	optionMenu -label  "Export to:" xportOptionMenu;
+		menuItem -label "Adobe After Effects CS5";
+		menuItem -label "Adobe After Effects CS6";
+		menuItem -label "Adobe After Effects CC2014";
+		menuItem -label "Maya ASCII File";
+		optionMenu -e -sl 2 xportOptionMenu;
+	separator -h 2 -style "in" -vis 1;
+	button  -l "EXPORT" -en 0 -ann "Must Have a Baked Camera to Export" -w $btnW -h 35 -align "center" -c "btnCmdExport" btnAEExport;
+	
+
+	setParent AE_Export;
+	
+	
+	paneLayout -w 450 -h 800 -p AE_Export -cn "single" AEPaneLayout;
+	
+	
+	
+	if ( ! `outlinerPanel -exists AEPanel`) outlinerPanel  -l "rcExport2AE Outliner *DONT SELECT*" AEPanel;
+	else outlinerPanel -e -p AEPaneLayout AEPanel;
+	
+	filterUIClearFilter AEPanel;
+	string $AEEditor=`outlinerPanel -q -oe AEPanel`;
+	
+	showWindow AE_ExportWindow;
+	scriptJob  -parent AE_ExportWindow -event SceneOpened "rcExport2AE";
+	scriptJob -parent AE_ExportWindow -ct delete refreshAEUI;
+	refreshAEUI;
+	
+	formLayout -e
+		-attachPosition AE_Column left 2 1
+		-attachForm AEPaneLayout right 5
+		AE_Export;
+ }
+
+	
+
+
+
+
+
+

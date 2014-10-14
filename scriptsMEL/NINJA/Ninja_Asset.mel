@@ -1,0 +1,3149 @@
+string $NinjaAsset_Version = "Ninja Asset V. 2.2";
+string $DirectoryArray[] = {};
+int $Renderer = 1;
+
+global proc mentalRayLoad()
+{
+//check to see if plugin is loaded and if not then load it
+	if (`pluginInfo -q -loaded Mayatomr` == 0)
+	{
+		loadPlugin Mayatomr;
+		setAttr defaultRenderGlobals.currentRenderer -type "string" "mentalRay";
+		miCreateDefaultNodes();
+	}
+
+	else
+	{
+		setAttr defaultRenderGlobals.currentRenderer -type "string" "mentalRay";
+		miCreateDefaultNodes();
+	}
+}//end mental ray load
+
+global proc NinjaAsset_VRayLoad()
+{
+//check to see if plugin is loaded and if not then load it
+	if (`pluginInfo -q -loaded vrayformaya` == 0)
+	{
+		loadPlugin vrayformaya;
+		updateRendererUI;
+		setAttr defaultRenderGlobals.currentRenderer -type "string" "vray";
+	}
+
+	else
+	{
+		setAttr defaultRenderGlobals.currentRenderer -type "string" "vray";
+	}
+
+	unifiedRenderGlobalsWindow;
+	window -e -vis 0 unifiedRenderGlobalsWindow;
+	//deleteUI unifiedRenderGlobalsWindow;
+}//end mental ray load
+
+global proc NinjaAsset_VRayUnLoad()
+{
+	unloadPlugin vrayformaya;
+}//end mental ray load
+
+global proc NinjaAsset_SwitchRender(string $UI)
+{
+	global int $Renderer;
+	$Renderer = `radioButtonGrp -q -select ("rbg_NinjaAssetRender" + $UI)`;
+	//print $Render;
+	if ($Renderer == 1)
+		{
+			mentalRayLoad;
+        }
+
+	if ($Renderer == 2)
+		{
+			NinjaAsset_VRayLoad;
+        }
+}
+
+global proc NinjaAsset_FindAllSubDir (string $currentPath)
+{
+	//$currentPath = ($currentPath + "/");
+	global string $DirectoryArray[];
+	string $currentFiles[] = `getFileList -folder $currentPath`;
+    for ( $i = 0; $i < `size $currentFiles`; $i++ )
+    {
+        //ignore files or directories starting with "."
+        if (`match "^." $currentFiles[$i]` != ".")
+        {
+            //search for directories
+            if (`filetest -d ($currentPath + $currentFiles[$i])`)
+            {
+                // recall function (go recursive into subdirs)
+                // print ($currentPath + $currentFiles[$i] + "\n");
+				stringArrayInsertAtIndex(0, $DirectoryArray, ($currentPath + $currentFiles[$i]));
+                NinjaAsset_FindAllSubDir ($currentPath + $currentFiles[$i] + "/");
+            }//end if filetest
+
+
+        }//end if match
+    }//end for i
+
+	//print $DirectoryArray;
+	//print `size $DirectoryArray`;
+	//return $DirectoryArray;
+
+}//end proc NinjaAsset_FindAllSubDir
+
+
+
+global proc NinjaAsset_RemoveBookMarks(string $UI)
+{
+
+	string $DeleteBookMark[] = `textScrollList -q -si ("AssetBookmarks" + $UI)`;
+	textScrollList -e -ri $DeleteBookMark[0] ("AssetBookmarks" + $UI);
+	eval ("NinjaAsset_SaveBookMarks " + $UI);
+
+}
+
+global proc NinjaAsset_AddBookMarks(string $UI)
+{
+
+	string $BookMark = `textField -q -tx ("TF_Prop_Directory" + $UI)`;
+	$StringSize = `size $BookMark`;
+	$BookMark = `substring $BookMark 1 ($StringSize - 1)`;
+
+	string $BookMarkList[] = `textScrollList -q -ai ("AssetBookmarks" + $UI)`;
+
+	stringArrayInsertAtIndex(0, $BookMarkList, $BookMark);
+	$NewList = `stringArrayRemoveDuplicates($BookMarkList)`;
+	textScrollList -e -ra ("AssetBookmarks" + $UI);
+	for ($i = 0; $i < (`size $NewList`); $i++)
+		{
+			textScrollList -e -append $NewList[$i] ("AssetBookmarks" + $UI);
+        }//end for
+
+	eval ("NinjaAsset_SaveBookMarks " + $UI);
+
+}
+
+global proc NinjaAsset_SaveBookMarks(string $UI)
+{
+	string $BookMarkList[] = `textScrollList -q -ai ("AssetBookmarks" + $UI)`;
+	$BookMarks = stringArrayToString($BookMarkList, ",");
+	$MayaLocation = `internalVar -uad`;
+	sysFile -md ($MayaLocation + "NinjaDojo");
+	$BookMarkFile = ($MayaLocation + "NinjaDojo/" + "NinjaAsset_Bookmarks.txt" );
+	$fileId =`fopen $BookMarkFile "w"`;
+	fwrite $fileId $BookMarks;
+	fclose $fileId;
+}
+
+global proc NinjaAsset_LoadBookMarks(string $UI)
+{
+	$MayaLocation = `internalVar -uad`;
+	$BookMarkFile = `fopen ($MayaLocation + "NinjaDojo/" + "NinjaAsset_Bookmarks.txt" ) "r"`;
+	string $BookMarks;
+	$BookMarks =`fread $BookMarkFile $BookMarks`;
+	//print $BookMarks;
+
+	string $buffer[];
+	$numTokens = `tokenize $BookMarks "," $buffer`;
+	fclose $BookMarkFile;
+
+
+	for ($i = 0; $i < (`size $buffer`); $i++)
+		{
+			textScrollList -e -append $buffer[$i] ("AssetBookmarks" + $UI);
+        }//end for
+}
+
+global proc NinjaAsset_SetBookMark(string $UI)
+{
+	string $BookMark[] = `textScrollList -q -si ("AssetBookmarks" + $UI)`;
+	textScrollList -e -da  ("PropDirectoryList" + $UI);
+	textField -e -tx $BookMark[0] ("TF_Prop_Directory" + $UI);
+	eval ("BuildDirectoryList " + $UI);
+	//NinjaAsset_BuildImageList;
+	//NinjaAsset_BuildMeshList;
+}
+
+
+global proc NinjaAsset_BuildSceneTextures()
+{
+	//iconTextScrollList -e -ra TextureList;
+	deleteUI SceneImagesTemp;
+	string $TextureNodes[] = `ls -tex`;
+
+	columnLayout -p SceneImagesParent SceneImagesTemp;
+	for ($i = 0; $i< (`size $TextureNodes`); $i++)
+			{
+			  $Test = catchQuiet(`getAttr ($TextureNodes[$i] + ".fileTextureName")`);
+			  if ($Test == 0)
+			  {
+				string $TexturePath = `getAttr ($TextureNodes[$i] + ".fileTextureName")`;
+				//iconTextScrollList -e -append $TexturePath TextureList;
+
+					rowColumnLayout -nc 2 -cw 1 32  -cw 2 500 ;
+					image -h 32 -w 32 -i $TexturePath;
+						popupMenu;
+						menuItem -l "Open in Fcheck" -c ("fcheck " + "\""  + $TexturePath + "\"" );
+					textField -tx $TexturePath -cc ("NinjaAsset_EditTexturePath " + $TextureNodes[$i]) ("Texpath" + $TextureNodes[$i] );
+					setParent..;
+					separator -height 4 -width 532;
+
+			  }//end if
+
+			}//end for i
+
+	setParent..;
+	scrollLayout -e -w 600 -h 200 SceneImagesParent;
+	scrollLayout -e -w 600 -h 240 SceneImagesParent;
+}
+
+global proc NinjaAsset_BuildSceneTexturesBar()
+{
+	//iconTextScrollList -e -ra TextureList;
+	deleteUI SceneImagesTempBar;
+	string $TextureNodes[] = `ls -tex`;
+
+	columnLayout -p SceneImagesParentBar SceneImagesTempBar;
+	for ($i = 0; $i< (`size $TextureNodes`); $i++)
+			{
+			  $Test = catchQuiet(`getAttr ($TextureNodes[$i] + ".fileTextureName")`);
+			  if ($Test == 0)
+			  {
+				string $TexturePath = `getAttr ($TextureNodes[$i] + ".fileTextureName")`;
+				//iconTextScrollList -e -append $TexturePath TextureList;
+
+					rowColumnLayout -nc 2 -cw 1 16  -cw 2 206 ;
+					//columnLayout;
+						image -h 16 -w 16 -i $TexturePath;
+						popupMenu;
+						menuItem -l "Open in Fcheck" -c ("fcheck " + "\""  + $TexturePath + "\"" );
+						textField -tx $TexturePath -ip 1;
+					setParent..;
+					separator -height 3 -width 206;
+
+			  }//end if
+
+			}//end for i
+
+	setParent..;
+
+	scrollLayout -e -w 250 -h 600 SceneImagesParentBar;
+	scrollLayout -e -w 240 -h 240 SceneImagesParentBar;
+}
+
+global proc NinjaAsset_Collector(string $UI)
+{
+
+	string $TargetPath = `textField -q -tx ("CollectorTargetPath" + $UI)`;
+	int $RepathTextures = `checkBox -q -v  ("cb_RepathTextures" + $UI)`;
+	sysFile -md $TargetPath;
+	string $MayaFile = `file -q -sn`;
+
+	string $buf[];
+	$numTokens = `tokenize $MayaFile "/" $buf`;
+	$MayaName = $buf[(`size $buf` - 1)];
+
+	string $TextureNodes[] = `ls -tex`;
+
+	//print ($TargetPath + $MayaName);
+	for ($i = 0; $i< (`size $TextureNodes`); $i++)
+			{
+			  $Test = catchQuiet(`getAttr ($TextureNodes[$i] + ".fileTextureName")`);
+			  if ($Test == 0)
+			  {
+				string $TexturePath = `getAttr ($TextureNodes[$i] + ".fileTextureName")`;
+				string $buf[];
+				$numTokens = `tokenize $TexturePath "/" $buf`;
+				$TextureName = $buf[(`size $buf` - 1)];
+				sysFile -cp  ($TargetPath + $TextureName) $TexturePath;//copy texture file
+				print ($TargetPath + $TextureName);
+
+				//repath texture
+				if ($RepathTextures == 1)
+				{
+					setAttr -type "string" ($TextureNodes[$i] + ".fileTextureName")  ($TargetPath + $TextureName);
+                }
+			  }//end if
+
+			}//end for i
+
+	file -f -save ;//saves the file
+	sysFile -cp  ($TargetPath + $MayaName) $MayaFile;//copy mayafile
+
+}
+global proc NinjaAsset_CreateMovieIcon(string $File)
+{
+
+	string $buf[];
+	$numTokens = `tokenize $File "/" $buf`;
+	$MovieName = $buf[(`size $buf` - 1)];
+
+	string $SG_Name = `sets -renderable true -noSurfaceShader true -empty -name ("SG_" + $MovieName)`;//create a Shading Group node
+	string $Mat_Name = `shadingNode -shared -asShader lambert -name ("Mat_" + $MovieName)` ;//create a material node
+	string $MovieNode = `shadingNode -name ("Movie_" + $MovieName) -asTexture movie`;//create texture node
+	string $ColorUVNode = `shadingNode -name ("UV_" + $MovieName)  -asUtility place2dTexture`;//create uv node
+
+	connectAttr -force ($Mat_Name  + ".outColor") ($SG_Name + ".surfaceShader");//connects material node to Shading Group node
+	string $UVAttr[] = {"stagger", "coverage", "translateFrame", "rotateFrame", "mirrorU" ,"mirrorV", "wrapU", "wrapV", "repeatUV", "rotateUV", "noiseUV", "vertexUvOne" , "vertexUvTwo", "vertexUvThree", "vertexCameraOne", "uvFilterSize"};
+		for ($a = 0; $a <`size $UVAttr`; $a++)
+					{
+						connectAttr -f ($ColorUVNode + "." + $UVAttr[$a])  ($MovieNode + "." + $UVAttr[$a]);//connects uv node to texture node
+
+					}
+	connectAttr -f ($ColorUVNode + ".uv")  ($MovieNode + ".uvCoord");//connects uv node to texture node
+	connectAttr -f ($ColorUVNode + ".outUV")  ($MovieNode + ".uvCoord");//connects uv node to texture node
+
+	connectAttr -force ($MovieNode  + ".outColor") ($Mat_Name + ".color");//connects texture node to Shading Node
+	setAttr -type "string" ($MovieNode + ".fileTextureName") $File;//assign texture to texture node
+	setAttr ($MovieNode + ".useFrameExtension") 1;
+	select $MovieNode;
+
+
+	NinjaAsset_RenderCamWindow;
+	setAttr "NinjaAsset_RenderCamera.rotateX" -90;
+	setAttr "NinjaAsset_RenderCamera.rotateY" 0;
+
+	string $TempPlane[] = `polyPlane -ch off -o on -w 1 -h .75 -sw 1 -sh 1 -cuv 1`;
+	string $FocusPlane[] = `polyPlane -ch off -o on -w 1 -h .5 -sw 1 -sh 1 -cuv 1`;
+	select $TempPlane;
+	viewFit NinjaAsset_RenderCameraShape;
+	sets -e -forceElement $SG_Name $TempPlane;//assign material to object
+
+	//$outfile =`Mayatomr -cam "perspShape" -preview -prj "" -xResolution 150 -yResolution 150`;//mental ray render
+	hide $FocusPlane;
+	$outfile = `hwRender -rs -cam "NinjaAsset_RenderCamera"`;
+	sysFile -rename ($File + "_NinjaIcon.jpg") $outfile;
+
+	delete $TempPlane $FocusPlane $SG_Name $Mat_Name $MovieNode $ColorUVNode "NinjaAsset_RenderCamera" ;
+	deleteUI NinjaRenderWindow;
+}
+
+global proc NinjaAsset_CreateMovieShader(string $File)
+{
+	$Sel = `ls -sl -fl -l`;
+	string $buf[];
+	$numTokens = `tokenize $File "/" $buf`;
+	$MovieName = $buf[(`size $buf` - 1)];
+
+	string $SG_Name = `sets -renderable true -noSurfaceShader true -empty -name ("SG_" + $MovieName)`;//create a Shading Group node
+	string $Mat_Name = `shadingNode -shared -asShader lambert -name ("Mat_" + $MovieName)` ;//create a material node
+	string $MovieNode = `shadingNode -name ("Movie_" + $MovieName) -asTexture movie`;//create texture node
+	string $ColorUVNode = `shadingNode -name ("UV_" + $MovieName)  -asUtility place2dTexture`;//create uv node
+
+	connectAttr -force ($Mat_Name  + ".outColor") ($SG_Name + ".surfaceShader");//connects material node to Shading Group node
+	string $UVAttr[] = {"stagger", "coverage", "translateFrame", "rotateFrame", "mirrorU" ,"mirrorV", "wrapU", "wrapV", "repeatUV", "rotateUV", "noiseUV", "vertexUvOne" , "vertexUvTwo", "vertexUvThree", "vertexCameraOne", "uvFilterSize"};
+		for ($a = 0; $a <`size $UVAttr`; $a++)
+					{
+						connectAttr -f ($ColorUVNode + "." + $UVAttr[$a])  ($MovieNode + "." + $UVAttr[$a]);//connects uv node to texture node
+
+					}
+	connectAttr -f ($ColorUVNode + ".uv")  ($MovieNode + ".uvCoord");//connects uv node to texture node
+	connectAttr -f ($ColorUVNode + ".outUV")  ($MovieNode + ".uvCoord");//connects uv node to texture node
+
+	connectAttr -force ($MovieNode  + ".outColor") ($Mat_Name + ".color");//connects texture node to Shading Node
+	setAttr -type "string" ($MovieNode + ".fileTextureName") $File;//assign texture to texture node
+	setAttr ($MovieNode + ".useFrameExtension") 1;
+	select $MovieNode;
+	if (`size $Sel` != 0)
+		{
+			sets -e -forceElement $SG_Name $Sel;//assign material to object
+		}
+}
+
+global proc NinjaAsset_CreateShaderFromTexture(string $ImageDirectory, string $ImageFileName)
+
+{
+		$Sel = `ls -sl -fl -l`;
+
+		string $buf[];
+		$numTokens = `tokenize $ImageFileName "." $buf`;
+		$ImageName = $buf[0];
+
+
+		string $SG_Name = ("SG_" + $ImageName);
+
+		if (`objExists ($SG_Name)` == 0)
+		{
+			string $SG_Name = `sets -renderable true -noSurfaceShader true -empty -name ("SG_" + $ImageName)`;//create a Shading Group node
+			string $Mat_Name = `shadingNode -shared -asShader blinn -name ("Mat_" + $ImageName)` ;//create a material node
+			string $ColorTextureNode = `shadingNode -name ("Tex_" + $ImageName) -asTexture file`;//create texture node
+			string $ColorUVNode = `shadingNode -name ("UV_" + $ImageName)  -asUtility place2dTexture`;//create uv node
+			connectAttr -force ($Mat_Name  + ".outColor") ($SG_Name + ".surfaceShader");//connects material node to Shading Group node
+
+			string $UVAttr[] = {"stagger", "coverage", "translateFrame", "rotateFrame", "mirrorU" ,"mirrorV", "wrapU", "wrapV", "repeatUV", "rotateUV", "noiseUV", "vertexUvOne" , "vertexUvTwo", "vertexUvThree", "vertexCameraOne", "uvFilterSize"};
+
+			for ($a = 0; $a <`size $UVAttr`; $a++)
+					{
+						connectAttr -f ($ColorUVNode + "." + $UVAttr[$a])  ($ColorTextureNode + "." + $UVAttr[$a]);//connects uv node to texture node
+
+					}
+			connectAttr -f ($ColorUVNode + ".uv")  ($ColorTextureNode + ".uvCoord");//connects uv node to texture node
+			connectAttr -f ($ColorUVNode + ".outUV")  ($ColorTextureNode + ".uvCoord");//connects uv node to texture node
+
+			connectAttr -force ($ColorTextureNode  + ".outColor") ($Mat_Name + ".color");//connects texture node to Shading Node
+			setAttr -type "string" ($ColorTextureNode + ".fileTextureName") ($ImageDirectory + $ImageFileName);//assign texture to texture node
+
+			if (`size $Sel` != 0)
+			{
+				sets -e -forceElement $SG_Name $Sel;//assign material to object
+			}
+		}
+
+		else
+		{
+			if (`size $Sel` != 0)
+			{
+				sets -e -forceElement $SG_Name $Sel;//assign material to object
+			}
+
+        }
+
+}
+
+global proc NinjaAsset_EditTexturePath(string $TextureNode)
+{
+	string $TexturePath = `getAttr ($TextureNode + ".fileTextureName")`;
+	print $TexturePath;
+	$NewPath = `textField -q -tx ("Texpath" + $TextureNode)`;
+	setAttr -type "string" ($TextureNode + ".fileTextureName") $NewPath;
+	AEfileTextureReloadCmd ($TextureNode + ".fileTextureName");
+}
+
+global proc NinjaAsset_ReplaceTexturePath(string $UI)
+{
+	string $SetOriginalPath = `textField -q -tx ("originalPath" + $UI)`;
+	string $SetNewPath = `textField -q -tx ("newPath"+ $UI)`;
+
+	string $SceneTextures[] = `ls -tex`;
+	//print $SceneTextures;
+	//error;
+	for ($i = 0; $i< (`size $SceneTextures`); $i++)
+			{
+			  $Test = catchQuiet(`getAttr ($SceneTextures[$i] + ".fileTextureName")`);
+
+			  if ($Test == 0)
+			  {
+				  //print $Test;
+				  string $TexturePath = `getAttr ($SceneTextures[$i] + ".fileTextureName")`;
+				  print ($TexturePath + "\n");
+				  print ($SetOriginalPath + "\n");
+				  print ($SetNewPath + "\n");
+
+
+				  string $NewPath = substituteAllString($TexturePath,$SetOriginalPath,$SetNewPath);
+				  print $NewPath;
+				  catchQuiet (`setAttr -type "string" ($SceneTextures[$i] + ".fileTextureName")   $NewPath`);
+				  catchQuiet (AEfileTextureReloadCmd ($SceneTextures[$i] + ".fileTextureName"));
+
+			  }//end if
+
+			}//end for i
+	//refresh -f;
+	NinjaAsset_BuildSceneTextures;
+
+}
+
+global proc SetDriveLetter(string $UI, string $DriveLetter)
+{
+	textScrollList -e -da  ("PropDirectoryList" + $UI);
+	if ($DriveLetter == "Menu")
+	{
+		$DriveLetter = `optionMenu -q -v ("DriveLetterMenu" + $UI)`;
+    }
+
+	if ($DriveLetter == "/"  || $DriveLetter == "mac")
+	{
+		textField -e -text ("") ("TF_Prop_Directory" + $UI);
+		BuildDirectoryList $UI;
+    }
+
+	else
+	{
+		textField -e -text ($DriveLetter + ":") ("TF_Prop_Directory" + $UI);
+		BuildDirectoryList $UI;
+    }
+
+
+}
+
+
+global proc Convert_ImageXPM(string $ImageName)
+{
+	print $ImageName;
+	string $buf[];
+	$numTokens = `tokenize $ImageName "." $buf`;
+	$XPMImage = ($buf[0] +".xpm");
+	system ("imconvert -sample 150 150 -alpha deactivate " + $ImageName + " " + $XPMImage );
+	//NinjaAsset_BuildImageList;
+}
+
+///////////////////////////////////////////////////////////////PROP Stuff//////////////////////////////////////////////////
+global proc NinjaAsset_OpenFile(string $FileName)
+{
+	print $FileName;
+	system ("load " + $FileName);
+
+}
+
+global proc Open_Image(string $ImageName)
+{
+	//print $ImageName;
+	system ("load " + $ImageName);
+}
+
+global proc Open_Prop(string $PropName)
+{
+	//string $Prop_Folder = `textField -q -tx ("TF_Prop_Directory" + $UI)`;
+	file -o -f -ignoreVersion -pmt true ($PropName);
+
+}
+
+global proc Open_PropBar(string $PropName)
+{
+	string $Prop_Folder = `textField -q -tx TF_Prop_DirectoryBar`;
+	file -o -f -ignoreVersion -pmt true ($PropName);
+}
+
+
+global proc NinjaAsset_OpenAndRenderIcons()
+{
+	string $Prop_Folder = `textField -q -tx TF_Prop_Directory`;
+
+
+	string $maFiles[] = `getFileList -fld ($Prop_Folder ) -fs "*.ma"`;
+	string $mbFiles[] = `getFileList -fld ($Prop_Folder ) -fs "*.mb"`;
+	string $MayaFiles[] = {};
+	$MayaFiles = stringArrayCatenate($maFiles, $mbFiles);
+	$MayaFiles = `sort $MayaFiles`;
+
+	//print $MayaFiles;
+	//error;
+	string $PropName;
+	for ($d = 0; $d <`size $MayaFiles`; $d++)
+		{
+
+
+			file -o -f -ignoreVersion -pmt true ($Prop_Folder + $MayaFiles[$d]);
+			select -cl;
+			FrameSelected;
+			fitPanel -selected;
+
+			//error;
+			if (endsWith ($MayaFiles[$d], ".ma" ))
+			{
+				$PropName = substituteAllString ($MayaFiles[$d], ".ma", "");
+
+            }
+
+			else
+			{
+				$PropName = substituteAllString ($MayaFiles[$d], ".mb", "");
+            }
+
+			//print ($Prop_Folder + $PropName);
+			mentalRayLoad;
+			string $propPath = ($Prop_Folder + $PropName);
+			NinjaAsset_RenderProp $propPath;
+        }
+}
+
+global proc NinjaAsset_OpenAndRenderIconsBar()
+{
+	string $Prop_Folder = `textField -q -tx TF_Prop_DirectoryBar`;
+
+
+	string $maFiles[] = `getFileList -fld ($Prop_Folder ) -fs "*.ma"`;
+	string $mbFiles[] = `getFileList -fld ($Prop_Folder ) -fs "*.mb"`;
+	string $MayaFiles[] = {};
+	$MayaFiles = stringArrayCatenate($maFiles, $mbFiles);
+	$MayaFiles = `sort $MayaFiles`;
+
+	//print $MayaFiles;
+	//error;
+	string $PropName;
+	for ($d = 0; $d <`size $MayaFiles`; $d++)
+		{
+
+
+			file -o -f -ignoreVersion -pmt true ($Prop_Folder + $MayaFiles[$d]);
+			select -cl;
+			FrameSelected;
+			fitPanel -selected;
+
+			//error;
+			if (endsWith ($MayaFiles[$d], ".ma" ))
+			{
+				$PropName = substituteAllString ($MayaFiles[$d], ".ma", "");
+
+            }
+
+			else
+			{
+				$PropName = substituteAllString ($MayaFiles[$d], ".mb", "");
+            }
+
+			//print ($Prop_Folder + $PropName);
+			mentalRayLoad;
+			string $propPath = ($Prop_Folder + $PropName);
+			NinjaAsset_RenderPropBar $propPath;
+        }
+}
+
+global proc NinjaAsset_ExportMesh(string $UI)
+{
+	string $ExportPath = `textField -q -tx ("TF_Prop_Directory" + $UI)`;
+	string $ExportName  =`textField -q -text ("TF_Prop_ExportName" + $UI)`;
+	string $FileType = `optionMenu  -q -v ("MeshExportType" + $UI)`;
+
+	string $SelectedMesh[] = `ls -sl -fl -l`;
+	duplicate -rr;
+	$TempGroup = `group -n "GRP_Prop" -w`;
+	xform -cp;
+	move  -rpr 0 0 0 ;//move to zero zero zero
+	ungroup;
+	$tempMesh = `ls -sl -fl -l`;
+	invertSelection;
+	$DisplayObjects = `ls -sl -fl -l`;
+	HideSelectedObjects;
+	select $tempMesh;
+	fitPanel -selected;
+
+	eval ("NinjaAsset_RenderProp " + "\"" + ($ExportPath + $ExportName + $FileType) + "\"");
+
+	if ($FileType == ".ma")
+	{
+		file -op "" -typ "mayaAscii" -f -es ($ExportPath + $ExportName + ".ma");//export the module
+	}
+
+	if ($FileType == ".mb")
+	{
+		file -op "" -typ "mayaBinary" -f -es ($ExportPath + $ExportName + ".mb");//export the module
+	}
+
+	if ($FileType == ".obj")
+	{
+		loadPlugin objExport.mll;
+		file -op "" -typ "OBJexport" -f -es ($ExportPath + $ExportName + ".obj");//export the module
+	}
+
+	if ($FileType == ".fbx")
+	{
+		loadPlugin fbxmaya.mll;
+		file -force -options "v=0" -typ "FBX export" -pr -es ($ExportPath + $ExportName + ".fbx") ;
+		//file -op "" -typ "FBX export" -f -es ($Prop_Folder + $PropExportName + ".fbx");//export the module
+	}
+
+	delete $tempMesh;
+	//NinjaAsset_BuildMeshList;
+	showHidden $DisplayObjects;
+
+}
+
+global proc NinjaAsset_ExportMeshBar()
+{
+	string $Prop_Folder = `textField -q -tx TF_Prop_DirectoryBar`;
+	$PropExportName  =`textField -q -text TF_Prop_ExportNameBar`;
+
+	string $SelectedMesh[] = `ls -sl -fl -l`;
+	duplicate -rr;
+	$TempGroup = `group -n "GRP_Prop" -w `;
+	xform -cp;
+	move  -rpr 0 0 0 ;//move to zero zero zero
+	ungroup;
+	$tempMesh = `ls -sl -fl -l`;
+	invertSelection;
+	$DisplayObjects = `ls -sl -fl -l`;
+	HideSelectedObjects;
+
+
+	$Xrot = `getAttr "persp.rotateX" `;
+	$Yrot = `getAttr "persp.rotateY" `;
+	$Zrot = `getAttr "persp.rotateZ" `;
+	camera -name "NinjaAsset_RenderCam" -centerOfInterest 5 -focalLength 35 -lensSqueezeRatio 1 -cameraScale 1 -horizontalFilmAperture 1.41732 -horizontalFilmOffset 0 -verticalFilmAperture 0.94488 -verticalFilmOffset 0 -filmFit Fill -overscan 1 -motionBlur 0 -shutterAngle 144 -nearClipPlane 0.01 -farClipPlane 1000 -orthographic 0 -orthographicWidth 30; objectMoveCommand; cameraMakeNode 1 "";
+	setAttr "NinjaAsset_RenderCam1.rotateX" $Xrot;
+	setAttr "NinjaAsset_RenderCam1.rotateY" $Yrot;
+	setAttr "NinjaAsset_RenderCam1.rotateZ" $Zrot;
+	setAttr ("NinjaAsset_RenderCam1.backgroundColor") -type double3 1 1 1 ;//set background to white
+
+	select $tempMesh;
+	file -op "" -typ "mayaAscii" -f -es ($Prop_Folder + $PropExportName + ".ma");//export the module
+
+	string $panel = `getPanel -wf`;
+	lookThroughModelPanel "NinjaAsset_RenderCam1" $panel;
+	fitPanel -selected;
+	eval ("NinjaAsset_RenderPropBar " + "\"" + ($Prop_Folder + $PropExportName) + "\"");
+
+	delete $tempMesh;
+	delete "NinjaAsset_RenderCam1";
+	showHidden $DisplayObjects;
+	lookThroughModelPanel "persp" $panel;
+
+}
+
+global proc NinjaAsset_RenderShader(string $ShaderFile)
+{
+	$Selection = `ls -sl -fl -l`;
+	$SceneShaders = `ls -mat`;
+	string $buf[] = {};
+	tokenize $ShaderFile "/" $buf;
+	string $ShaderName = substituteAllString($buf[(`size $buf` - 1)], ".ma", "");
+}
+
+global proc NinjaAsset_ExportShader(string $UI, string $Folder)
+{
+	$Sel = `ls -sl -fl -l`;
+	if (`size $Sel` == 0)
+	{
+		error "Nothing Selected.. Select either a Material or Object";
+    }
+
+
+	global int $Renderer;
+	//check for existing nodes then delete them
+	if (`objExists NinjaAsset_RenderLight` )
+	{
+		delete NinjaAsset_RenderLight;
+    }
+
+	if (`objExists NinjaAsset_RenderCamera` )
+	{
+		delete NinjaAsset_RenderCamera;
+    }
+
+	if (`objExists Mat_RenderChecker` )
+	{
+		delete Mat_RenderChecker;
+    }
+
+	if (`objExists SG_RenderChecker` )
+	{
+		delete SG_RenderChecker;
+    }
+
+	if (`objExists SG_RenderChecker` )
+	{
+		delete SG_RenderChecker;
+    }
+
+	if (`objExists Tex_RenderChecker` )
+	{
+		delete Tex_RenderChecker;
+    }
+
+	if (`objExists UV_RenderChecker` )
+	{
+		delete UV_RenderChecker;
+    }
+
+	string $Shader_Folder = $Folder;
+	string $SelObj[] = `ls -sl -fl -l -type "transform"`;
+	string $SelShape[] = `ls -sl -fl -s -dag $SelObj[0]`;
+	string $ShaderName[]={};
+	string $ShaderGroups[]={};
+
+	if (`size $SelShape` != 0)
+	{
+		string $ShadingGroups[] = `listSets -type 1 -object $SelShape[0]`;
+		for ($m = 0; $m < `size $ShadingGroups`; $m++)
+		{
+			$InputConnections = `listConnections -d 0 -s 1 $ShadingGroups[$m]`;
+			$materialName = $InputConnections[0];//assume first input is the material
+			if ($materialName != "lambert1"  && !stringArrayContains($ShadingGroups[$m], $ShaderGroups))
+			{
+				stringArrayInsertAtIndex(0, $ShaderName, $materialName);
+				stringArrayInsertAtIndex(0, $ShaderGroups, $ShadingGroups[$m]);
+            }
+        }
+	}
+
+	else
+	{
+		$ShaderGroup = `listConnections -d 1 -type "shadingEngine"`;
+		//$ShaderConnections = `listConnections -d 1 `;
+		$materialName = `ls -sl -fl -l`;
+
+		if ($materialName[0] != "lambert1")
+			{
+				stringArrayInsertAtIndex(0, $ShaderName, $materialName[0]);
+				stringArrayInsertAtIndex(0, $ShaderGroups, $ShaderGroup[0]);
+            }
+
+    }
+
+	if (`size $ShaderGroups` == 0)
+	{
+		error "No Object or Shader is selected";
+    }
+
+	$RenderPanel = `eval ("NinjaAsset_RenderCamWindow")`;
+
+	//Setup Render Scene
+	string $FocusSphere[] = `polySphere -ch off -o on -r .65`;
+
+	string $TempSphere[] = `polySphere -ch off -o on -r 1 -sx 64 -sy 64`;
+	string $TempPlane[] = `polyPlane -ch off -o on -w 20 -h 20 -sw 1 -sh 1 -cuv 1`;
+	string $TempCube[] = `polyCube -ch on -o on -w 2 -h .25 -d 2 -cuv 4`;
+	string $TempCylinder[] = `polyCylinder -ch on -o on -r 1.125 -h .25 -sx 64 -sc 1 -cuv 3`;
+
+	polyBevel -offset 0.05 -offsetAsFraction 0 -autoFit 1 -segments 5 -worldSpace 1 -uvAssignment 0 -fillNgons 1 -mergeVertices 1 -mergeVertexTolerance 0.0001 -smoothingAngle 30 -miteringAngle 180 -angleTolerance 180 -ch 1 $TempCube;
+	polyBevel -offset 0.05 -offsetAsFraction 0 -autoFit 1 -segments 5 -worldSpace 1 -uvAssignment 0 -fillNgons 1 -mergeVertices 1 -mergeVertexTolerance 0.0001 -smoothingAngle 30 -miteringAngle 180 -angleTolerance 180 -ch 1 $TempCylinder;
+
+	string $TempCylinderB[] = `polyCylinder -ch on -o on -r .4 -h .5 -sx 64 -sc 1 -cuv 3`;
+	rotate 45 45 0 $TempCylinderB[0];
+	move 0 1 0 $TempCylinderB[0];
+	move -os 0 1 0 $TempCylinderB[0];
+	$TempSphere = `polyBoolOp -op 2 -ch 0 -useThresholds 1 -preserveColor 0 $TempSphere[0] $TempCylinderB[0]`;
+
+
+	move 0 .125 0 $TempCube;
+	move 0 1 0 $TempSphere;
+	move 0 1 0 $TempCylinder;
+	move 0 .7 0 $FocusSphere;
+
+
+	//Setup Lights
+	string $DirectionalLight = `directionalLight -n "NinjaAsset_RenderLight" -i .75 -rgb 1 1 1 -ss 1 -rotation -45 0 0`;
+	//$DirectionalLight = `ls -sl -fl -l`;
+	setAttr ("NinjaAsset_RenderLightShape" + ".useRayTraceShadows") 1;
+	setAttr ("NinjaAsset_RenderLightShape" + ".useMidDistDmap") 0;
+	//setAttr ("NinjaAsset_RenderLightShape" + ".dmapResolution") 1024;
+	setAttr ("NinjaAsset_RenderLightShape" + ".dmapFilterSize") 5;
+	setAttr ($DirectionalLight + ".shadowColor") -type double3 .125 .125 .125;
+	//print $DirectionalLight;
+
+	//Setup display
+	select $TempSphere $FocusSphere $TempPlane $TempCube $TempCylinder "NinjaAsset_RenderLight";
+	invertSelection;
+	$DisplayObjects = `ls -sl -fl -l`;
+	HideSelectedObjects;
+
+	string $CheckerMat_Name = `shadingNode -shared -asShader blinn -name "Mat_RenderChecker"`;//create a material node
+	string $CheckerSG_Name = `sets -renderable true -noSurfaceShader true -empty -name "SG_RenderChecker"`;//create a Shading Group node
+	string $CheckerTextureName = `shadingNode -asTexture checker -name "Tex_RenderChecker"`;
+	setAttr ($CheckerTextureName + ".color2") -type double3 0.5 0.5 0.5 ;
+	string $UV_CheckerName = `shadingNode -name ("UV_RenderChecker")  -asUtility place2dTexture`;//create uv node
+	setAttr ($UV_CheckerName + ".repeatU") 32;
+	setAttr ($UV_CheckerName + ".repeatV") 32;
+
+	connectAttr -force ($CheckerMat_Name  + ".outColor") ($CheckerSG_Name + ".surfaceShader");//connects material node to Shading Group node
+	connectAttr -force ($UV_CheckerName + ".outUV")  ($CheckerTextureName + ".uvCoord");//connects uv node to texture node
+	connectAttr -force ($CheckerTextureName  + ".outColor") ($CheckerMat_Name + ".color");//connects texture node to Shading Node
+
+	$AO_Shader = `mrCreateCustomNode -asTexture "" mib_amb_occlusion`;
+	connectAttr -force ($AO_Shader + ".outValue") ($CheckerMat_Name + ".ambientColor");
+	setAttr ($AO_Shader + ".samples") 256;
+	setAttr ($AO_Shader + ".bright") -type double3 0.5 0.5 0.5 ;
+	setAttr ($CheckerMat_Name + ".reflectivity") 0;
+
+
+	$RenderSizeSeletion = `radioButtonGrp -q -sl ("rbg_NinjaShaderIconSize" + $UI)`;
+	int $IconRenderSize;
+	if ($RenderSizeSeletion == 1)
+	{
+		$IconRenderSize = 150;
+    }
+
+	if ($RenderSizeSeletion == 2)
+	{
+		$IconRenderSize = 300;
+    }
+
+	if ($RenderSizeSeletion == 3)
+	{
+		$IconRenderSize = 600;
+    }
+
+	for ($i = 0; $i < `size $ShaderGroups`; $i++)
+	{
+		//Export the Shader
+		select -r -ne $ShaderGroups[$i];
+		print $ShaderGroups[$i];
+
+		file -f -op "v=0" -typ "mayaAscii" -pr -es ($Shader_Folder + $ShaderName[$i] + ".ma"); //exports the shader
+		sysFile -rename  ($Shader_Folder + $ShaderName[$i] + ".mat") ($Shader_Folder + $ShaderName[$i] + ".ma");
+		//Apply Shader to Objects
+		sets -e -forceElement $ShaderGroups[$i] $TempSphere;
+		sets -e -forceElement $ShaderGroups[$i] $TempCube;
+		sets -e -forceElement $ShaderGroups[$i] $TempCylinder;
+		sets -e -forceElement $CheckerSG_Name $TempPlane;
+
+		//error;
+		showHidden $FocusSphere;
+		select $FocusSphere;
+		viewFit NinjaAsset_RenderCameraShape;
+		hide $FocusSphere;
+
+
+		//Render The Shader Icon
+		//$Renderer = `radioButtonGrp -q-select ("rbg_NinjaAssetRender" + $UI)`;
+
+		if ($Renderer == 1)
+		{
+			mentalRayLoad;
+			string $ShaderPath = ($Shader_Folder + $ShaderName[$i] + ".mat");
+			$outfile =`Mayatomr -cam "NinjaAsset_RenderCameraShape" -preview -prj "" -xResolution $IconRenderSize -yResolution $IconRenderSize`;//mental ray render
+			sysFile -rename ($ShaderPath + "_NinjaIcon.jpg") $outfile;
+
+        }
+
+
+		if ($Renderer == 2)//vray
+		{
+			//NinjaAsset_VRayLoad;
+			string $ShaderPath = ($Shader_Folder + $ShaderName[$i] + ".mat");
+			string $RenderFile = ($ShaderPath + "_NinjaIcon.jpg");
+			setAttr  "vraySettings.fileNamePrefix" -type "string" $RenderFile;
+			setAttr "vraySettings.imageFormatStr" -type "string" "jpg";
+			setAttr "vraySettings.aspectLock" 0;
+			setAttr "vraySettings.width" $IconRenderSize;
+			setAttr "vraySettings.height" $IconRenderSize;
+			$outfile =`Mayatomr -cam "NinjaAsset_RenderCameraShape" -preview -prj "" -xResolution 1 -yResolution 1`;//mental ray render
+			//render -xresolution 600 -yresolution 600;
+			RedoPreviousRender;
+			//sysFile -rename ($ShaderPath + "_NinjaIcon.jpg") $outfile;
+			sysFile -rename ($ShaderPath + "_NinjaIcon.jpg") ($ShaderPath + "_NinjaIcon.jpg_tmp.jpg");
+
+		}
+    }
+
+
+	deleteUI NinjaRenderWindow;
+	//delete "NinjaAsset_RenderCamera";
+
+
+	showHidden $DisplayObjects;
+	delete $TempSphere $FocusSphere $TempCylinder $TempPlane $TempCube "NinjaAsset_RenderCamera" "NinjaAsset_RenderLight";
+	delete $CheckerMat_Name $CheckerSG_Name $CheckerTextureName $UV_CheckerName $AO_Shader;
+	NinjaAsset_SwitchTabs $UI;
+
+}
+
+
+global proc ImportShader(string $Apply, string $ShaderFile)
+{
+	$Selection = `ls -sl -fl -l`;
+	$SceneShaders = `ls -mat`;
+
+	string $buf[] = {};
+	tokenize $ShaderFile "/" $buf;
+	string $ShaderName;
+	if (`endsWith $ShaderFile ".mat"` )
+	{
+		$ShaderName = substituteAllString($buf[(`size $buf` - 1)], ".mat", "");
+	}
+
+	if (`endsWith $ShaderName ".ma"` )
+	{
+		$ShaderName = substituteAllString($buf[(`size $buf` - 1)], ".mb", "");
+	}
+
+	if (`endsWith $ShaderName ".mb"` )
+	{
+		$ShaderName = substituteAllString($buf[(`size $buf` - 1)], ".mb", "");
+	}
+
+	//print $ShaderName;
+	//error;
+
+	if (stringArrayContains($ShaderName, $SceneShaders) == 0)
+		{
+			if (`endsWith $ShaderFile ".mat"` )
+				{
+					file -import -type "mayaAscii"  -ignoreVersion -ra true -rdn -rpr "NinjaShaderImport" -loadReferenceDepth "none" ($ShaderFile);
+                }
+
+			else
+				{
+					file -import -type "mayaBinary"  -ignoreVersion -ra true -rdn -rpr "NinjaShaderImport" -loadReferenceDepth "none" ($ShaderFile);
+                }
+			//error;
+			$SceneShaders = `ls`;
+			//rename the shader
+			for ($s = 0; $s <`size $SceneShaders`; $s++)
+			{
+				if (`startsWith  $SceneShaders[$s] "NinjaShaderImport_"` == 1)
+				{
+					string $NewShaderName = substituteAllString($SceneShaders[$s], "NinjaShaderImport_", "");
+					rename $SceneShaders[$s] $NewShaderName;
+				}
+			}
+
+			//apply Shader
+			if ($Apply == "Selection")
+			{
+				print $ShaderName;
+				select $Selection;
+				hyperShade -assign $ShaderName;
+				//string $NewSG_Name = `sets -renderable true -noSurfaceShader true -empty -name ($ShaderName + "SG")`;//create a Shading Group node
+				//connectAttr -force ($ShaderName  + ".outColor") ($NewSG_Name + ".surfaceShader");//connects material node to Shading Group node
+				//sets -e -forceElement $NewSG_Name $Selection;//assign material to object
+			}
+
+			//select $Selection;
+        }
+
+	else
+	{
+		print "Shader Already Exists in scene using Scene Shader";
+		if ($Apply == "Selection")
+			{
+
+				string $ShadingGroupName[] = `listConnections  -type "shadingEngine" $ShaderName`;
+				if (`size $ShadingGroupName` == 0)
+				{
+					string $NewSG_Name = `sets -renderable true -noSurfaceShader true -empty -name ($ShaderName + "SG")`;//create a Shading Group node
+					connectAttr -force ($ShaderName  + ".outColor") ($NewSG_Name + ".surfaceShader");//connects material node to Shading Group node
+					sets -e -forceElement $NewSG_Name $Selection;//assign material to object
+				}
+
+				else
+				{
+					sets -e -forceElement $ShadingGroupName $Selection;//assign material to object
+
+                }
+			}
+    }
+
+
+}
+
+global proc  ImportProp(string $Location, string $PropName)
+{
+
+	//error;
+	$SelectedVerts = `filterExpand -sm 31`;
+	$SelectedEdges = `filterExpand -sm 32`;
+	$SelectedFaces = `filterExpand -sm 34`;
+	string $ImportedObjects[] = {};
+	$Sel = `ls -sl -fl -l`;
+	string $AllScene[] = `ls -tr -l`;
+
+	//string $Prop_Folder = `textField -q -tx TF_Prop_Directory`;
+	if (endsWith ($PropName, ".ma") == 1)
+	{
+		file -import -type "mayaAscii"  -ra true -rdn -rpr "Prop" -loadReferenceDepth "none" ($PropName);
+
+    }
+
+		if (endsWith ($PropName, ".mb") == 1)
+	{
+
+		file -import -type "mayaBinary"  -ra true -rdn -rpr "Prop" -loadReferenceDepth "none" ($PropName);
+
+    }
+
+
+	string $AllSceneImport[] = `ls -tr`;
+	select -r $AllSceneImport;
+	select -d $AllScene;
+	pickWalk -d up;
+	string $NewSel[] = `ls -sl -fl`;
+
+	for ($r = 0; $r < `size $NewSel`; $r++)
+		{
+			$NewName = substituteAllString($NewSel[$r], "Prop_", "");
+			rename  $NewSel[$r] $NewName;
+
+        }
+
+	$NewSel = `ls -sl -fl`;
+
+
+	//print $Location;
+	if ($Location == "Selection")
+	{
+
+
+		for ($v = 0; $v < `size $SelectedVerts`; $v++)
+		{
+			$Dup = `duplicate $NewSel`;
+			$DestinationObjTranslate = (`xform -q -rp -ws $Sel[$v]`);
+			select $SelectedVerts[$v];
+			float  $ComponetBounds[] = `polyEvaluate -bc $SelectedVerts[$v]`; //xmin xmax ymin ymax zmin zmax
+			float  $ComponetXCen = (($ComponetBounds[0] + $ComponetBounds[1]) / 2);
+			float  $ComponetYCen = (($ComponetBounds[2] + $ComponetBounds[3]) /2);
+			float  $ComponetZCen = (($ComponetBounds[4] + $ComponetBounds[5]) /2);
+			float $location[] = {$ComponetXCen, $ComponetYCen, $ComponetZCen};//vert center
+			move -rpr $ComponetXCen $ComponetYCen $ComponetZCen $Dup;
+			$ImportedObjects[$v] = $Dup[0];
+			//delete $NewSel;
+        }
+
+
+		for ($e = 0; $e < `size $SelectedEdges`; $e++)
+		{
+			$Dup = `duplicate $NewSel`;
+			$DestinationObjTranslate = (`xform -q -rp -ws $Sel[$e]`);
+			select $SelectedEdges[$e];
+			float  $ComponetBounds[] = `polyEvaluate -bc $SelectedEdges[$e]`; //xmin xmax ymin ymax zmin zmax
+			float  $ComponetXCen = (($ComponetBounds[0] + $ComponetBounds[1]) / 2);
+			float  $ComponetYCen = (($ComponetBounds[2] + $ComponetBounds[3]) /2);
+			float  $ComponetZCen = (($ComponetBounds[4] + $ComponetBounds[5]) /2);
+			float $location[] = {$ComponetXCen, $ComponetYCen, $ComponetZCen};//vert center
+			move -rpr $ComponetXCen $ComponetYCen $ComponetZCen $Dup;
+			$ImportedObjects[$e] = $Dup[0];
+			//delete $NewSel;
+        }
+
+
+		for ($f = 0; $f < `size $SelectedFaces`; $f++)
+		{
+			$Dup = `duplicate $NewSel`;
+			$DestinationObjTranslate = (`xform -q -rp -ws $SelectedFaces[$f]`);
+			select $SelectedFaces[$f];
+			float  $ComponetBounds[] = `polyEvaluate -bc $SelectedFaces[$f]`; //xmin xmax ymin ymax zmin zmax
+			float  $ComponetXCen = (($ComponetBounds[0] + $ComponetBounds[1]) / 2);
+			float  $ComponetYCen = (($ComponetBounds[2] + $ComponetBounds[3]) /2);
+			float  $ComponetZCen = (($ComponetBounds[4] + $ComponetBounds[5]) /2);
+			float $location[] = {$ComponetXCen, $ComponetYCen, $ComponetZCen};//vert center
+			move -rpr $ComponetXCen $ComponetYCen $ComponetZCen $Dup;
+			$ImportedObjects[$f] = $Dup[0];
+			//delete $NewSel;
+        }
+
+
+
+		if (`size $SelectedVerts` == 0 && `size $SelectedEdges` == 0 && `size $SelectedFaces` == 0)
+		{
+
+			for ($d = 0; $d < `size $Sel`; $d++)
+			{
+				$Dup = `duplicate $NewSel`;
+				$DestinationObjTranslate = (`xform -q -rp -ws $Sel[$d]`);
+				if (`size $Dup` > 1)
+					{
+						group -name "NinjaAssestGroup" $Dup;
+						xform -cp NinjaAssestGroup;
+						move -rpr $DestinationObjTranslate[0] $DestinationObjTranslate[1] $DestinationObjTranslate[2] NinjaAssestGroup;
+						ungroup NinjaAssestGroup;
+					}
+
+				else
+				{
+					move -rpr $DestinationObjTranslate[0] $DestinationObjTranslate[1] $DestinationObjTranslate[2] $Dup;
+				}
+				$ImportedObjects[$d] = $Dup[0];
+
+
+			}
+			//delete $NewSel;
+
+        }
+
+    	select $ImportedObjects;
+		delete $NewSel;
+	}
+
+
+
+	if ($Location == "Replace")
+	{
+
+		for ($d = 0; $d < `size $Sel`; $d++)
+		{
+			$Dup = `duplicate $NewSel`;
+			select $Sel[$d];
+			$DestinationObjTranslate = (`xform -q -rp -ws $Sel[$d]`);
+			//float 	$ComponetBounds[] = `polyEvaluate -bc $Sel[$d]`; //xmin xmax ymin ymax zmin zmax
+			//float   $ComponetXCen = (($ComponetBounds[0] + $ComponetBounds[1]) / 2);
+			//float   $ComponetYCen = (($ComponetBounds[2] + $ComponetBounds[3]) /2);
+			//float  	$ComponetZCen = (($ComponetBounds[4] + $ComponetBounds[5]) /2);
+			//move -rpr $ComponetXCen $ComponetYCen $ComponetZCen $Dup;
+			move -rpr $DestinationObjTranslate[0] $DestinationObjTranslate[1] $DestinationObjTranslate[2] $Dup;
+			//select $Dup;
+			delete $Sel[$d];
+        }
+	delete $NewSel;
+
+    }
+
+
+
+}
+
+global proc DuplicateProp(string $PropName)
+{
+	 sysFile -copy $PropName $PropName;
+}
+
+
+global proc RenderAllProps(string $Prop_Folder)
+{
+	//print $Prop_Folder;
+	string $MayaFiles[] = {};
+
+	$maFiles = `getFileList -fld ($Prop_Folder ) -fs "*.ma"`;
+	$MayaFiles = stringArrayCatenate($MayaFiles, $maFiles);
+	$mbFiles = `getFileList -fld ($Prop_Folder ) -fs "*.mb"`;
+	$MayaFiles = stringArrayCatenate($MayaFiles, $mbFiles);
+	$objFiles = `getFileList -fld ($Prop_Folder ) -fs "*.obj"`;
+	$MayaFiles = stringArrayCatenate($MayaFiles, $objFiles);
+
+	for ($r = 0; $r <`size $MayaFiles`; $r++)
+		{
+			file -o -f -ignoreVersion -prompt 0 ($Prop_Folder + $MayaFiles[$r]);
+			FrameSelected;
+			$RenderName = ($Prop_Folder + $MayaFiles[$r]);
+			NinjaAsset_RenderProp $RenderName;
+	    }
+}
+
+global proc RenderAllPropsBar(string $Prop_Folder)
+{
+	print $Prop_Folder;
+	string $MayaFiles[] = {};
+
+	$maFiles = `getFileList -fld ($Prop_Folder ) -fs "*.ma"`;
+	$MayaFiles = stringArrayCatenate($MayaFiles, $maFiles);
+	$mbFiles = `getFileList -fld ($Prop_Folder ) -fs "*.mb"`;
+	$MayaFiles = stringArrayCatenate($MayaFiles, $mbFiles);
+	$objFiles = `getFileList -fld ($Prop_Folder ) -fs "*.obj"`;
+	$MayaFiles = stringArrayCatenate($MayaFiles, $objFiles);
+
+	for ($r = 0; $r <`size $MayaFiles`; $r++)
+		{
+			file -o -f -ignoreVersion -prompt 0 ($Prop_Folder + $MayaFiles[$r]);
+			FrameSelected;
+			$RenderName = ($Prop_Folder + $MayaFiles[$r]);
+			NinjaAsset_RenderPropBar $RenderName;
+	    }
+}
+
+
+
+global proc NinjaAsset_RenderProp (string $PropName)
+{
+	if ($PropName == "Scene")
+	{
+		string $MayaSceneFile = `file -q -loc`;
+		//string $buf[];
+		//$numTokens = `tokenize $MayaSceneFile "." $buf`;
+		$PropName = $MayaSceneFile;
+	}
+
+	float $mayaVersion = `getApplicationVersionAsFloat` ;
+	mentalRayLoad;
+	//string $Prop_Folder = `textField -q -tx TF_Prop_Directory`;
+	setAttr "persp.backgroundColor" -type double3 1 1 1 ;//set background to white
+	setAttr "defaultResolution.pixelAspect" 1;
+	setAttr "defaultResolution.deviceAspectRatio" 1;
+	setAttr "defaultRenderGlobals.imageFormat" 8;//sets export image to be jpg
+	setAttr "defaultRenderGlobals.enableDefaultLight" 1;
+	setAttr "defaultRenderGlobals.imageFilePrefix"  -type "string" $PropName;
+	setAttr "miDefaultOptions.maxSamples" 2;
+
+	$outfile =`Mayatomr -cam "perspShape" -preview -prj "" -xResolution 150 -yResolution 150`;//mental ray render
+
+	sysFile -rename ($PropName + "_NinjaIcon.jpg") $outfile;
+	if ($mayaVersion <= 2012)
+	{
+
+		//NinjaAsset_BuildMeshList Full MeshList_UIFull;
+	}
+
+}
+
+
+
+global proc NinjaRenameProp(string $PropDirectory, string $MayaFile, string $RenderName)
+{
+	float $mayaVersion = `getApplicationVersionAsFloat` ;
+	string $NewName = `textField -q -tx ("ObjectName" + $RenderName)`;
+	string $buf[];
+	$numTokens = `tokenize $NewName "." $buf`;
+	$NewImageName = ($buf[0] + "_NinjaIcon.jpg");
+	sysFile -ren  ($PropDirectory + $NewName) ($PropDirectory + $MayaFile);
+	sysFile -ren  ($PropDirectory + $NewImageName) ($PropDirectory + $RenderName + "_NinjaIcon.jpg");
+
+	//pause -sec 1;
+	if ($mayaVersion <= 2012)
+	{
+		NinjaAsset_BuildMeshList Full MeshList_UIFull;
+
+    }
+
+}
+
+global proc NinjaRenamePropBar(string $PropDirectory, string $MayaFile, string $RenderName)
+{
+	float $mayaVersion = `getApplicationVersionAsFloat` ;
+	string $NewName = `textField -q -tx ("ObjectName" + $RenderName)`;
+	string $buf[];
+	$numTokens = `tokenize $NewName "." $buf`;
+	$NewImageName = ($buf[0] + "_NinjaIcon.jpg");
+	sysFile -ren  ($PropDirectory + $NewName) ($PropDirectory + $MayaFile);
+	sysFile -ren  ($PropDirectory + $NewImageName) ($PropDirectory + $RenderName + "_NinjaIcon.jpg");
+
+	if ($mayaVersion <= 2012)
+	{
+		NinjaAsset_BuildMeshList Bar MeshList_UIBar;
+    }
+}
+
+global proc NinjaRenameImage(string $ImageDirectory, string $ImageFile)
+{
+	//string $NewName = `textField -q -tx ("ObjectName" + $RenderName)`;
+	//string $buf[];
+	//$numTokens = `tokenize $NewName "." $buf`;
+	//$NewImageName = ($buf[0] + ".xpm");
+	//sysFile -ren  ($PropDirectory + $NewName) ($PropDirectory + $MayaFile);
+	//sysFile -ren  ($PropDirectory + $NewImageName) ($PropDirectory + $RenderName + ".xpm");
+	//NinjaAsset_BuildMeshList;
+}
+
+global proc NinjaAsset_ExploreFile(string $File)
+{
+	$File =  substituteAllString($File, "/", "\\");
+	print $File;
+	system ("explorer /select,\"" + $File + "\\");
+}
+
+
+
+global proc NinjaAsset_BrowseOpenFile(string $UI)
+{
+	string $MayaSceneFile = `file -q -loc`;
+	string $MayaSceneFileShortName = `file -q -shortName -loc`;
+	$PropName = substituteAllString($MayaSceneFile, $MayaSceneFileShortName , "");
+	//print $PropName;
+	textField -e -text $PropName  ("TF_Prop_Directory" + $UI);
+	//NinjaAsset_BuildMeshList;
+	//NinjaAsset_BuildImageList;
+}
+
+
+
+global proc Get_PropPath()
+{
+  	string $Export_Dir = `textField -q -text TF_Prop_Directory`;
+	fileBrowserDialog -ds 0 -m 4 -in "PropPath" -fc "Set_PropPath" -ft "directory" -an "PickFolder" -wt "Export Directory" ;
+}
+
+global proc Get_PropPathBar()
+{
+  	string $Export_Dir = `textField -q -text TF_Prop_DirectoryBar`;
+	fileBrowserDialog -ds 0 -m 4 -in "PropPathBar" -fc "Set_PropPathBar" -ft "directory" -an "PickFolder" -wt "Export Directory" ;
+}
+
+
+global proc Set_PropPath(string $Export_Directory,string $directory)
+{
+	textField -e -tx ($Export_Directory) TF_Prop_Directory;
+	//textField -e -tx ($Export_Directory + "\/") TF_Prop_ExportDirectory;
+	//RR_Set_ini();
+	//NinjaAsset_BuildFolderList;
+	BuildDirectoryList Full;
+}
+
+global proc Set_PropPathBar(string $Export_Directory,string $directory)
+{
+	textField -e -tx ($Export_Directory) TF_Prop_DirectoryBar;
+	//textField -e -tx ($Export_Directory + "\/") TF_Prop_ExportDirectory;
+	//RR_Set_ini();
+	//NinjaAsset_BuildFolderList;
+	BuildDirectoryList Bar;
+}
+
+global proc NinjaAsset_BuildProjectList(string $UI, string $Parent, string $SortStyle)
+{
+
+	global string $DirectoryArray[];
+	$DirectoryArray = {};
+	string $FileNameArray[] = {};
+	string $FileTypeArray[] = {};
+	string $currentPath = `textField -q -text ("TF_Prop_Directory" + $UI)`;
+	string $currentFiles[] = `getFileList -folder $currentPath`;
+
+	NinjaAsset_FindAllSubDir $currentPath;
+
+	//print $DirectoryArray;
+
+	$FrameWidth = 620;
+	$ImageWidth = 150;
+	$Columns = 4;
+
+	if ($UI == "Bar")
+		{
+			$Columns = 2;
+			$FrameWidth = 250;
+			$ImageWidth = 115;
+        }
+	deleteUI ("TempProjectListUI" + $UI);
+	columnLayout -p $Parent ("TempProjectListUI" + $UI) ;
+
+	if ($SortStyle == "Directory")
+	{
+		$DirectoryArray = `sort $DirectoryArray`;
+		for ( $d = 0; $d < `size $DirectoryArray`; $d++ )
+			{
+				string $FileList[] = `getFileList -folder ($DirectoryArray[$d] + "/") -filespec "*.*"`;
+				$FileNameArray = {};
+				frameLayout -w $FrameWidth -label ($DirectoryArray[$d] + "     (" + `size $FileList` + " Files)") -bgc .25 .25 .75  -cl true -cll true ("FL_DirectoryList_" + $d) ;
+					rowColumnLayout -nc $Columns -cw 1 $ImageWidth -cw 2 $ImageWidth -cw 3 $ImageWidth -cw 4 $ImageWidth -cs 1 5 -cs 2 5 -cs 3 5 -cs 4 5 ;
+						for ( $n = 0; $n < `size $FileList`; $n++ )
+						 {
+							  if (`gmatch $FileList[$n] "*.*"`  && $FileList[$n] != ".mayaSwatches" && `gmatch $FileList[$n] "*_NinjaIcon.jpg"` == 0)
+								{
+									//add to FileNameArray
+									stringArrayInsertAtIndex(0, $FileNameArray, ($DirectoryArray[$d] + "/" + $FileList[$n]));
+									string $buf[] = {};
+									tokenize $FileList[$n] "." $buf;
+									$Extension = $buf[`size $buf` - 1];
+									stringArrayInsertAtIndex(0, $FileTypeArray, $Extension);
+									$ThumbnailExists  = `filetest -r ($DirectoryArray[$d] + "/" + $FileList[$n] + "_NinjaIcon.jpg") `;
+									string $FullFileName = ($DirectoryArray[$d] + "/" + $FileList[$n]);
+									columnLayout;
+										if ($ThumbnailExists == 1)
+										{
+											image -ann ($DirectoryArray[$d] + "/" + $FileList[$n])-w $ImageWidth -h $ImageWidth -i ($DirectoryArray[$d] + "/" + $FileList[$n] + "_NinjaIcon.jpg");
+										}
+										else
+										{
+											image -ann ($DirectoryArray[$d] + "/" + $FileList[$n])-w $ImageWidth -h $ImageWidth -i "sphere.xpm";
+                                        }
+
+
+									///////////////////Build Menus
+										if (`endsWith $FileList[$n] ".ma"` || `endsWith $FileList[$n] ".mb"` )
+										{
+										popupMenu;
+											menuItem -l "Import" -c ("ImportProp Zero"  + "\"" + $FullFileName +   "\"" );
+											menuItem -l "Import and place at selection" -c ("ImportProp Selection"  + "\"" + $FullFileName  +   "\"" );
+											menuItem -l "Import and replace selection" -c ("ImportProp Replace"  + "\"" + $FullFileName  +   "\"" );
+											menuItem -l "Open" -c ("Open_Prop "  + "\"" + $FullFileName + "\"");
+											menuItem -l "Render Icon" -c ("NinjaAsset_RenderProp " + "\"" + $FullFileName  +   "\"" );
+											menuItem -l "Explore" -c ("NinjaAsset_ExploreFile "  + "\"" + $FullFileName  +   "\"");
+										}
+
+										textField -w 150 -tx $FileList[$n];
+									setParent..;
+
+								}
+
+						 }
+					setParent..;
+				setParent..;
+				frameLayout -e -label ($DirectoryArray[$d] + "     (" + `size $FileNameArray` + " Files)") ("FL_DirectoryList_" + $d);
+			}
+		setParent..;
+
+    }
+
+	if ($SortStyle == "FileType")
+	{
+		for ( $d = 0; $d < `size $DirectoryArray`; $d++ )
+		{
+			string $FileList[] = `getFileList -folder ($DirectoryArray[$d] + "/") -filespec "*.*"`;
+			for ( $n = 0; $n < `size $FileList`; $n++ )
+			{
+				stringArrayInsertAtIndex(0, $FileNameArray, ($DirectoryArray[$d] + "/" + $FileList[$n]));
+            }//end for $n
+
+        }//end for $d
+
+		for ( $e = 0; $e < `size $FileNameArray`; $e++ )
+		{
+			string $buf[] = {};
+			tokenize $FileNameArray[$e] "." $buf;
+			//print $buf;
+			if(`size $buf` > 1  && $buf[(`size $buf` - 1)] != "mayaSwatches")
+			{
+				stringArrayInsertAtIndex(0, $FileTypeArray, $buf[(`size $buf` - 1)]);
+
+            }
+        }
+
+		$FileTypeArray = `stringArrayRemoveDuplicates $FileTypeArray`;
+		//print $FileTypeArray;
+
+		for ( $f = 0; $f < `size $FileTypeArray`; $f++ )
+		{
+			frameLayout -label ($FileTypeArray[$f]) -bgc .25 .25 .75 -w 600 -cl true -cll true ("FileType_" + $FileTypeArray[$f]);
+					rowColumnLayout -nc 4 -cw 1 150 -cw 2 150 -cw 3 150 -cw 4 150 -cs 1 5 -cs 2 5 -cs 3 5 -cs 4 5 ;
+						int $Count = 0;
+						for ( $g = 0; $g < `size $FileNameArray`; $g++ )
+						{
+							if (`endsWith $FileNameArray[$g] ("." + $FileTypeArray[$f])` == 1)
+							{
+								string $FullFileName = $FileNameArray[$g];
+								$ThumbnailExists  = `filetest -r ($FileNameArray[$g] + "_NinjaIcon.jpg") `;
+								columnLayout;
+									if ($ThumbnailExists == 1)
+									{
+										image -ann $FileNameArray[$g] -w 150 -h 150 -i ($FileNameArray[$g] + "_NinjaIcon.jpg");
+									}
+
+									else
+									{
+										image -ann $FileNameArray[$g] -w 150 -h 150 -i "sphere.xpm";
+                                    }
+
+									///////////////////Build Menus
+									if (`endsWith $FileNameArray[$g] ".ma"` || `endsWith $FileNameArray[$g] ".mb"` )
+										{
+										popupMenu;
+											menuItem -l "Import" -c ("ImportProp Zero"  + "\"" + $FullFileName +   "\"" );
+											menuItem -l "Import and place at selection" -c ("ImportProp Selection"  + "\"" + $FullFileName  +   "\"" );
+											menuItem -l "Import and replace selection" -c ("ImportProp Replace"  + "\"" + $FullFileName  +   "\"" );
+											menuItem -l "Open" -c ("Open_Prop "  + "\"" + $FullFileName + "\"");
+											menuItem -l "Render Icon" -c ("NinjaAsset_RenderProp " + "\"" + $FullFileName  +   "\"" );
+											menuItem -l "Explore" -c ("NinjaAsset_ExploreFile "  + "\"" + $FullFileName  +   "\"");
+										}
+
+
+
+									textField -w 150 -tx $FileNameArray[$g];
+								setParent..;
+								$Count = ($Count + 1);
+                            }
+						}
+
+					setParent..;
+			setParent..;
+			frameLayout -e -label ($FileTypeArray[$f] + "     " + $Count + " Files") ("FileType_" + $FileTypeArray[$f]);
+
+		}
+
+
+    }
+
+
+}
+
+global proc NinjaAsset_BuildFolderList()
+{
+
+	string $Prop_Folder = `textField -q -tx TF_Prop_Directory`;
+	string $Props_Dir[] = `getFileList -fld $Prop_Folder`;
+	deleteUI TempPropFolder_UI;
+	columnLayout -p PropFolder_UI TempPropFolder_UI;
+		rowColumnLayout -nc 4 -cw 1 75 -cw 2 75 -cw 3 75 -cw 4 75 ;
+			for ($d = 0; $d <`size $Props_Dir`; $d++)
+				{
+					//button -l $Props_Dir[$d] -c ("NinjaAsset_BuildMeshList " + $Props_Dir[$d]);
+					//	popupMenu;
+					//		menuItem -l "Explore Directory" -c ("NinjaAsset_ExplorePropDirectory " +   "\"" + $Props_Dir[$d] + "\"");
+				}
+		setParent ..;
+	setParent ..;
+}
+
+
+global proc NinjaAsset_BuildMelList()
+{
+	string $Prop_ExportFolder = `textField -q -tx TF_Prop_Directory`;
+	string $Prop_Folder = `textField -q -tx TF_Prop_Directory`;
+	string $SubFoldersArray[] = `textScrollList -q -si PropDirectoryList`;
+	string $maFiles[] = `getFileList -fld ($Prop_Folder + $SubFoldersArray[0] + "/") -fs "*.tga"`;
+}
+
+
+
+global proc NinjaAsset_BuildSubImageCheckBox()
+{
+	deleteUI subfolderCheckBox;
+	string $Prop_Folder = `textField -q -tx TF_Prop_Directory`;
+	string $SubFoldersArray[] = `textScrollList -q -ai PropDirectoryList`;
+	$selectedTab = `tabLayout -q -st TabsFull`;
+
+
+	/////////////////////////////Sub Folder UI
+	columnLayout  -p subfolderParent subfolderCheckBox;
+	rowColumnLayout -nc 5 -cw 1 120 -cw 2 120 -cw 3 120 -cw 4 120 -cw 5 120 ;
+		for ($f = 0; $f <`size $SubFoldersArray`; $f++)
+				{
+					//print  ("cb_" + $SubFoldersArray[$f]);
+					checkBox -l $SubFoldersArray[$f] -onc ("NinjaAsset_BuildSubImageList " + $SubFoldersArray[$f]) -ofc("NinjaAsset_DeleteSubImageList " + $SubFoldersArray[$f]) ("checkbox_" + $SubFoldersArray[$f]);
+				}
+			setParent..;
+	setParent..;
+}
+
+
+
+
+
+global proc NinjaAsset_DeleteSubImageList(string $SubFolder)
+	{
+		deleteUI ("subimgageList" + $SubFolder);
+    }
+
+
+global proc NinjaAsset_BuildSubImageList(string $SubFolder)
+{
+	string $Prop_ExportFolder = `textField -q -tx TF_Prop_Directory`;
+	string $Prop_Folder = `textField -q -tx TF_Prop_Directory`;
+	string $SubFoldersArray[] = `textScrollList -q -si PropDirectoryList`;
+	string $ImageTypeArray[] = {"*.jpg", "*.tga", "*.bmp"};
+	string $ImageArray[] = {};
+
+	string $SelTab = `tabLayout -q -st Right_Tabs`;
+	//print $SelTab;
+
+	$View_jpg = `checkBox -q -v cb_jpg`;
+	$View_tga = `checkBox -q -v cb_tga`;
+	$View_bmp = `checkBox -q -v cb_bmp`;
+	$View_xpm = `checkBox -q -v cb_xpm`;
+
+	if ($SelTab == "ImagePreviewScroll")
+	{
+		if ($View_jpg == 1)
+		{
+			string $ImageFiles[] = `getFileList -fld ($Prop_Folder + $SubFolder + "/" + $SubFoldersArray[0] + "/") -fs "*.jpg"`;
+			appendStringArray($ImageArray, $ImageFiles,`size $ImageFiles`);
+        }
+
+		if ($View_tga == 1)
+		{
+			string $ImageFiles[] = `getFileList -fld ($Prop_Folder + $SubFolder + "/" + $SubFoldersArray[0] + "/") -fs "*.tga"`;
+			appendStringArray($ImageArray, $ImageFiles,`size $ImageFiles`);
+        }
+
+		if ($View_bmp == 1)
+		{
+			string $ImageFiles[] = `getFileList -fld ($Prop_Folder + $SubFolder + "/" + $SubFoldersArray[0] + "/") -fs "*.bmp"`;
+			appendStringArray($ImageArray, $ImageFiles,`size $ImageFiles`);
+        }
+
+		if ($View_xpm == 1)
+		{
+			string $ImageFiles[] = `getFileList -fld ($Prop_Folder + $SubFolder + "/" + $SubFoldersArray[0] + "/") -fs "*.xpm"`;
+			appendStringArray($ImageArray, $ImageFiles,`size $ImageFiles`);
+        }
+			//string $ImageArray[] = stringArrayCatenate($ImageArray, $ImageFiles);
+			//print ImageArray;
+
+	}
+
+
+
+	if (`size $ImageArray` != 0)
+	{
+		progressBar -edit -pr 0 ImagePreview_progress;
+		progressBar -edit -maxValue (`size $ImageArray`) ImagePreview_progress;
+
+    }
+
+		frameLayout -label ($Prop_Folder + $SubFolder )-w 600 -cl false -cll true -p TempImageList_UI ("subimgageList" + $SubFolder);
+			rowColumnLayout -nc 4 -cw 1 150 -cw 2 150 -cw 3 150 -cw 4 150;
+				$ImageArray = (`sort $ImageArray`);
+				for ($d = 0; $d <`size $ImageArray`; $d++)
+						{
+							string $buf[];
+							$numTokens = `tokenize $ImageArray[$d] "." $buf`;
+							$ImageName = $buf[0];
+							string $ImageDirectory = ($Prop_Folder + $SubFolder + "/");
+							//if (`filetest -r ($Prop_Folder + $SubFolder + $ImageArray[$d] + "_NinjaIcon.xpm" )` == 0 )
+							//	{
+									//print ($Prop_Folder + $SubFolder + $ImageArray[$d]);
+									//system ("imconvert -sample 150 150 " + ($Prop_Folder + $SubFolder + $ImageArray[$d]) + " " + ($Prop_Folder + $SubFolder + $ImageArray[$d] + "_NinjaIcon.xpm" ) );
+									//eval ("Convert_ImageXPM " + "\"" + ($ImageDirectory + $ImageArray[$d]) + "\"");
+							//	}
+							columnLayout -w 150 -h 170;
+								//nodeIconButton -w 150 -h 170  -style "iconAndTextVertical" -l $ImageArray[$d] -image ($Prop_Folder + $SubFolder + $ImageArray[$d]);
+
+								if (`filetest -r ($Prop_Folder +  $SubFolder + "/" + $ImageName + ".xpm" )` == 1 )
+								{
+									image -w 150 -h 150 -image ($Prop_Folder + $SubFolder + "/" + $ImageName + ".xpm" ) ("image" + $ImageName);
+								}
+
+								else
+								{
+									image -w 150 -h 150 -image ($Prop_Folder  + $SubFolder + "/" + $ImageArray[$d]) ("image" + $ImageName);
+								}
+								popupMenu;
+										menuItem -l "Open Image with associated program" -c ("Open_Image "  + "\"" + ($Prop_Folder +  $SubFolder + "/" + $ImageArray[$d]) + "\"" );
+										menuItem -l "Open in Fcheck" -c ("fcheck " + "\"" + $Prop_Folder +  $SubFolder + "/" + $ImageArray[$d] + "\"" );
+										menuItem -l "Create Shader and Assign Shader" -c ("NinjaAsset_CreateShaderFromTexture " + "\"" + $ImageDirectory   + "\""  + "\"" + $ImageArray[$d] + "\"");
+										menuItem -l "Explore" -c ("NinjaAsset_ExploreFile " + "\"" + $ImageDirectory +  $ImageArray[$d] + "\"");
+										//menuItem -l "Generate XPM" -c ("Convert_ImageXPM " + "\"" + ($ImageDirectory + $ImageArray[$d]) + "\"");
+								textField -tx $ImageArray[$d] -w 150;
+							setParent..;
+							progressBar -edit -step 1 ImagePreview_progress;
+						}
+			setParent..;
+		setParent..;
+
+	scrollLayout -e -w 600  MayaPreviewScroll;
+}
+
+global proc NinjaAsset_BuildImageList(string $UI, string $Parent)
+{
+	float $mayaVersion = `getApplicationVersionAsFloat` ;
+	string $Prop_ExportFolder = `textField -q -tx ("TF_Prop_Directory" + $UI)`;
+	string $Prop_Folder = `textField -q -tx ("TF_Prop_Directory" + $UI)`;
+	string $SubFoldersArray[] = `textScrollList -q -si ("PropDirectoryList" + $UI)`;
+	//string $ImageTypeArray[] = {"*.jpg", "*.tga", "*.bmp"};
+	string $ImageArray[] = {};
+
+	string $SelTab = `tabLayout -q -st ("Tabs" + $UI)`;
+	//print $SelTab;
+
+	int $View_jpg = `checkBox -q -v ("cb_jpg" + $UI)`;
+	int $View_tga = `checkBox -q -v ("cb_tga" + $UI)`;
+	int $View_bmp = `checkBox -q -v ("cb_bmp" + $UI)`;
+	int $View_xpm = `checkBox -q -v ("cb_xpm" + $UI)`;
+
+
+		if ($View_jpg == 1)
+		{
+			string $ImageFiles[] = `getFileList -fld ($Prop_Folder + $SubFoldersArray[0] + "/") -fs "*.jpg"`;
+			appendStringArray($ImageArray, $ImageFiles,`size $ImageFiles`);
+			//print $ImageFiles;
+        }
+
+		if ($View_tga == 1)
+		{
+			string $ImageFiles[] = `getFileList -fld ($Prop_Folder + $SubFoldersArray[0] + "/") -fs "*.tga"`;
+			appendStringArray($ImageArray, $ImageFiles,`size $ImageFiles`);
+        }
+
+		if ($View_bmp == 1)
+		{
+			string $ImageFiles[] = `getFileList -fld ($Prop_Folder + $SubFoldersArray[0] + "/") -fs "*.bmp"`;
+			appendStringArray($ImageArray, $ImageFiles,`size $ImageFiles`);
+        }
+
+		if ($View_xpm == 1)
+		{
+			string $ImageFiles[] = `getFileList -fld ($Prop_Folder + $SubFoldersArray[0] + "/") -fs "*.xpm"`;
+			appendStringArray($ImageArray, $ImageFiles,`size $ImageFiles`);
+        }
+			//string $ImageArray[] = stringArrayCatenate($ImageArray, $ImageFiles);
+			//print ImageArray;
+
+
+
+	//print $ImageArray;
+	//error;
+	string $SubFolder = "";
+	//print $ImageFiles;
+
+	if (`size $SubFoldersArray` != 0)
+	{
+		$SubFolder = ($SubFoldersArray[0] + "/")	;
+    }
+
+
+	if (`size $ImageArray` != 0)
+	{
+		progressBar -edit -pr 0 ("ImagePreview_progress" + $UI);
+		progressBar -edit -maxValue (`size $ImageArray`) ("ImagePreview_progress" + $UI);
+
+    }
+
+	$FrameWidth = 620;
+	$ImageWidth = 150;
+	$Columns = 4;
+
+	if ($UI == "Bar")
+		{
+			$Columns = 2;
+			$FrameWidth = 250;
+			$ImageWidth = 115;
+        }
+
+	deleteUI ("TempImageList_UI" + $UI);
+	columnLayout -p $Parent ("TempImageList_UI" + $UI);
+		frameLayout -label $Prop_Folder -w $FrameWidth -cl false -cll true;
+			if ($UI == "Bar")
+				{
+					rowColumnLayout -nc 2 -cw 1 125 -cw 2 125 ;
+                }
+				if ($UI == "Full")
+				{
+					rowColumnLayout -nc 4 -cw 1 150 -cw 2 150 -cw 3 150 -cw 4 150 -cs 1 5 -cs 2 5 -cs 3 5 -cs 4 5;
+				}
+
+			//rowColumnLayout -nc $Columns -cw 1 $ImageWidth -cw 2 $ImageWidth -cw 3 $ImageWidth -cw 4 $ImageWidth -cs 1 5 -cs 2 5 -cs 3 5 -cs 4 5;
+				$ImageArray = (`sort $ImageArray`);
+				for ($d = 0; $d <`size $ImageArray`; $d++)
+						{
+							string $buf[];
+							$numTokens = `tokenize $ImageArray[$d] "." $buf`;
+							$ImageName = $buf[0];
+							string $ImageDirectory = ($Prop_Folder + $SubFolder);
+							//if (`filetest -r ($Prop_Folder + $SubFolder + $ImageArray[$d] + "_NinjaIcon.xpm" )` == 0 )
+							//	{
+									//system ("imconvert -sample 150 150 " + ($Prop_Folder + $SubFolder + $ImageArray[$d]) + " " + ($Prop_Folder + $SubFolder + $ImageArray[$d] + "_NinjaIcon.xpm" ) );
+									//eval ("Convert_ImageXPM " + "\"" + ($ImageDirectory + $ImageArray[$d]) + "\"");
+							//	}
+							columnLayout -w $ImageWidth -h ($ImageWidth + 20);
+								//nodeIconButton -w 150 -h 170  -style "iconAndTextVertical" -l $ImageArray[$d] -image ($Prop_Folder + $SubFolder + $ImageArray[$d]);
+								//print ($Prop_Folder + $SubFolder + $ImageName + ".xpm" );
+								if (`filetest -r ($Prop_Folder + $SubFolder + $ImageArray[$d] + "_NinjaIcon.xpm" )` == 1 )
+								{
+
+									if ($mayaVersion >= 2011)
+									{
+										iconTextButton -w $ImageWidth -h $ImageWidth -image ($Prop_Folder + $SubFolder + $ImageArray[$d] + "_NinjaIcon.xpm" ) -dcc ("fcheck " + "\"" + $Prop_Folder +  $SubFolder + $ImageArray[$d] + "\"" ) ("image" + $ImageName);
+								    }
+
+									else
+									{
+										image -w 150 -h 150 -image ($Prop_Folder + $SubFolder + $ImageName + ".xpm" ) ("image" + $ImageName);
+
+                                    }
+								}
+
+								else
+								{
+									if ($mayaVersion >= 2011)
+									{
+										iconTextButton -w $ImageWidth -h $ImageWidth -image ($ImageDirectory + $ImageArray[$d])-dcc ("fcheck " + "\"" + $Prop_Folder +  $SubFolder + $ImageArray[$d] + "\"" ) ("image" + $ImageName);
+									}
+
+									else
+									{
+										image -w 150 -h 150 -image ($ImageDirectory + $ImageArray[$d]) ("image" + $ImageName);
+
+                                    }
+								}
+								popupMenu;
+										menuItem -l "Open Image with associated program" -c ("Open_Image "  + "\"" + ($Prop_Folder +  $SubFolder + $ImageArray[$d]) + "\"" );
+										menuItem -l "Open in Fcheck" -c ("fcheck " + "\"" + $Prop_Folder +  $SubFolder + $ImageArray[$d] + "\"" );
+										menuItem -l "Create Shader and Assign Shader" -c ("NinjaAsset_CreateShaderFromTexture " + "\"" + $ImageDirectory + "\""  + "\"" + $ImageArray[$d] + "\"");
+										menuItem -l "Explore" -c ("NinjaAsset_ExploreFile " + "\"" + $ImageDirectory + $ImageArray[$d] + "\"");
+										//menuItem -l "Generate XPM" -c ("Convert_ImageXPM " + "\"" + ($ImageDirectory + $ImageArray[$d]) + "\"");
+								textField -tx $ImageArray[$d] -w $ImageWidth;
+							setParent..;
+							progressBar -edit -step 1 ("ImagePreview_progress" + $UI);
+						}
+			setParent..;
+		setParent..;
+	setParent..;
+	//string $ImageArray[] = {};
+	//scrollLayout -e -w 600  MayaPreviewScroll;
+
+}
+
+
+
+
+global proc NinjaAsset_SelectAllSubObjects()
+{
+	string $Prop_Folder = `textField -q -tx TF_Prop_Directory`;
+	string $SubFoldersArray[] = `textScrollList -q -ai PropDirectoryList`;
+	for ($f = 0; $f <`size $SubFoldersArray`; $f++)
+		{
+			catchQuiet (`checkBox -e -v 1 ("checkbox_" + $SubFoldersArray[$f])`);
+			NinjaAsset_BuildSubObjectList $SubFoldersArray[$f];
+        }
+}
+
+global proc NinjaAsset_ClearAllSubObjects()
+{
+	string $Prop_Folder = `textField -q -tx TF_Prop_Directory`;
+	string $SubFoldersArray[] = `textScrollList -q -ai PropDirectoryList`;
+	for ($f = 0; $f <`size $SubFoldersArray`; $f++)
+		{
+			catchQuiet (`checkBox -e -v 0 ("checkbox_" + $SubFoldersArray[$f])`);
+			catchQuiet ("NinjaAsset_DeleteSubObjectList" + $SubFoldersArray[$f]);
+        }
+}
+
+global proc NinjaAsset_BuildSubObjectCheckBox()
+{
+	deleteUI subfolderCheckBox;
+	string $Prop_Folder = `textField -q -tx TF_Prop_Directory`;
+	string $SubFoldersArray[] = `textScrollList -q -ai PropDirectoryList`;
+	$selectedTab = `tabLayout -q -st Right_Tabs`;
+
+
+	/////////////////////////////Sub Folder UI
+	columnLayout  -p subfolderParent subfolderCheckBox;
+	rowColumnLayout -nc 2 -cw 1 300 -cw 2 300 ;
+		//button -l "select all" -w 300 -h 20 -c ("NinjaAsset_SelectAllSubObjects");
+		//button -l "clear all" -w 300 -h 20 -c ("NinjaAsset_ClearAllSubObjects");
+	setParent..;
+
+	rowColumnLayout -nc 5 -cw 1 120 -cw 2 120 -cw 3 120 -cw 4 120 -cw 5 120 ;
+		for ($f = 0; $f <`size $SubFoldersArray`; $f++)
+				{
+
+					checkBox -l $SubFoldersArray[$f] -onc ("NinjaAsset_BuildSubObjectList " + $SubFoldersArray[$f]) -ofc("NinjaAsset_DeleteSubObjectList " + $SubFoldersArray[$f]) ("checkbox_" + $SubFoldersArray[$f]);
+
+				}
+			setParent..;
+	setParent..;
+}
+
+
+global proc NinjaAsset_DeleteSubObjectList(string $SubFolder)
+	{
+		deleteUI ("subfolderList" + $SubFolder);
+    }
+
+
+
+global proc NinjaAsset_BuildSubObjectList(string $SubFolder)
+	{
+		string $Prop_Folder = `textField -q -tx TF_Prop_Directory`;
+		$Show_ma = `checkBox -q -v  cb_ma`;
+		$Show_mb = `checkBox -q -v  cb_mb`;
+		$Show_obj = `checkBox -q -v cb_obj`;
+
+
+		string $maFiles[] = {};
+		string $mbFiles[] = {};
+		string $objFiles[] = {};
+		//string $fbxFiles[] = {};
+		string $MayaFiles[] = {};
+
+
+
+		if ($Show_ma == 1)
+		{
+			$maFiles = `getFileList -fld ($Prop_Folder + $SubFolder + "/") -fs "*.ma"`;
+			$MayaFiles = stringArrayCatenate($MayaFiles, $maFiles);
+		}
+
+		if ($Show_mb == 1)
+		{
+			$mbFiles = `getFileList -fld ($Prop_Folder + $SubFolder + "/" ) -fs "*.mb"`;
+			$MayaFiles = stringArrayCatenate($MayaFiles, $mbFiles);
+		}
+
+		if ($Show_obj == 1)
+		{
+			$objFiles = `getFileList -fld ($Prop_Folder + $SubFolder + "/" ) -fs "*.obj"`;
+			$MayaFiles = stringArrayCatenate($MayaFiles, $objFiles);
+		}
+
+
+		//$MayaFiles = stringArrayCatenate($maFiles, $mbFiles);
+		$MayaFiles = `sort $MayaFiles`;
+
+		frameLayout -label ($Prop_Folder + $SubFolder) -w 600 -cl false -cll true -p TempMeshList_UI ("subfolderList" + $SubFolder);
+			button -l "Render all icons" -c("RenderAllProps "  + "\"" + ($Prop_Folder + $SubFolder + "/") + "\"");
+			rowColumnLayout -nc 4 -cw 1 150 -cw 2 150 -cw 3 150 -cw 4 150 ;
+				for ($d = 0; $d <`size $MayaFiles`; $d++)
+								{
+									$PropName = ($Prop_Folder + $SubFolder + $MayaFiles[$d]);
+									$PropDirectory = ($Prop_Folder + $SubFolder);
+									//print $PropName;
+									//string $buf[] = {};
+									//int $numtokens = `tokenize  $MayaFiles[$d]  "." $buf`;
+									$RenderName = $MayaFiles[$d];
+
+									$ThumbnailExists  = `filetest -r ($Prop_Folder + $SubFolder + "/" + $RenderName + "_NinjaIcon.jpg")`;
+									columnLayout;
+									if ($ThumbnailExists == 1)
+									{
+										iconTextButton   -style "iconAndTextVertical"  -image1 ($Prop_Folder + $SubFolder + "/" + $RenderName + "_NinjaIcon.jpg") -bgc 1 1 1 -w 150 -h 150
+
+											-dcc ("Open_Prop "  + "\"" + ($Prop_Folder + $SubFolder + "/" + $MayaFiles[$d])  +   "\"" )
+											-dragCallback "NinjaAsset_DragIcon"
+											-dropCallback "NinjaAsset_DropIcon"
+											("PropIconButton" + $PropName);
+											//iconTextButton -style "iconAndTextVertical" -l $MayaFiles[$d] -image1 ($Prop_Folder + $SubFolder + $RenderName + ".xpm") -bgc 1 1  1 -w 150 -h 170 -dcc ("ImportProp " +   "\"" + $PropName  +   "\"" );
+									}
+									else
+									{
+										iconTextButton -style "iconAndTextVertical" -l $MayaFiles[$d] -image1 "sphere.xpm"  -w 150 -h 150 -dcc ("Open_Prop " +   "\"" + $PropName  +   "\"" );
+									}
+									popupMenu;
+										menuItem -l "Edit Notes" -c ("NinjaAsset_Notes " + "\"" + ($Prop_Folder + $SubFolder + $MayaFiles[$d]) + "\"");
+										menuItem -l "Import" -c ("ImportProp Zero"  + "\"" + ($Prop_Folder  + $SubFolder + "/" + $MayaFiles[$d])  +   "\"" );
+										menuItem -l "Import and place at selection" -c ("ImportProp Selection"  + "\"" + ($Prop_Folder + $SubFolder + "/" + $MayaFiles[$d])  +   "\"" );
+										menuItem -l "Import and replace selection" -c ("ImportProp Replace"  + "\"" + ($Prop_Folder + $SubFolder + "/" + $MayaFiles[$d])  +   "\"" );
+										menuItem -l "Open" -c ("Open_Prop "  + "\"" + ($Prop_Folder + $SubFolder + "/" + $MayaFiles[$d])  +   "\"" );
+										menuItem -l "Render" -c ("NinjaAsset_RenderProp " + "\"" + ($Prop_Folder  + $SubFolder + "/" + $RenderName)  +   "\"");
+										menuItem -l "Explore" -c ("NinjaAsset_ExploreFile "  + "\"" + ($Prop_Folder + $SubFolder + "/" + $MayaFiles[$d])  +   "\"");
+
+										textField -w 150 -tx $MayaFiles[$d] -cc ("NinjaRenameProp " + "\"" + $PropDirectory + $SubFolder + "\"" + $MayaFiles[$d] + "\"" + "\"" +$RenderName + "\"") ("ObjectName" + $RenderName);
+									setParent..;//parent columnLayout
+								}
+				setParent..;//parent columnLayout
+			setParent..;//parent columnLayout
+	}
+
+global proc NinjaAsset_BuildMeshList(string $UI, string $Parent)
+{
+
+	float $mayaVersion = `getApplicationVersionAsFloat` ;
+	$Show_ma = `checkBox -q -v  ("cb_ma" + $UI)`;
+	$Show_mb = `checkBox -q -v  ("cb_mb" + $UI)`;
+	$Show_obj = `checkBox -q -v ("cb_obj" + $UI)`;
+	$Show_fbx = `checkBox -q -v ("cb_fbx" + $UI)`;
+
+	string $Prop_ExportFolder = `textField -q -tx ("TF_Prop_Directory" + $UI)`;
+	string $Prop_Folder = `textField -q -tx ("TF_Prop_Directory" + $UI)`;
+
+
+	string $maFiles[] = {};
+	string $mbFiles[] = {};
+	string $objFiles[] = {};
+	string $fbxFiles[] = {};
+	string $MayaFiles[] = {};
+
+
+	if ($Show_ma == 1)
+	{
+		$maFiles = `getFileList -fld ($Prop_Folder ) -fs "*.ma"`;
+		$MayaFiles = stringArrayCatenate($MayaFiles, $maFiles);
+    }
+
+	if ($Show_mb == 1)
+	{
+		$mbFiles = `getFileList -fld ($Prop_Folder ) -fs "*.mb"`;
+		$MayaFiles = stringArrayCatenate($MayaFiles, $mbFiles);
+    }
+
+	if ($Show_obj == 1)
+	{
+		$objFiles = `getFileList -fld ($Prop_Folder ) -fs "*.obj"`;
+		$MayaFiles = stringArrayCatenate($MayaFiles, $objFiles);
+    }
+
+	if ($Show_fbx == 1)
+	{
+		print "FBX";
+		$fbxFiles = `getFileList -fld ($Prop_Folder ) -fs "*.fbx"`;
+		$MayaFiles = stringArrayCatenate($MayaFiles, $fbxFiles);
+    }
+
+	$MayaFiles = `sort $MayaFiles`;
+
+	$FrameWidth = 620;
+	$ImageWidth = 150;
+	$Columns = 4;
+
+	if ($UI == "Bar")
+		{
+			$Columns = 2;
+			$FrameWidth = 250;
+			$ImageWidth = 125;
+        }
+
+	deleteUI ("TempMeshList_UI" + $UI);
+	columnLayout -p $Parent ("TempMeshList_UI" + $UI);
+		frameLayout -label $Prop_Folder -w $FrameWidth -bgc .25 .25 .5 -cl false -cll true ;
+			columnLayout;
+				if ($UI == "Bar")
+				{
+					rowColumnLayout -nc 3 -cw 1 100 -cw 2 90 -cw 3 50;
+                }
+				if ($UI == "Full")
+				{
+					rowColumnLayout -nc 6 -cw 1 100 -cw 2 50 -cw 3 75 -cw 4 100 -cw 5 100 -cw 6 100 ;
+				}
+				textField  -text "PropName"  ("TF_Prop_ExportName" + $UI);
+					optionMenu  ("MeshExportType" + $UI);
+						menuItem -l ".ma";
+						menuItem -l ".mb";
+						menuItem -l ".obj";
+						menuItem -l ".fbx";
+
+					button -l "Export" -c ("NinjaAsset_ExportMesh " + "\"" + $UI + "\"");
+					button -l "Render Scene Icon" -c ("NinjaAsset_RenderProp " + "\"" + "Scene" +   "\"" ) ;
+					button -l "Render all Icons" -c("RenderAllProps "  + "\"" + $Prop_Folder + "\"");
+					button -l "Refresh" -c ("NinjaAsset_BuildMeshList " + "\"" + $UI + "\"" + " " + "\"" + $Parent + "\"");
+				setParent..;
+
+				if ($UI == "Bar")
+				{
+					rowColumnLayout -nc 2 -cw 1 125 -cw 2 125 ;
+                }
+				if ($UI == "Full")
+				{
+					rowColumnLayout -nc 4 -cw 1 150 -cw 2 150 -cw 3 150 -cw 4 150 ;
+				}
+				//rowColumnLayout -nc $Columns -cw 1 $ImageWidth -cw 2 $ImageWidth -cw 3 $ImageWidth -cw 4 $ImageWidth -cs 1 5 -cs 2 5 -cs 3 5 -cs 4 5 ;
+				for ($d = 0; $d <`size $MayaFiles`; $d++)
+						{
+							string $Filter = `textField -q -text ("TF_NinjaAsset_NameFilter" + $UI)`;
+							if (`gmatch $MayaFiles[$d] ("*" + $Filter + "*")`)
+							{
+
+								$PropName = ($Prop_Folder + $MayaFiles[$d]);
+								$PropDirectory = ($Prop_Folder );
+								$RenderName = $MayaFiles[$d];
+
+								$ThumbnailExists  = `filetest -r ($Prop_Folder + $RenderName + "_NinjaIcon.jpg")`;
+								columnLayout;
+								if ($ThumbnailExists == 1)
+								{
+									if ($mayaVersion <= 2010)
+									{
+										image -image ($Prop_Folder  + $RenderName + "_NinjaIcon.jpg")	-w $ImageWidth -h $ImageWidth	("PropIconButton" + $PropName);
+
+                                    }
+									else
+									{
+										iconTextButton -image ($Prop_Folder  + $RenderName + "_NinjaIcon.jpg")	-w $ImageWidth -h $ImageWidth	("PropIconButton" + $PropName);
+                                    }
+
+								}
+								else
+								{
+									button -l "No Image"  -w $ImageWidth -h $ImageWidth ;
+								}
+								popupMenu;
+									menuItem -l "Edit Notes" -c ("NinjaAsset_Notes " + "\"" + ($Prop_Folder  + $MayaFiles[$d]) + "\"");
+									menuItem -l "Import" -c ("ImportProp Zero"  + "\"" + ($Prop_Folder  + $MayaFiles[$d])  +   "\"" );
+									menuItem -l "Import and place at selection" -c ("ImportProp Selection"  + "\"" + ($Prop_Folder + $MayaFiles[$d])  +   "\"" );
+									menuItem -l "Import and replace selection" -c ("ImportProp Replace"  + "\"" + ($Prop_Folder + $MayaFiles[$d])  +   "\"" );
+									menuItem -l "Open" -c ("Open_Prop "  + "\"" + ($Prop_Folder + $MayaFiles[$d])  +   "\"" );
+									menuItem -l "Render Icon" -c ("NinjaAsset_RenderProp " + "\"" + ($Prop_Folder  + $RenderName)  +   "\"" );
+									menuItem -l "Explore" -c ("NinjaAsset_ExploreFile "  + "\"" + ($Prop_Folder + $MayaFiles[$d])  +   "\"");
+
+									textField -w $ImageWidth -tx $MayaFiles[$d] -cc ("NinjaRenameProp " + "\"" + $PropDirectory + "\"" + "\"" + $MayaFiles[$d] + "\"" + "\"" +$RenderName + "\"") ("ObjectName" + $RenderName);
+
+
+								setParent..;//parent columnLayout
+
+                            }
+						}
+			setParent..;//parent rowColumnLayout
+		setParent..; //Parent FrameLayout
+		setParent..;
+	setParent..;//parent columnLayout
+
+	string $Prop_Folder = `textField -q -tx ("TF_Prop_Directory" + $UI)`;
+	string $SubFoldersArray[] = `textScrollList -q -ai ("PropDirectoryList" + $UI)`;
+	//print $SubFoldersArray;
+	for ($f = 0; $f <`size $SubFoldersArray`; $f++)
+				{
+					//print $SubFoldersArray[$f];
+					//catchQuiet ($SubDirectoryCheck = `checkBox -q -v ("checkbox_" + $SubFoldersArray[$f])`);
+					//if ($SubDirectoryCheck == 1)
+					//{
+						//catchQuiet (eval ("NinjaAsset_BuildSubObjectList " + $SubFoldersArray[$f]));
+                    //}
+				}
+	/////////////////////////////End Sub Folder UI
+	//scrollLayout -e -w 330 -h 600 MayaPreviewScroll;
+	//scrollLayout -e -w 600 -h 200 subfolderParent;
+}
+
+
+global proc NinjaAsset_BuildShaderList(string $UI, string $Parent, string $Folder)
+{
+	float $mayaVersion = `getApplicationVersionAsFloat` ;
+	//string $Prop_ExportFolder = `textField -q -tx TF_Prop_Directory`;
+	string $Prop_ExportFolder = $Folder;
+	string $Prop_Folder = `textField -q -tx ("TF_Prop_Directory" + $UI)`;
+	string $ShaderFiles[] = {};
+
+	$maFiles = `getFileList -fld ($Prop_Folder ) -fs "*.mat"`;
+	$mbFiles = `getFileList -fld ($Prop_Folder ) -fs "*.mb"`;
+	$MayaFiles = stringArrayCatenate($ShaderFiles, $maFiles);
+	$MayaFiles = stringArrayCatenate($MayaFiles, $mbFiles);
+
+	$ShaderFiles = `sort $ShaderFiles`;
+
+	$FrameWidth = 620;
+	$ImageWidth = 150;
+	$Columns = 4;
+
+	if ($UI == "Bar")
+		{
+			$Columns = 2;
+			$FrameWidth = 250;
+			$ImageWidth = 125;
+        }
+
+	deleteUI ("TempShaderList_UI" + $UI);
+	columnLayout -p $Parent ("TempShaderList_UI" + $UI);
+		frameLayout -label $Prop_Folder -w $FrameWidth -cl false -cll true;
+			columnLayout;
+				rowColumnLayout -nc 2 -cw 1 $ImageWidth  -cw 2 $ImageWidth ;
+				button -l "Export Shaders" -c ("NinjaAsset_ExportShader " + "\"" + $UI + "\"" +  "\"" + $Prop_ExportFolder + "\"") ;
+				button -l "Refresh Icons" -c ("NinjaAsset_BuildShaderList " + "\"" + $UI + "\"" + " " + "\"" + $Parent + "\"" + " " + "\"" + $Folder + "\"");
+				//print ("NinjaAsset_BuildShaderList " + "\"" + $UI + "\"" + " " + "\"" + $Parent + "\"" + " " + "\"" + $SubFolder + "\"");
+				setParent..;
+				if ($UI == "Bar")
+				{
+					rowColumnLayout -nc 2 -cw 1 125 -cw 2 125 ;
+                }
+				if ($UI == "Full")
+				{
+					rowColumnLayout -nc 4 -cw 1 150 -cw 2 150 -cw 3 150 -cw 4 150 ;
+				}
+				//rowColumnLayout -nc $Columns -cw 1 $ImageWidth -cw 2 $ImageWidth -cw 3 $ImageWidth -cw 4 $ImageWidth -cs 1 5 -cs 2 5 -cs 3 5 -cs 4 5 ;
+				for ($d = 0; $d <`size $MayaFiles`; $d++)
+						{
+							$PropName = ($Prop_Folder + $MayaFiles[$d]);
+							$PropDirectory = ($Prop_Folder );
+							$RenderName = $MayaFiles[$d];
+
+							$ThumbnailExists  = `filetest -r ($Prop_Folder + $RenderName + "_NinjaIcon.jpg")`;
+							columnLayout;
+							if ($ThumbnailExists == 1)
+							{
+								if ($mayaVersion >= 2011)
+								{
+									iconTextButton  -image ($Prop_Folder  + $RenderName + "_NinjaIcon.jpg") -w $ImageWidth -h $ImageWidth -dcc ("fcheck " + "\"" + ($Prop_Folder + $RenderName + "_NinjaIcon.jpg") + "\"") ("ShaderIconButton" + $PropName);
+
+                                }
+
+								else
+								{
+									image -image ($Prop_Folder  + $RenderName + "_NinjaIcon.jpg") -w $ImageWidth -h $ImageWidth ("ShaderIconButton" + $PropName);
+
+                                }
+							}
+
+							else
+							{
+								button -l "No Image" -w $ImageWidth -h $ImageWidth ("ShaderIconButton" + $PropName);
+								//image  -image "sphere.xpm"  -w 150 -h 150 ("ShaderIconButton" + $PropName);
+							}
+
+								popupMenu;
+									menuItem -l "Import Shader" -c ("ImportShader Nil "  + "\"" + ($Prop_Folder  + $MayaFiles[$d])  +   "\"" );
+									menuItem -l "Import and Apply Shader" -c ("ImportShader Selection "  + "\"" + ($Prop_Folder + $MayaFiles[$d])  +   "\"" );
+									menuItem -l "Render Shader Icon" -c ("NinjaAsset_RenderShader "  + "\"" + ($Prop_Folder + $MayaFiles[$d])  +   "\"" );
+									menuItem -l "Explore" -c ("NinjaAsset_ExploreFile "  + "\"" + ($Prop_Folder + $MayaFiles[$d])  +   "\"");
+
+							textField -w 150 -tx $MayaFiles[$d] -cc ("NinjaRenameProp " + "\"" + $PropDirectory + "\"" + "\"" + $MayaFiles[$d] + "\"" + "\"" +$RenderName + "\"") ("ObjectName" + $RenderName);
+
+
+							setParent..;//parent columnLayout
+						}
+			setParent..;//parent rowColumnLayout
+		setParent..; //Parent FrameLayout
+		setParent..;
+	setParent..;//parent columnLayout
+
+	string $Prop_Folder = `textField -q -tx ("TF_Prop_Directory" + $UI)`;
+	string $SubFoldersArray[] = `textScrollList -q -ai ("PropDirectoryList" + $UI)`;
+
+	for ($f = 0; $f <`size $SubFoldersArray`; $f++)
+				{
+					//print $SubFoldersArray[$f];
+					//catchQuiet ($SubDirectoryCheck = `checkBox -q -v ("checkbox_" + $SubFoldersArray[$f])`);
+					//if ($SubDirectoryCheck == 1)
+					//{
+						//catchQuiet (eval ("NinjaAsset_BuildSubObjectList " + $SubFoldersArray[$f]));
+                    //}
+				}
+	/////////////////////////////End Sub Folder UI
+
+}
+
+global proc NinjaAsset_BuildSubShaderCheckBox()
+	{
+		deleteUI subfolderCheckBox;
+		string $Prop_Folder = `textField -q -tx "TF_Prop_Directory"`;
+		string $SubFoldersArray[] = `textScrollList -q -ai PropDirectoryList`;
+		$selectedTab = `tabLayout -q -st Right_Tabs`;
+
+
+		/////////////////////////////Sub Folder UI
+		columnLayout  -p subfolderParent subfolderCheckBox;
+		rowColumnLayout -nc 5 -cw 1 120 -cw 2 120 -cw 3 120 -cw 4 120 -cw 5 120 ;
+			for ($f = 0; $f <`size $SubFoldersArray`; $f++)
+					{
+						//print  ("cb_" + $SubFoldersArray[$f]);
+						checkBox -l $SubFoldersArray[$f] -onc ("NinjaAsset_BuildSubShaderList " + $SubFoldersArray[$f]) -ofc("NinjaAsset_DeleteSubShaderList " + $SubFoldersArray[$f]) ("checkbox_" + $SubFoldersArray[$f]);
+					}
+				setParent..;
+		setParent..;
+	}
+
+global proc NinjaAsset_BuildSubShaderList(string $UI, string $Parent, string $SubFolder)
+	{
+		string $Prop_ExportFolder = `textField -q -tx ("TF_Prop_Directory" + $UI)`;
+		string $Prop_Folder = `textField -q -tx ("TF_Prop_Directory" + $UI)`;
+		string $ShaderFiles[] = {};
+
+		$maFiles = `getFileList -fld ($Prop_Folder + $SubFolder + "/") -fs "*.ma"`;
+		$mbFiles = `getFileList -fld ($Prop_Folder + $SubFolder + "/") -fs "*.mb"`;
+		$MayaFiles = stringArrayCatenate($ShaderFiles, $maFiles);
+		$MayaFiles = stringArrayCatenate($MayaFiles, $mbFiles);
+
+		$ShaderFiles = `sort $ShaderFiles`;
+		//$SubFolder = "";
+
+		NinjaAsset_DeleteSubShaderList $SubFolder;
+		//print ("NinjaAsset_BuildSubShaderList " + "\"" + $UI + "\"" + " " + "\"" + $Parent + "\"" + " " + "\"" + $SubFolder + "\"");
+		frameLayout -label ($Prop_Folder + $SubFolder + "/") -w 620 -cl false -cll true -p TempShaderList_UI ("SubShaderList" + $SubFolder);
+			columnLayout;
+				rowColumnLayout -nc 3 -cw 1 200  -cw 2 200  -cw 3 200;
+				button -l "Export Shaders" -c ("NinjaAsset_ExportShader " + "\"" + $Prop_ExportFolder + $SubFolder  + "/\"") ;
+
+				button -l "Refresh Icons" -c ("NinjaAsset_BuildSubShaderList " + "\"" + $UI + "\"" + " " + "\"" + $Parent + "\"" + " " + "\"" + $SubFolder + "\"");
+
+				setParent..;
+
+				rowColumnLayout -nc 4 -cw 1 150 -cw 2 150 -cw 3 150 -cw 4 150 -cs 1 5 -cs 2 5 -cs 3 5 -cs 4 5 ;
+				for ($d = 0; $d <`size $MayaFiles`; $d++)
+						{
+							$PropName = ($Prop_Folder + $SubFolder + $MayaFiles[$d]);
+							$PropDirectory = ($Prop_Folder + $SubFolder);
+							$RenderName = $MayaFiles[$d];
+
+							$ThumbnailExists  = `filetest -r ($Prop_Folder + $SubFolder + "/" + $RenderName + "_NinjaIcon.jpg")`;
+							columnLayout;
+							if ($ThumbnailExists == 1)
+							{
+								iconTextButton
+									-image ($Prop_Folder + $SubFolder + "/" + $RenderName + "_NinjaIcon.jpg")
+									-w 150
+									-h 150
+									-dcc ("fcheck " + "\"" + ($Prop_Folder + $SubFolder + "/" + $RenderName + "_NinjaIcon.jpg") + "\"")
+									("PropIconButton" + $PropName);
+							}
+
+							else
+							{
+								image  -image "sphere.xpm"  -w 150 -h 150 ;
+							}
+
+								popupMenu;
+									menuItem -l "Import Shader" -c ("ImportShader Nil "  + "\"" + ($Prop_Folder + $SubFolder + "/" + $MayaFiles[$d])  +   "\"" );
+									menuItem -l "Import and Apply Shader" -c ("ImportShader Selection "  + "\"" + ($Prop_Folder + $SubFolder + "/" + $MayaFiles[$d])  +   "\"" );
+									menuItem -l "Explore" -c ("NinjaAsset_ExploreFile "  + "\"" + ($Prop_Folder + $SubFolder + "/" + $MayaFiles[$d])  +   "\"");
+
+							textField -w 150 -tx $MayaFiles[$d] -cc ("NinjaRenameProp " + "\"" + $PropDirectory + "\"" + "\"" + $MayaFiles[$d] + "\"" + "\"" +$RenderName + "\"") ("ObjectName" + $RenderName);
+
+
+							setParent..;//parent columnLayout
+						}
+			setParent..;//parent rowColumnLayout
+		setParent..; //Parent FrameLayout
+	}
+
+global proc NinjaAsset_DeleteSubShaderList(string $SubFolder)
+	{
+		if (`frameLayout -ex ("SubShaderList" + $SubFolder)` )
+		{
+			deleteUI ("SubShaderList" + $SubFolder);
+
+        }
+	}
+
+
+
+global proc NinjaAsset_BuildAudioList(string $UI, string $Parent)
+{
+	string $Prop_ExportFolder = `textField -q -tx ("TF_Prop_Directory" + $UI)`;
+	string $Prop_Folder = `textField -q -tx ("TF_Prop_Directory" + $UI)`;
+	string $AudioFiles[] = {};
+
+	$AudioFiles = `getFileList -fld ($Prop_Folder ) -fs "*.wav"`;
+
+
+	deleteUI ("TempAudioList_UI" + $UI);
+	columnLayout -p $Parent ("TempAudioList_UI" + $UI);
+		frameLayout -label $Prop_Folder -w 620 -cl false -cll true;
+			rowColumnLayout -nc 4 -cw 1 150 -cw 2 150 -cw 3 150 -cw 4 150 -cs 1 5 -cs 2 5 -cs 3 5 -cs 4 5 ;
+					for ($d = 0; $d <`size $AudioFiles`; $d++)
+							{
+
+								$AudioName = ($Prop_Folder + $AudioFiles[$d]);
+								$PropDirectory = ($Prop_Folder);
+
+								$ThumbnailExists  = `filetest -r ($Prop_Folder + $AudioFiles[$d] + "_NinjaIcon.jpg")`;
+								columnLayout;
+									if ($ThumbnailExists == 1)
+									{
+										iconTextButton
+											//-style "iconAndTextVertical"
+											-image ($Prop_Folder + $AudioFiles[$d] + "_NinjaIcon.jpg")
+											//-bgc 1 1 1
+											-w 150
+											-h 150
+											-dcc ("fcheck " + "\"" + ($Prop_Folder + $AudioName) + "\"")
+
+											("AudioIconButton" + $AudioName);
+											//iconTextButton -style "iconAndTextVertical" -l $MayaFiles[$d] -image1 ($Prop_Folder + $SubFolder + $RenderName + ".xpm") -bgc 1 1  1 -w 150 -h 170 -dcc ("ImportProp " +   "\"" + $PropName  +   "\"" );
+									}
+									else
+									{
+										iconTextButton  -image "execute.xpm"  -w 150 -h 150
+										-dcc ("NinjaAsset_OpenFile " + "\"" + ($AudioName) + "\"");
+									}
+									popupMenu;
+										//menuItem -l "Import" -c ("ImportProp Zero"  + "\"" + ($Prop_Folder  + $MayaFiles[$d])  +   "\"" );
+										//menuItem -l "Import and place at selection" -c ("ImportProp Selection"  + "\"" + ($Prop_Folder + $MayaFiles[$d])  +   "\"" );
+										//menuItem -l "Import and replace selection" -c ("ImportProp Replace"  + "\"" + ($Prop_Folder + $MayaFiles[$d])  +   "\"" );
+										//menuItem -l "Open" -c ("Open_Prop "  + "\"" + ($Prop_Folder + $MayaFiles[$d])  +   "\"" );
+										//menuItem -l "Render Icon" -c ("NinjaAsset_RenderProp " + "\"" + ($Prop_Folder  + $RenderName)  +   "\"" );
+
+										menuItem -l "Explore" -c ("NinjaAsset_ExploreFile "  + "\"" + ($Prop_Folder + $AudioFiles[$d])  +   "\"");
+
+										textField -w 150 -tx $AudioFiles[$d] ;
+
+
+								setParent..;//parent columnLayout
+							}
+				setParent..;//parent rowColumnLayout
+		setParent..;
+	setParent..;
+}
+
+global proc NinjaAsset_BuildVideoList(string $UI, string $Parent)
+{
+	string $Prop_ExportFolder = `textField -q -tx ("TF_Prop_Directory" + $UI)`;
+	string $Prop_Folder = `textField -q -tx ("TF_Prop_Directory" + $UI)`;
+
+	string $VideoFormats[] ={"*.avi", "*.mov", "*.wmv", "*.mp4"};
+	string $VideoFiles[] = {};
+
+	for ($v = 0; $v <`size $VideoFormats`; $v++)
+	{
+		$videos = `getFileList -fld ($Prop_Folder ) -fs $VideoFormats[$v]`;
+		appendStringArray($VideoFiles, $videos,`size $videos`);
+    }
+
+
+	deleteUI ("TempVideoList_UI" + $UI);
+	columnLayout -p $Parent ("TempVideoList_UI" + $UI);
+
+		$FrameWidth = 620;
+		$ImageWidth = 150;
+		$Columns = 4;
+		if ($UI == "Bar")
+			{
+				$Columns = 2;
+				$FrameWidth = 250;
+				$ImageWidth = 115;
+            }
+
+
+
+		frameLayout -label $Prop_Folder -w $FrameWidth -cl false -cll true;
+			columnLayout;
+				button -l "Refresh Icons" -c ("NinjaAsset_BuildVideoList " + $UI + " " + "\"" + ("VideoList_UI" + $UI)  + "\"");
+
+					rowColumnLayout -nc $Columns -cw 1 $ImageWidth -cw 2 $ImageWidth -cw 3 $ImageWidth -cw 4 $ImageWidth -cs 1 5 -cs 2 5 -cs 3 5 -cs 4 5 ;
+
+						for ($d = 0; $d <`size $VideoFiles`; $d++)
+								{
+
+									$VideoName = ($Prop_Folder + $VideoFiles[$d]);
+									$PropDirectory = ($Prop_Folder);
+
+									$ThumbnailExists  = `filetest -r ($Prop_Folder + $VideoFiles[$d] + "_NinjaIcon.jpg")`;
+									columnLayout;
+										if ($ThumbnailExists == 1)
+										{
+											iconTextButton
+												//-style "iconAndTextVertical"
+												-image ($Prop_Folder + $VideoFiles[$d] + "_NinjaIcon.jpg")
+												//-bgc 1 1 1
+												-w $ImageWidth
+												-h $ImageWidth
+												-dcc ("fcheck " + "\"" + ($Prop_Folder + $VideoName) + "\"")
+
+												("AudioIconButton" + $VideoName);
+												//iconTextButton -style "iconAndTextVertical" -l $MayaFiles[$d] -image1 ($Prop_Folder + $SubFolder + $RenderName + ".xpm") -bgc 1 1  1 -w 150 -h 170 -dcc ("ImportProp " +   "\"" + $PropName  +   "\"" );
+										}
+										else
+										{
+											iconTextButton  -image "LearningMovies.png"  -w 150 -h 150
+											-dcc ("NinjaAsset_OpenFile " + "\"" + ($VideoName) + "\"");
+										}
+										popupMenu;
+											menuItem -l "Edit Notes" -c ("NinjaAsset_Notes " + "\"" + $VideoName + "\"");
+											//menuItem -l "Import" -c ("ImportProp Zero"  + "\"" + ($Prop_Folder  + $MayaFiles[$d])  +   "\"" );
+											//menuItem -l "Import and place at selection" -c ("ImportProp Selection"  + "\"" + ($Prop_Folder + $MayaFiles[$d])  +   "\"" );
+											//menuItem -l "Import and replace selection" -c ("ImportProp Replace"  + "\"" + ($Prop_Folder + $MayaFiles[$d])  +   "\"" );
+											//menuItem -l "Open" -c ("Open_Prop "  + "\"" + ($Prop_Folder + $MayaFiles[$d])  +   "\"" );
+											//menuItem -l "Render Icon" -c ("NinjaAsset_RenderProp " + "\"" + ($Prop_Folder  + $RenderName)  +   "\"" );
+											//menuItem -l "Create Movie Shader" -c ("NinjaAsset_CreateMovieShader " + "\"" + $VideoName + "\"");
+											menuItem -l "Create Movie Icon" -c ("NinjaAsset_CreateMovieIcon " + "\"" + $VideoName + "\"");
+											menuItem -l "Explore" -c ("NinjaAsset_ExploreFile "  + "\"" + ($Prop_Folder + $VideoFiles[$d])  +   "\"");
+
+											textField -w 150 -tx $VideoFiles[$d] ;
+
+
+									setParent..;//parent columnLayout
+								}
+					setParent..;//parent rowColumnLayout
+			setParent..;
+		setParent..;
+	setParent..;
+}
+
+global proc DirectoryUP(string $UI)
+	{
+		string $ImportDir = `textField -q -text ("TF_Prop_Directory" + $UI)`;
+		string $buf[] = {};
+		int $numTokens = `tokenize $ImportDir "/" $buf`;
+		string $SubDirectory;
+		if ($numTokens >= 2)
+		{
+			$SubDirectory = substituteAllString($ImportDir, ( "/" + $buf[`size $buf` - 1] + "/"), "");
+			textField -e -text $SubDirectory ("TF_Prop_Directory" + $UI);
+			textScrollList -e -da ("PropDirectoryList" + $UI);
+			eval ("BuildDirectoryList " + $UI);
+		}
+		//print ($buf[`size $buf` - 1] + "/");
+		//print $SubDirectory;
+	}
+
+global proc DirectoryUPBar()
+	{
+		string $ImportDir = `textField -q -text TF_Prop_DirectoryBar`;
+		string $buf[] = {};
+		int $numTokens = `tokenize $ImportDir "/" $buf`;
+		string $SubDirectory;
+		if ($numTokens >= 2)
+		{
+			$SubDirectory = substituteAllString($ImportDir, ( "/" + $buf[`size $buf` - 1] + "/"), "");
+			textField -e -text $SubDirectory TF_Prop_DirectoryBar;
+			textScrollList -e -da PropDirectoryListBar;
+			BuildDirectoryList Bar;
+		}
+
+		//string $ImportDir = `textField -q -text TF_Prop_DirectoryBar`;
+		//string $buf[] = {};
+		//int $numTokens = `tokenize $ImportDir "/" $buf`;
+		//$SubDirectory = substituteAllString($ImportDir, ( "/" + $buf[`size $buf` - 1] + "/"), "");
+		//	textField -e -text $SubDirectory TF_Prop_DirectoryBar;
+		//	textScrollList -e -da PropDirectoryListBar;
+		//	BuildDirectoryList Bar;
+
+	}
+
+
+global proc BuildDirectoryList(string $UI)
+{
+	string $Sel[] = `textScrollList -q -si ("PropDirectoryList" + $UI)`;
+	$ImportDir = `textField -q -text ("TF_Prop_Directory" + $UI)`;
+	$Dir = ($ImportDir + $Sel[0] + "/");
+	textField -e -text $Dir ("TF_Prop_Directory" + $UI);
+	textScrollList -e -ra ("PropDirectoryList" + $UI);
+
+	string $Directories[] = `getFileList -fld $Dir -fs "*." `;
+	$Directories = `sort  $Directories`;
+
+	for ($i = 0; $i < (`size $Directories`); $i++)
+		{
+
+			if (endsWith ($Directories[$i], ".*") == 0);
+			{
+				textScrollList -e -append $Directories[$i] ("PropDirectoryList" + $UI);
+
+            }
+        }//end for
+
+	NinjaAsset_SwitchTabs $UI;
+
+}
+
+
+
+global proc string[]  NinjaAsset_DragIcon (string $dragControl, int $x, int $y, int $mods)
+{
+	//print "drag";
+	return {$dragControl};
+}
+
+global proc string NinjaAsset_DropIcon (string $drag, string $drop, string $msgs[], int $x, int $y, int $type)
+{
+ //print ( "Drop on " + $drop + " from " + $msgs[0] + "\n" );
+//ImportProp ("\"" + $PropName  +   "\"" );
+return $drop;
+}
+
+global proc string DragDropCommand(string $drag, string $drop, string $msgs[], int $x, int $y, int $type )
+{
+	//print "test";
+	return "ok";
+	//print $drop;
+}
+
+
+
+
+global proc string[] NinjaAsset_ReadTextFile (string $File)
+{
+	string  $TextArray[] = {};
+	int $filelogid = ` fopen $File "r" ` ;
+    string $nextLine = ` fgetline $filelogid `;
+    stringArrayInsertAtIndex((`size $TextArray`), $TextArray, $nextLine);
+		while (size($nextLine) > 0)
+			 {
+                 $nextLine = `fgetline $filelogid `;
+				 stringArrayInsertAtIndex((`size $TextArray`), $TextArray, $nextLine);
+				 //print $nextLine;
+             }
+    fclose $filelogid;
+	return $TextArray;
+}
+
+global proc NinjaAsset_WriteTextFile(string $File)
+{
+
+	$fileId = `fopen $File "w"`;
+	//string $Text = `cmdScrollFieldExecuter -q -t sf_NinjaNotes`;
+	string $Text = `scrollField -q -text sf_NinjaNotes`;
+	fprint $fileId	$Text;
+
+	fclose $fileId;
+	print ("saved NoteFile " + $File);
+}
+
+global proc NinjaAsset_Notes(string $File)
+{
+	string $NoteFile = ($File + "_NinjaNotes.txt");
+	string $Notes[] = `eval ("NinjaAsset_ReadTextFile " + "\"" + $NoteFile + "\"")`;
+
+	if ((`window -ex NinjaNotesWindow`) == true)
+		{
+			deleteUI NinjaNotesWindow;
+		}
+
+	$NinjaAsset_NotesWindow = `window -t "Ninja Notes Window" -wh 400 500 "NinjaNotesWindow"`;
+		columnLayout;
+			textField -tx $File -w 400;
+			separator -height 4 -width 400;
+			image -image ($File + "_NinjaIcon.jpg") -w 150 -h 150;
+			separator -height 4 -width 400;
+			scrollField -w 400 -h 200 sf_NinjaNotes;
+			//cmdScrollFieldExecuter -w 400 -h 200 sf_NinjaNotes;
+			button -l "Save Notes" -c ("NinjaAsset_WriteTextFile " + "\"" + $NoteFile + "\"");
+		setParent..;
+
+	for ($t = 0; $t <`size $Notes`; $t++)
+	{
+		//cmdScrollFieldExecuter -e -at $Notes[$t] sf_NinjaNotes;
+		scrollField -e -it $Notes[$t] sf_NinjaNotes;
+    }
+
+	showWindow $NinjaAsset_NotesWindow;
+}
+
+global proc string NinjaAsset_RenderCamWindow()
+{
+
+	if ((`window -ex NinjaRenderWindow`) == true)
+	{
+		deleteUI NinjaRenderWindow;
+	}
+
+	string $NinjaCam[];
+	if (`objExists "NinjaAsset_RenderCamera"` != 1)
+	{
+		$NinjaCam = `camera -name "NinjaAsset_RenderCamera"`;
+    }
+
+	//string $NinjaLight_Window;
+	$NinjaAsset_RenderWindow = `window -t "Ninja Render Window" -wh 600 600 "NinjaRenderWindow"`;
+	string $pnlLayout = `paneLayout`;
+	string $mdlPanel = `modelPanel`;
+	showWindow $NinjaAsset_RenderWindow;
+	lookThroughModelPanelClipped $NinjaCam[0] $mdlPanel  0.001 10000;
+	//lookThroughModelPanelClipped $NinjaCam[0] $mdlPanel;
+	rename $NinjaCam[0] "NinjaAsset_RenderCamera";
+	setAttr "NinjaAsset_RenderCameraShape.backgroundColor" -type double3 1 1 1 ;//set background to white
+	setAttr "NinjaAsset_RenderCamera.rotateX" -15;
+	setAttr "NinjaAsset_RenderCamera.rotateY" 45;
+	setAttr "NinjaAsset_RenderCameraShape.focalLength" 45;
+
+	setAttr "defaultResolution.pixelAspect" 1;
+	setAttr "defaultResolution.deviceAspectRatio" 1;
+	setAttr "defaultRenderGlobals.imageFormat" 8;//sets export image to be jpg
+	setAttr "defaultRenderGlobals.enableDefaultLight" 1;
+	//setAttr "defaultRenderGlobals.imageFilePrefix"  -type "string" $ShaderPath;
+	setAttr "miDefaultOptions.maxSamples" 2;
+	setAttr "miDefaultOptions.filter" 4;
+
+	catchQuiet (`scriptedPanel -e -rp $mdlPanel renderView`);
+	catchQuiet (`scriptedPanel -e -rp $mdlPanel renderWindowPanel1`);
+	return $mdlPanel;
+}
+
+
+global proc NinjaAsset_SwitchTabs(string $UI)
+{
+	string $SelTab = `tabLayout -q -st ("Tabs" + $UI)`;
+
+	if ($SelTab == "ProjectPreviewScroll" + $UI)
+	{
+
+    }
+
+	if ($SelTab == ("MeshPreviewScroll" + $UI))
+	{
+		//NinjaAsset_BuildSubObjectCheckBox;
+		NinjaAsset_BuildMeshList $UI ("MeshList_UI" + $UI);
+    }
+
+	if ($SelTab == ("ImagePreviewScroll" + $UI ))
+	{
+		//NinjaAsset_BuildSubImageCheckBox;
+		print "Image";
+		NinjaAsset_BuildImageList $UI ("ImageList_UI" + $UI) ;
+    }
+
+	if ($SelTab == ("ShaderPreviewScroll" + $UI))
+	{
+		string $NinjaAsset_ExportFolder = `textField -q -tx ("TF_Prop_Directory" + $UI)`;
+		//NinjaAsset_BuildSubShaderCheckBox;
+		NinjaAsset_BuildShaderList $UI ("ShaderList_UI" + $UI) $NinjaAsset_ExportFolder ;
+    }
+
+	if ($SelTab == ("AudioPreviewScroll" + $UI))
+	{
+
+		NinjaAsset_BuildAudioList $UI ("AudioList_UI" + $UI);
+    }
+
+	if ($SelTab == ("VideoPreviewScroll" + $UI))
+	{
+
+		NinjaAsset_BuildVideoList $UI ("VideoList_UI" + $UI);
+    }
+}
+
+
+
+global proc Ninja_Asset_UIBar()
+{
+	$PropUI_Width = 250;
+	columnLayout -w $PropUI_Width;
+	button -l "open full window" -w $PropUI_Width -c ("Ninja_Asset");
+
+
+	frameLayout -label "Setting"  -w ($PropUI_Width + 10) -cl true -cll true;
+		columnLayout;
+   		radioButtonGrp -cl3 "left" "left" "left" -numberOfRadioButtons 2  -select 1 -label "Render" -labelArray2 "Mental Ray"  "Vray" -columnWidth3 75 75 75 -cc "NinjaAsset_SwitchRender Bar" rbg_NinjaAssetRenderBar;
+		setParent..;//parent columnLayout
+	setParent..;//parent frameLayout
+
+
+	frameLayout -label "BookMarks"  -w ($PropUI_Width + 10) -cl false -cll true;
+		columnLayout;
+			textScrollList -h 80 -width $PropUI_Width  -dcc ("NinjaAsset_SetBookMark Bar") AssetBookmarksBar;
+				popupMenu;
+					menuItem -l "Add Bookmark" -c("NinjaAsset_AddBookMarks Bar");
+					menuItem -l "Remove Bookmark" -c("NinjaAsset_RemoveBookMarks Bar");
+		setParent..;//parent columnLayout
+	setParent..;//parent frameLayout
+
+
+	////////////////////////////////////////////////////////////////// File Browser Frame ///////////////////////////////////////////////////////////
+	frameLayout -label "File Browser"  -w ($PropUI_Width + 10) -cl false -cll true;
+		columnLayout;
+		separator -height 4 -width $PropUI_Width;
+			progressBar -height 10 -width $PropUI_Width -bgc 1 0 0 ImagePreview_progressBar;
+
+			rowColumnLayout -nc 3 -cw 1 40 -cw 2 160 -cw 3 50;
+				optionMenu -cc ("SetDriveLetter Bar Menu") DriveLetterMenuBar;
+					$DriveLetterArray = {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"};
+					menuItem -l "/";
+						for ($i = 0; $i < (`size $DriveLetterArray`); $i++)
+						{
+						//$Files = `getFileList -folder ($DriveLetterArray[$i] + ":/")`;
+						$Test = `filetest -e ($DriveLetterArray[$i] + ":/")`;
+							if ($Test != 0)
+							{
+								menuItem -l $DriveLetterArray[$i];
+                            }
+						}
+
+				textField -width 160 -text "C:" -cc ("BuildDirectoryList Bar") TF_Prop_DirectoryBar;
+				button -l "< Back" -c ("DirectoryUPBar");
+			setParent..;
+
+			rowColumnLayout -nc 4 -cw 1 40 -cw 2 75 -cw 3 75 -cw 4 50;
+				//button -l "< Back" -c ("DirectoryUPBar");
+				//button -l "Set Directory" -c ("Get_PropPathBar");
+				//button -l "Explore" -c ("NinjaAsset_ExplorePropDirectoryBar");
+				//button -l "Refresh" -c ("NinjaAsset_BuildImageListBar;" +  "NinjaAsset_BuildMeshListBar;");
+			setParent..;
+
+			button -l "Browse Scene File Directory" -w $PropUI_Width -c ("NinjaAsset_BrowseOpenFile Bar");
+
+			textScrollList -h 80 -width 250 -dcc ("BuildDirectoryList Bar") PropDirectoryListBar;
+				popupMenu;
+					menuItem -l "Create Directory";
+
+			textField -width $PropUI_Width -text "" -cc ("BuildDirectoryList Bar") TF_NinjaAsset_NameFilterBar;
+		setParent..;
+	setParent..;
+
+	////////////////////////////////////////////////////////////////// Tabs ///////////////////////////////////////////////////////////
+	string $NinjaAsset_barTabs = `tabLayout -w 250 -scr 0  -innerMarginWidth 0 -innerMarginHeight 0 -cc ("NinjaAsset_SwitchTabs Bar") TabsBar`;
+
+		$ProjectTab = `columnLayout ProjectPreviewScroll`;
+
+			columnLayout ProjectListUIBar;
+				text -l "* Right Click for Menu *";
+				separator -height 4 -width 600;
+
+				rowColumnLayout -nc 2 -cw 1 125 -cw 2 125;
+					button -l "sort by directory" -width 125 -c "NinjaAsset_BuildProjectList Bar ProjectListUIBar Directory";
+					button -l "sort by file type" -width 125 -c "NinjaAsset_BuildProjectList Bar ProjectListUIBar FileType";
+				setParent..;
+
+			setParent..; //parent columnLayout
+
+			columnLayout TempProjectListUIBar;
+			setParent ..;//parent columnLayout
+
+		setParent..;
+
+		////////////////////////////////////////////////////////////////// Mesh Tab
+		$MeshTab = `columnLayout MeshPreviewScrollBar`;
+			rowColumnLayout -nc 4 -cw 1 50 -cw 2 50 -cw 3 50 -cw 4 50 ;
+				checkBox -l ".ma" -v 1  -cc ("NinjaAsset_BuildMeshList Bar MeshList_UIBar") cb_maBar;
+				checkBox -l ".mb" -v 1  -cc ("NinjaAsset_BuildMeshList Bar MeshList_UIBar") cb_mbBar;
+				checkBox -l ".obj" -v 0 -cc ("NinjaAsset_BuildMeshList Bar MeshList_UIBar") cb_objBar;
+				checkBox -l ".fbx" -v 0 -cc ("NinjaAsset_BuildMeshList Bar MeshList_UIBar") cb_fbxBar;
+			setParent..;
+				//textField -width 200 -text "" -cc ("NinjaAsset_BuildMeshList") TF_NinjaAsset_NameFilterBar;
+			columnLayout MeshList_UIBar ;
+				columnLayout TempMeshList_UIBar ;
+				setParent ..;//parent columnLayout
+			setParent ..;//parent ObjecLIst UI
+		setParent..;
+
+		////////////////////////////////////////////////////////////////// Image Tab
+		$ImageTab = `columnLayout ImagePreviewScrollBar`;
+			columnLayout I;
+				rowColumnLayout -nc 4 -cw 1 50 -cw 2 50 -cw 3 50 -cw 4 50 ;
+					checkBox -l ".jpg" -v 1 -cc ("NinjaAsset_BuildImageList Bar ImageList_UIBar") cb_jpgBar;
+					checkBox -l ".tga" -v 1 -cc ("NinjaAsset_BuildImageList Bar ImageList_UIBar") cb_tgaBar;
+					checkBox -l ".bmp" -v 1 -cc ("NinjaAsset_BuildImageList Bar ImageList_UIBar") cb_bmpBar;
+					checkBox -l ".psd" -v 1 -cc ("NinjaAsset_BuildImageList Bar ImageList_UIBar") cb_psdBar;
+					checkBox -l ".xpm" -v 0 -cc ("NinjaAsset_BuildImageList Bar ImageList_UIBar") cb_xpmBar;
+				setParent..;
+
+				columnLayout ImageList_UIBar;
+					columnLayout TempImageList_UIBar;
+					setParent ..;//parent columnLayout
+				setParent ..;//parent ObjecLIst UI
+			setParent..;//parent columnLayout
+		setParent..;//parent Scroll Layout Images
+
+		////////////////////////////////////////////////////////////////// Shader Tab
+		$ShadersTab = `columnLayout ShaderPreviewScrollBar`;
+			columnLayout ShaderList_UIBar ;
+				radioButtonGrp -numberOfRadioButtons 3 -label "Icon Render Size" -labelArray3 "150" "300" "600" -sl 3 -cw4 90 50 50 50 rbg_NinjaShaderIconSizeBar;
+				columnLayout TempShaderList_UIBar ;
+
+				setParent ..;//parent columnLayout
+			setParent ..;//parent ObjecLIst UI
+		setParent..;//parent columnLayout Shaders
+
+		////////////////////////////////////////////////////////////////// Audio Tab
+		$AudioTab = `columnLayout AudioPreviewScrollBar`;
+			columnLayout AudioList_UIBar ;
+				columnLayout TempAudioList_UIBar ;
+				setParent ..;//parent columnLayout
+			setParent ..;//parent ObjecLIst UI
+		setParent..;//parent columnLayout Shaders
+
+		////////////////////////////////////////////////////////////////// Video Tab
+		$VideoTab = `columnLayout VideoPreviewScrollBar`;
+			columnLayout VideoList_UIBar ;
+				columnLayout TempVideoList_UIBar ;
+				setParent ..;//parent columnLayout
+			setParent ..;//parent ObjecLIst UI
+		setParent..;//parent columnLayout Shaders
+
+		////////////////////////////////////////////////////////////////// Scene Tab
+		$SceneTab = `columnLayout ScenePreviewScrollBar`;
+			columnLayout ;
+				//columnLayout;
+					button -l "List Scene Textures"  -w 250 -c ("NinjaAsset_BuildSceneTexturesBar;");
+					//iconTextScrollList -w 600 -h 300 TextureList;
+					scrollLayout -w 250 -h 300 SceneImagesParentBar;
+						rowColumnLayout SceneImagesTempBar;
+						setParent..;//parent rowColumnLayout
+					setParent..;//parent scrollLayout
+
+					separator -height 4 -width 250;
+					rowColumnLayout -nc 2 -cw 1 100  -cw 2 150 ;
+						text -l "Old Texture Path";
+						textField -tx "" originalPathBar;
+						text -l "New Texture Path";
+						textField -tx "" newPathBar;
+					setParent..;
+					button -l "Replace Path" -w 250 -c ("NinjaAsset_ReplaceTexturePath Bar");
+
+					separator -height 4 -width 250;
+					//rowColumnLayout -nc 2 -cw 1 100  -cw 2 125;
+						text -l "Collector Target Directory";
+						textField -tx "C:\\Temp\\NinjaCollector\\"  -w 250 CollectorTargetPathBar;
+					//setParent..;
+					checkBox -l "Repath Textures" -v 1 cb_RepathTexturesBar;
+					button -l "Scene Collector"  -w 250 -c ("NinjaAsset_Collector Bar");
+			setParent..;//parent columnLayout Scene
+		setParent..;//parent columnLayout Scene
+
+
+
+	setParent..;//setParent Bar
+	setParent..;
+
+	scrollLayout -e -w 250 SceneImagesParentBar;
+
+	NinjaAsset_LoadBookMarks Bar;
+
+
+	tabLayout 	-edit
+	-tabLabel $ProjectTab "P"
+	-tabLabel $MeshTab "M"
+	-tabLabel $ImageTab "I"
+	-tabLabel $SceneTab "Scene"
+	-tabLabel $ShadersTab "S"
+	-tabLabel $AudioTab "A"
+	-tabLabel $VideoTab "V"
+	$NinjaAsset_barTabs;
+	scrollLayout -e -w 240 -h 240 SceneImagesParentBar;
+	//mentalRayLoad;
+}
+
+global proc Ninja_Asset_UIFull()
+{
+	$PropUI_Width = 250;
+	$PropUI_WidthB = 200;
+		paneLayout -configuration "right3"  -paneSize 1 20 80  -paneSize 2 72 28 ;
+
+		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Left column
+			$LeftPane = `columnLayout`;
+
+				frameLayout -label "Setting"  -w ($PropUI_Width + 10) -cl true -cll true;
+					columnLayout;
+					radioButtonGrp -cl3 "left" "left" "left" -numberOfRadioButtons 2  -select 1 -label "Render" -labelArray2 "Mental Ray"  "Vray" -columnWidth3 75 75 75 -cc "NinjaAsset_SwitchRender Full" rbg_NinjaAssetRenderFull;
+					setParent..;//parent columnLayout
+				setParent..;//parent frameLayout
+
+				frameLayout -label "BookMarks" -w ($PropUI_Width + 5) -cl false -cll true;
+					columnLayout;
+						textScrollList -h 100 -width $PropUI_Width  -dcc ("NinjaAsset_SetBookMark Full") AssetBookmarksFull;
+							popupMenu;
+							menuItem -l "Add Bookmark" -c("NinjaAsset_AddBookMarks Full");
+							menuItem -l "Remove Bookmark" -c("NinjaAsset_RemoveBookMarks Full");
+					setParent..;
+				setParent..;
+
+				//separator -height 4 -width $PropUI_Width;
+					frameLayout -label "File Browser"  -w ($PropUI_Width + 5) -cl false -cll true;
+						columnLayout;
+						////////////////////////////////////////////////Import Directory List
+						progressBar -height 10 -width $PropUI_Width -bgc 1 0 0 ImagePreview_progressFull;
+							rowColumnLayout -nc 3 -cw 1 40 -cw 2 160 -cw 3 50;
+								optionMenu -cc ("SetDriveLetter Full Menu") DriveLetterMenuFull;
+								$DriveLetterArray = {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"};
+								menuItem -l "/";
+								for ($i = 0; $i < (`size $DriveLetterArray`); $i++)
+									{
+										//$Files = `getFileList -folder ($DriveLetterArray[$i] + ":/")`;
+										$Test = `filetest -e ($DriveLetterArray[$i] + ":/")`;
+										if ($Test != 0)
+											{
+												menuItem -l $DriveLetterArray[$i];
+                                            }
+									}
+
+								textField -width 160 -text "C:" -cc ("BuildDirectoryList Full") TF_Prop_DirectoryFull;
+
+								button -l "< Back" -c ("DirectoryUP Full");
+							setParent..;
+
+							//rowColumnLayout -nc 4 -cw 1 50 -cw 2 75 -cw 3 75 -cw 4 50 ;
+								//button -l "<< Back" -c ("DirectoryUP Full");
+								//button -l "Set Directory" -c ("Get_PropPath");
+								//button -l "Explore" -c ("NinjaAsset_ExplorePropDirectory");
+								//button -l "Refresh" -c ("NinjaAsset_BuildImageList;" +  "NinjaAsset_BuildMeshList;" + "NinjaAsset_BuildSubObjectCheckBox;");
+							//setParent..;
+
+						button -l "Browse Scene File Directory" -w $PropUI_Width -c ("NinjaAsset_BrowseOpenFile Full");
+						separator -height 4 -width $PropUI_Width;
+							textScrollList -h 300 -width $PropUI_Width -dcc ("BuildDirectoryList Full") PropDirectoryListFull;
+								popupMenu;
+									menuItem -l "Create Directory";
+
+						textField -width 250 -text "" -cc ("NinjaAsset_BuildMeshList") TF_NinjaAsset_NameFilterFull;
+						////////////////////////////////////////////////End ImportDirectory List
+						setParent..;//parent columnLayout
+					setParent..;//parent FrameLayout
+			setParent..;//setParent ColumnLayout
+			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////End Left column
+
+
+
+			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Top Right column
+
+				scrollLayout -w 640 ;
+					columnLayout subfolderParent;
+
+						columnLayout subfolderCheckBox;
+
+						setParent..;
+					setParent..;
+				setParent..;
+
+			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Right column
+
+
+
+				string $NinjaAsset_rightTabs = `tabLayout -scr 0  -innerMarginWidth 0 -innerMarginHeight 0  -cc ("NinjaAsset_SwitchTabs Full") TabsFull`;
+
+					$ProjectTab = `scrollLayout ProjectPreviewScrollFull`;
+						columnLayout ;
+							columnLayout ProjectListUIFull;
+								text -l "* Right Click for Menu *";
+								separator -height 4 -width 650;
+
+								rowColumnLayout -nc 2 -cw 1 300 -cw 2 300;
+									button -l "sort by directory" -width 300 -c "NinjaAsset_BuildProjectList Full ProjectListUIFull Directory";
+									button -l "sort by file type" -width 300 -c "NinjaAsset_BuildProjectList Full ProjectListUIFull FileType";
+								setParent..;
+
+							setParent..; //parent columnLayout
+
+							columnLayout TempProjectListUIFull;
+							setParent ..;//parent columnLayout
+						setParent..; //paretn scrollLayout
+
+					setParent..; //paretn scrollLayout
+
+					///////////////////////////////////////////////Mesh List
+					$MayaTab = `scrollLayout MeshPreviewScrollFull`;
+						columnLayout MeshList_UIFull ;
+							text -l "* Right Click for Menu *";
+							separator -height 4 -width 600;
+							//button -l "Render all Icons" -height 20 -width 600 -c ("NinjaAsset_OpenAndRenderIcons");
+							rowColumnLayout -nc 5 -cw 1 50 -cw 2 50 -cw 3 50 -cw 4 50 -cw 5 200;
+								checkBox -l ".ma" -v 1  -cc ("NinjaAsset_BuildMeshList Full MeshList_UIFull") cb_maFull;
+								checkBox -l ".mb" -v 1  -cc ("NinjaAsset_BuildMeshList Full MeshList_UIFull") cb_mbFull;
+								checkBox -l ".obj" -v 0 -cc ("NinjaAsset_BuildMeshList Full MeshList_UIFull") cb_objFull;
+								checkBox -l ".fbx" -v 0 -cc ("NinjaAsset_BuildMeshList Full MeshList_UIFull") cb_fbxFull;
+							setParent..;
+
+							columnLayout TempMeshList_UIFull;
+							setParent ..;//parent columnLayout
+						setParent ..;//parent columnLayout MeshLIst UI
+					setParent..;//parent scrollLayout
+
+
+					///////////////////////////////////////////////Image Tab
+					$ImageTab = `scrollLayout ImagePreviewScrollFull`;
+						columnLayout;
+						separator -height 4 -width $PropUI_Width;
+							rowColumnLayout -nc 5 -cw 1 50 -cw 2 50 -cw 3 50 -cw 4 50 -cw 5 50;
+								checkBox -l ".jpg" -v 1 -cc ("NinjaAsset_BuildImageList Full ImageList_UIFull") cb_jpgFull;
+								checkBox -l ".tga" -v 1 -cc ("NinjaAsset_BuildImageList Full ImageList_UIFull") cb_tgaFull;
+								checkBox -l ".bmp" -v 1 -cc ("NinjaAsset_BuildImageList Full ImageList_UIFull") cb_bmpFull;
+								checkBox -l ".psd" -v 1 -cc ("NinjaAsset_BuildImageList Full ImageList_UIFull") cb_psdFull;
+								checkBox -l ".xpm" -v 0 -cc ("NinjaAsset_BuildImageList Full ImageList_UIFull") cb_xpmFull;
+							setParent..;
+						separator -height 4 -width $PropUI_Width;
+							columnLayout ImageList_UIFull;
+								columnLayout TempImageList_UIFull;
+
+								setParent ..;//parent columnLayout
+							setParent ..;//parent ObjecLIst UI
+						setParent..;
+					setParent..;
+					///////////////////////////////////////////////End Image Tab
+
+					/////////////////////////////////////////////Shaders Tab
+					$ShadersTab = `scrollLayout ShaderPreviewScrollFull`;
+						columnLayout ;
+							rowColumnLayout -nc 3 -cw 1 250  -cw 2 200  -cw 2 150  ;
+								radioButtonGrp -numberOfRadioButtons 3 -label "Icon Render Size" -labelArray3 "150" "300" "600" -sl 3 -cw4 100 50 50 50 rbg_NinjaShaderIconSizeFull;
+								text -l "";
+								button -l "Open HyperShade" -w 150 -c ("HypershadeWindow");
+							setParent..;
+							columnLayout ShaderList_UIFull;
+									columnLayout TempShaderList_UIFull;
+
+									setParent ..;//parent columnLayout
+							   setParent ..;//parent columnLayout
+						setParent..;
+					setParent..;
+					/////////////////////////////////////////////end Shaders Tab
+
+					/////////////////////////////////////////////Audio Tab
+					$AudioTab = `scrollLayout AudioPreviewScrollFull`;
+						columnLayout AudioList_UIFull;
+							columnLayout TempAudioList_UIFull;
+							setParent ..;//parent columnLayout
+					   	setParent ..;//parent columnLayout
+					setParent..;
+					/////////////////////////////////////////////end Audio Tab
+
+					/////////////////////////////////////////////Video Tab
+					$VideoTab = `scrollLayout VideoPreviewScrollFull`;
+						columnLayout VideoList_UIFull;
+							columnLayout TempVideoList_UIFull;
+							setParent ..;//parent columnLayout
+						 setParent ..;//parent columnLayout
+					setParent..; //parent scrollLayout
+					/////////////////////////////////////////////end Video Tab
+
+					/////////////////////////////////////////////Scene Tab
+					$SceneTab = `columnLayout `;
+						columnLayout -adjustableColumn true;
+							button -l "Get Scene Textures"  -w 600 -c ("NinjaAsset_BuildSceneTextures;");
+								//iconTextScrollList -w 600 -h 300 TextureList;
+								scrollLayout -w 600  -h 200 SceneImagesParent;
+									rowColumnLayout SceneImagesTemp;
+									setParent..;
+								setParent..;
+
+						separator -height 4 -width 600;
+							rowColumnLayout -nc 2 -cw 1 150  -cw 2 450 ;
+								text -l "Replace Texture Path";
+								textField -tx "" originalPathFull;
+								text -l "New Texture Path";
+								textField -tx "" newPathFull;
+							setParent..;
+							button -l "Replace Path" -w 600 -c ("NinjaAsset_ReplaceTexturePath Full");
+
+						separator -height 4 -width 600;
+
+							rowColumnLayout -nc 2 -cw 1 150  -cw 2 450;
+								text -l "Collector Target Directory";
+								textField -tx "C:\\Temp\\NinjaCollector\\" CollectorTargetPathFull;
+							setParent..;
+							checkBox -l "Repath Textures" -v 1 cb_RepathTexturesFull;
+							button -l "Scene Collector"  -w 600 -c ("NinjaAsset_Collector Full");
+
+						setParent..;//parent columnLayout
+					setParent..;//parent scrollLayout
+					/////////////////////////////////////////////End Scene Tab
+
+
+			setParent..;//Parent TabLayout
+	setParent..;//parent PaneLayout
+	//setParent..;//parent scrollLayout
+	//setParent..;//parent scrollLayout
+
+			//$Asset_HyperShadePanel = `modelPanel -p $Asset_hypershadeTab `;
+			//scriptedPanel -e -rp $Asset_HyperShadePanel hyperShadePanel1 ;
+			tabLayout 	-edit
+						-tabLabel $ProjectTab "Project"
+						-tabLabel $MayaTab "Mesh Files"
+						-tabLabel $ImageTab "Image Files"
+						-tabLabel $SceneTab "Scene Tools"
+						-tabLabel $ShadersTab "Shaders"
+						-tabLabel $AudioTab "Audio"
+						-tabLabel $VideoTab "Video"
+			$NinjaAsset_rightTabs;
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////End Right column
+
+	//NinjaAsset_BuildFolderList;
+	//NinjaAsset_BuildMeshList;
+	BuildDirectoryList Full;
+	//mentalRayLoad;
+}
+
+global proc Ninja_Asset()
+{
+
+	global string $NinjaAsset_Version;
+	$PropUI_Width = 250;
+	$PropUI_WidthB = 200;
+
+	if ((`window -ex NinjaAsset_Window`) == true) deleteUI NinjaAsset_Window;
+		$NinjaAsset_Window_Window = `window -title $NinjaAsset_Version -width 200 NinjaAsset_Window`;
+
+
+	Ninja_Asset_UIFull();
+	showWindow NinjaAsset_Window;
+	window -e -width 920 -h 650 NinjaAsset_Window;
+	scrollLayout -e -w 600  -h 200 SceneImagesParent;
+	NinjaAsset_LoadBookMarks Full;
+}

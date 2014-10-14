@@ -1,0 +1,2017 @@
+// Duplicate Along Path v1.5.0
+// author: John Germann
+
+// fixed a bug where deforming failed if the object was too short
+// added a button for finalizing deform along path
+// added a feature to reset options to default
+// added a feature that adds a shelf button for DAP
+// added tooltips for buttons
+// added a feature that saves duplication settings on the curve, can load settings from the curve
+// added auto switch for different scene up prefs
+// Moved deformer options to a new tab to avoid confusion
+// Added Start and End Buffers
+// + Add connections to deformer window
+// + Improve appearance of deformer window
+// + record new tutorial video
+// + load multiple objects, curves
+// + switch off quantity?
+
+
+
+global proc DupAlongPath()
+{
+	string $aObj[];
+	global string $gGroup;
+	string $geom = `textField -query -text DAPtextFieldGeom`;
+	string $curve = `textField -query -text DAPtextFieldCurve`;
+	float $curveLength = `arclen $curve`;
+	string $motionPath[];
+	int $iAdjustedQuantity;
+	int $currentDuplicate = 0;
+	
+	// check options
+	
+	int $iEndQuantity = `intSliderGrp -query -value DAPintSliderQuantity`;
+	float $iDistance = `floatSliderGrp -query -value DAPfloatSliderDistance`;
+	
+	float $iBufferStart = `floatSliderGrp -query -value DAPfloatSliderBufferStart`;
+	float $iBufferEnd = `floatSliderGrp -query -value DAPfloatSliderBufferEnd`;
+	
+	int $iConstrainRotateX = `checkBoxGrp -q -value1 DUPcheckBoxGroupRotateConstrain`;
+	int $iConstrainRotateY = `checkBoxGrp -q -value2 DUPcheckBoxGroupRotateConstrain`;
+	int $iConstrainRotateZ = `checkBoxGrp -q -value3 DUPcheckBoxGroupRotateConstrain`;
+	int $iRotateBehavior = `radioButtonGrp -q -sl DUPradioButtonBehaviorRotate`;
+	
+	int $iConstrainScaleX = `checkBoxGrp -q -value1 DUPcheckBoxGroupScaleConstrain`;
+	int $iConstrainScaleY = `checkBoxGrp -q -value2 DUPcheckBoxGroupScaleConstrain`;
+	int $iConstrainScaleZ = `checkBoxGrp -q -value3 DUPcheckBoxGroupScaleConstrain`;
+	int $iScaleBehavior = `radioButtonGrp -q -sl DUPradioButtonBehaviorScale`;
+	
+	float $iFrontTwistValue = `floatSliderGrp -query -value DAPfloatSliderFrontTwist`;
+	float $iFrontTwist = `floatSliderGrp -query -value DAPfloatSliderFrontTwist`;
+	float $iUpTwistValue = `floatSliderGrp -query -value DAPfloatSliderUpTwist`;
+	float $iUpTwist = `floatSliderGrp -query -value DAPfloatSliderUpTwist`;
+	float $iSideTwistValue = `floatSliderGrp -query -value DAPfloatSliderSideTwist`;
+	float $iSideTwist = `floatSliderGrp -query -value DAPfloatSliderSideTwist`;
+	
+	float $scaleX = `floatSliderGrp -query -value DAPfloatSliderScaleX`;
+	float $scaleY = `floatSliderGrp -query -value DAPfloatSliderScaleY`;
+	float $scaleZ = `floatSliderGrp -query -value DAPfloatSliderScaleZ`;
+	
+	float $scatter = `floatSliderGrp -query -value DAPfloatSliderScatter`;
+	int $iScatterX = `checkBoxGrp -q -value1 DUPcheckBoxGroupScatter`;
+	int $iScatterY = `checkBoxGrp -q -value2 DUPcheckBoxGroupScatter`;
+	int $iScatterZ = `checkBoxGrp -q -value3 DUPcheckBoxGroupScatter`;
+	
+	int $iDupType = `radioButtonGrp -q -select DAPdupType`;
+	int $iFollowAxis = `radioButtonGrp -q -select DAPfollowAxis`;
+	int $iUpAxis = `radioButtonGrp -q -select DAPupAxis`;
+	int $iInvertFollow = `radioButtonGrp -q -select DAPinvertFollow`;
+	int $iInvertUp = `radioButtonGrp -q -select DAPinvertUp`;
+	int $iWorldUpType = `radioButtonGrp -q -select DAPworldUpType`;
+	string $followAxis;
+	string $upAxis;
+	int $invertFollow;
+	int $invertUp;
+	string $worldUpType;
+	float $position;
+	
+	// store current settings
+	
+	optionVar -stringValue DAP_Object $geom;
+	optionVar -stringValue DAP_Curve $curve;
+	optionVar -intValue DAP_Quantity $iEndQuantity;
+	optionVar -floatValue DAP_Distance $iDistance;
+	optionVar -floatValue DAP_BufferStart $iBufferStart;
+	optionVar -floatValue DAP_BufferEnd $iBufferEnd;
+	optionVar -floatValue DAP_TwistFront $iFrontTwistValue;
+	optionVar -floatValue DAP_TwistUp $iUpTwistValue;
+	optionVar -floatValue DAP_TwistSide $iSideTwistValue;
+	optionVar -intValue DAP_ConstrainRotateX $iConstrainRotateX;
+	optionVar -intValue DAP_ConstrainRotateY $iConstrainRotateY;
+	optionVar -intValue DAP_ConstrainRotateZ $iConstrainRotateZ;
+	optionVar -floatValue DAP_ScaleX $scaleX;
+	optionVar -floatValue DAP_ScaleY $scaleY;
+	optionVar -floatValue DAP_ScaleZ $scaleZ;
+	optionVar -intValue DAP_ConstrainScaleX $iConstrainScaleX;
+	optionVar -intValue DAP_ConstrainScaleY $iConstrainScaleY;
+	optionVar -intValue DAP_ConstrainScaleZ $iConstrainScaleZ;
+	optionVar -floatValue DAP_Scatter $scatter;
+	optionVar -intValue DAP_ScatterX $iScatterX;
+	optionVar -intValue DAP_ScatterY $iScatterY;
+	optionVar -intValue DAP_ScatterZ $iScatterZ;
+	optionVar -intValue DAP_DupType $iDupType;
+	optionVar -intValue DAP_FollowAxis $iFollowAxis;
+	optionVar -intValue DAP_UpAxis $iUpAxis;
+	optionVar -intValue DAP_InvertFollow $iInvertFollow;
+	optionVar -intValue DAP_InvertUp $iInvertUp;
+	optionVar -intValue DAP_WorldUpType $iWorldUpType;
+	optionVar -intValue DAP_RotateBehavior $iRotateBehavior;
+	optionVar -intValue DAP_ScaleBehavior $iScaleBehavior;
+	
+	// setup names for group and motion paths
+	
+	string $geomNew[];
+	string $curveNew[];
+	tokenize $geom "|" $geomNew;
+	tokenize $curve "|" $curveNew;
+	
+	int $lastGeomToken = (size ($geomNew) - 1);
+	int $lastCurveToken = (size ($curveNew) - 1);
+	
+	$gGroup = ($geomNew[$lastGeomToken] + "_on_" + $curveNew[$lastCurveToken]);
+	string $motionPathNew = ($gGroup + "Path");
+	
+	// check for object and curve
+	
+	if ($geom == "Assign Object")
+	{
+		warning "No object assigned. Select object you wish to duplicate and click the \"Object\" button to assign it.";
+		textField -edit -bgc .86 .81 .53 DAPtextFieldGeom;
+		return;
+	}
+	
+	if (`objExists $geom` == 0)
+	{
+		warning ($geomNew[$lastGeomToken] + " does not exist.  Assign a new object.");
+		textField -edit -bgc .86 .81 .53 DAPtextFieldGeom;
+		return;
+	}
+	
+	textField -edit -bgc .27 .27 .27 DAPtextFieldGeom;
+	
+	if ($curve == "Assign Curve")
+	{
+		warning "No curve assigned. Select curve you wish to duplicate along and click the \"Curve\" button to assign it.";
+		textField -edit -bgc .86 .81 .53 DAPtextFieldCurve;
+		return;
+	}
+	
+	if (`objExists $curve` == 0)
+	{
+		warning ($curveNew[$lastCurveToken] + " does not exist. Assign a new curve.");
+		textField -edit -bgc .86 .81 .53 DAPtextFieldCurve;
+		return;
+	}
+	
+	textField -edit -bgc .27 .27 .27 DAPtextFieldCurve;
+	
+	// check scale options
+	
+	float $scaleLocal[] = `xform -query -relative -scale $geom`;
+	float $scaleXvalue = (`floatSliderGrp -query -value DAPfloatSliderScaleX`) * $scaleLocal[0];
+	float $scaleX = (`floatSliderGrp -query -value DAPfloatSliderScaleX`) * $scaleLocal[0];
+	float $scaleYvalue = (`floatSliderGrp -query -value DAPfloatSliderScaleY`) * $scaleLocal[1];
+	float $scaleY = (`floatSliderGrp -query -value DAPfloatSliderScaleY`) * $scaleLocal[1];
+	float $scaleZvalue = (`floatSliderGrp -query -value DAPfloatSliderScaleZ`) * $scaleLocal[2];
+	float $scaleZ = (`floatSliderGrp -query -value DAPfloatSliderScaleZ`) * $scaleLocal[2];
+	
+	// setup timer
+	
+	int $iMotionPathNext = 1;
+	int $iStart = 1;
+	
+	// cleanup old stuff
+	
+	if (`objExists ($gGroup)` == 1)
+	{
+		cycleCheck -e off;
+		delete ($gGroup);
+		cycleCheck -e on;
+	}
+	
+	if (`objExists ($motionPathNew + "*")` == 1)
+	{
+		cycleCheck -e off;
+		delete ($motionPathNew + "*");
+		cycleCheck -e on;
+	}
+	
+	// get options from the UI
+	
+	switch ($iFollowAxis)
+	{
+		case 1:
+			$followAxis = "X";
+			break;
+		case 2:
+			$followAxis = "Y";
+			break;
+		case 3:
+			$followAxis = "Z";
+			break;
+	}
+	
+	switch ($iUpAxis)
+	{
+		case 1:
+			$upAxis = "X";
+			break;
+		case 2:
+			$upAxis = "Y";
+			break;
+		case 3:
+			$upAxis = "Z";
+			break;
+	}
+	
+	switch ($iWorldUpType)
+	{
+		case 1:
+			$worldUpType = "scene";
+			break;
+		case 2:
+			$worldUpType = "normal";
+			break;
+	}
+	
+	switch ($iInvertFollow)
+	{
+		case 1:
+			$invertFollow = 0;
+			break;
+		case 2:
+			$invertFollow = 1;
+			break;
+	}
+	
+	switch ($iInvertUp)
+	{
+		case 1:
+			$invertUp = 0;
+			break;
+		case 2:
+			$invertUp = 1;
+			break;
+	}
+	
+	// duplicate or instance the object and group it
+
+	group -empty;
+	rename $gGroup;
+
+	select $geom;
+	
+	if ($iDupType == 1)
+	{
+		duplicate;
+	}
+	else
+	{
+		instance;
+	}
+	
+	string $aObj[] = `ls -sl`;
+	parent $aObj[0] $gGroup;
+	
+	// Determine the adjusted amount of duplicates needed based on the length of the curve.
+	
+	if ($iDistance == 0)
+	{
+		$iAdjustedQuantity = $iEndQuantity;
+	}
+	else
+	{
+		$iAdjustedQuantity = (($curveLength * (1 - $iBufferEnd - $iBufferStart)) / $iDistance) + 1;
+		
+		if ($iAdjustedQuantity > $iEndQuantity)
+		{
+			$iAdjustedQuantity = $iEndQuantity;
+		}
+	}
+	
+	// Create appropriate amount of duplicates or instances
+
+	for ($i = 1; $i < $iAdjustedQuantity; ++$i)
+	{
+		if ($iDupType == 1)
+		{
+			duplicate;
+		}
+		else
+		{
+			instance;
+		}
+	}
+	
+	// Storing information for endBuffer
+	
+	int $negativeDuplicate = ($iEndQuantity - 1);
+	
+	// select children of the group
+	
+	select $gGroup;
+	string $children[] = `listRelatives -children`;
+	select $children;
+
+	string $aObj[] = `ls -sl`;
+	
+	// moving currentTime to number equal to # of duplicates because pathAnimation is tied to it
+
+	currentTime $iAdjustedQuantity;
+
+	// scale constrain options
+		
+	floatSliderGrp -edit -bgc .27 .27 .27 -enable 1 DAPfloatSliderScaleX;
+	floatSliderGrp -edit -bgc .27 .27 .27 -enable 1 DAPfloatSliderScaleY;
+	floatSliderGrp -edit -bgc .27 .27 .27 -enable 1 DAPfloatSliderScaleZ;
+
+	// Remember Mayas Animation Preferences
+		
+	string $tangentInSetting[] = `keyTangent -query -global -itt`;
+	string $tangentOutSetting[] = `keyTangent -query -global -ott`;
+	
+	// Override Mayas Animation Preferences
+	
+	keyTangent -global -itt linear;
+	keyTangent -global -ott linear;
+	
+	// attach everything to motion path at different progressing start and end points
+
+	for ($obj in $aObj)
+	{
+		int $iStartNext;
+		int $iEndNext;
+		
+		// random rotate
+	
+		if ($iRotateBehavior == 3)
+		{
+			int $randomFrontTwist = `rand $iFrontTwistValue`;
+			int $randomUpTwist = `rand $iUpTwistValue`;
+			int $randomSideTwist = `rand $iSideTwistValue`;
+			
+			$iFrontTwist = (`PositiveNegative` + $randomFrontTwist);
+			$iUpTwist = (`PositiveNegative` + $randomUpTwist);
+			$iSideTwist = (`PositiveNegative` + $randomSideTwist);
+		}
+		
+		// random scale
+		
+		if ($iScaleBehavior == 3)
+		{
+			$scaleX = (`rand ($scaleXvalue - 1)` + 1);
+			$scaleY = (`rand ($scaleYvalue - 1)` + 1);
+			$scaleZ = (`rand ($scaleZvalue - 1)` + 1);
+		}
+		
+		if ($iConstrainScaleX == 1 && $iConstrainScaleY == 1 && $iConstrainScaleZ == 1)
+		{
+			$scaleZ = $scaleX;
+			$scaleY = $scaleX;
+			floatSliderGrp -edit -bgc .15 .15 .15 -enable 0 DAPfloatSliderScaleY;
+			floatSliderGrp -edit -bgc .15 .15 .15 -enable 0 DAPfloatSliderScaleZ;
+		}
+		
+		if ($iConstrainScaleX == 1 && $iConstrainScaleY == 1)
+		{
+			$scaleY = $scaleX;
+			floatSliderGrp -edit -bgc .15 .15 .15 -enable 0 DAPfloatSliderScaleY;
+		}
+		
+		if ($iConstrainScaleY == 1 && $iConstrainScaleZ == 1)
+		{
+			$scaleZ = $scaleY;
+			floatSliderGrp -edit -bgc .15 .15 .15 -enable 0 DAPfloatSliderScaleZ;
+		}
+		
+		if ($iConstrainScaleX == 1 && $iConstrainScaleZ == 1)
+		{
+			$scaleZ = $scaleX;
+			floatSliderGrp -edit -bgc .15 .15 .15 -enable 0 DAPfloatSliderScaleZ;
+		}
+		
+		select $obj;
+		
+		scale $scaleX $scaleY $scaleZ;
+		
+		// attach to path
+		
+		pathAnimation
+		 -fractionMode true
+		 -followAxis $followAxis
+		 -upAxis $upAxis
+		 -worldUpType $worldUpType
+		 -inverseUp $invertUp
+		 -inverseFront $invertFollow
+		 -startTimeU $iStartNext
+		 -endTimeU $iEndNext
+		 $curve
+		 $obj;
+		
+		// custom renaming of motionPath for safety and deleting animCurve to remove timeline dependancy
+		
+		string $motionPathOriginal[] = `listConnections -s 1 -t motionPath`;
+		select $motionPathOriginal[0];
+		string $animCurve[] = `listConnections -s 1 -t animCurve`;
+		delete $animCurve;
+		rename $motionPathOriginal[0] ($motionPathNew + "1");
+		
+		// apply twist
+		
+		setAttr ($motionPathNew + $iMotionPathNext + ".frontTwist") $iFrontTwist;
+		setAttr ($motionPathNew + $iMotionPathNext + ".upTwist") $iUpTwist;
+		setAttr ($motionPathNew + $iMotionPathNext + ".sideTwist") $iSideTwist;
+
+		// additive rotate
+		
+		if ($iRotateBehavior == 2)
+		{
+			$iFrontTwist = $iFrontTwistValue + $iFrontTwist;
+			$iUpTwist = $iUpTwistValue + $iUpTwist;
+			$iSideTwist = $iSideTwistValue + $iSideTwist;
+		}
+
+		// additive scale
+		
+		if ($iScaleBehavior == 2)
+		{
+			$scaleX = ($scaleXvalue + $scaleX - 1);
+			$scaleY = ($scaleYvalue + $scaleY - 1);
+			$scaleZ = ($scaleZvalue + $scaleZ - 1);
+		}
+		
+		// orient constraints
+		
+		if ($iConstrainRotateX == 1 || $iConstrainRotateY == 1 || $iConstrainRotateZ == 1)
+		{
+			if ($iConstrainRotateX == 1 && $iConstrainRotateY == 0 && $iConstrainRotateZ == 0)
+			{
+				orientConstraint -offset 0 0 0 -skip y -skip z -weight 1 $geom $obj;
+			}
+			
+			if ($iConstrainRotateX == 0 && $iConstrainRotateY == 1 && $iConstrainRotateZ == 0)
+			{
+				orientConstraint -offset 0 0 0 -skip x -skip z -weight 1 $geom $obj;
+			}
+			
+			if ($iConstrainRotateX == 0 && $iConstrainRotateY == 0 && $iConstrainRotateZ == 1)
+			{
+				orientConstraint -offset 0 0 0 -skip x -skip y -weight 1 $geom $obj;
+			}
+			
+			if ($iConstrainRotateX == 0 && $iConstrainRotateY == 1 && $iConstrainRotateZ == 1)
+			{
+				orientConstraint -offset 0 0 0 -skip x -weight 1 $geom $obj;
+			}
+			
+			if ($iConstrainRotateX == 1 && $iConstrainRotateY == 0 && $iConstrainRotateZ == 1)
+			{
+				orientConstraint -offset 0 0 0 -skip y -weight 1 $geom $obj;
+			}
+			
+			if ($iConstrainRotateX == 1 && $iConstrainRotateY == 1 && $iConstrainRotateZ == 0)
+			{
+				orientConstraint -offset 0 0 0 -skip z -weight 1 $geom $obj;
+			}
+			
+			if ($iConstrainRotateX == 1 && $iConstrainRotateY == 1 && $iConstrainRotateZ == 1)
+			{
+				orientConstraint -offset 0 0 0 -weight 1 $geom $obj;
+			}
+		}
+		
+		// apply buffer
+		
+		if ($iDistance == 0)
+		{
+			float $currentPosition = getAttr ($motionPath[0] + ".uValue");
+			float $shiftStart = (($iBufferStart / ($iEndQuantity - 1)) * (($iEndQuantity - 1) - $currentDuplicate));
+			setAttr ($motionPath[0] + ".uValue") ($currentPosition - $shiftStart);
+			
+			float $currentPosition = getAttr ($motionPath[0] + ".uValue");
+			float $shiftEnd = (($iBufferEnd / ($iEndQuantity - 1)) * (($iEndQuantity - 1) - $negativeDuplicate));
+			setAttr ($motionPath[0] + ".uValue") ($currentPosition + $shiftEnd);
+		}
+		
+		// adjust position on curve based on Distance
+		
+		if ($iDistance != 0)
+		{
+			string $motionPath[] = `listConnections -type "motionPath" $obj`;
+			if ($iStartNext == 0)
+			{
+				$position = 0;
+			}
+			else
+			{
+				$position = ($iDistance * ($iStartNext - 1)) / $curveLength;
+			}
+			
+			setAttr ($motionPath[0] + ".uValue") ($position + $iBufferEnd);
+		}
+		
+		// scatter
+		
+		$randomScatterX = `rand $scatter`;
+		$randomScatterY = `rand $scatter`;
+		$randomScatterZ = `rand $scatter`;
+		$randomScatterX = (`PositiveNegative` + $randomScatterX);
+		$randomScatterY = (`PositiveNegative` + $randomScatterY);
+		$randomScatterZ = (`PositiveNegative` + $randomScatterZ);
+		select $obj;
+		
+		if ($iScatterX == 1)
+		{
+			move -r -ws -wd $randomScatterX 0 0;
+		}
+		
+		if ($iScatterY == 1)
+		{
+			move -r -ws -wd 0 $randomScatterY 0;
+		}
+		
+		if ($iScatterZ == 1)
+		{
+			move -r -ws -wd 0 0 $randomScatterZ;
+		}
+		
+		// add 1 to place next object further along the path
+		
+		$iMotionPathNext = ++$iMotionPathNext;
+		$iStartNext = ++$iStart;
+		$iEndNext = ++$iAdjustedQuantity;
+		$currentDuplicate = ($currentDuplicate + 1);
+		$negativeDuplicate = ($negativeDuplicate - 1);
+	}
+	
+	currentTime 1;
+	
+	select $gGroup;
+	
+	// Return Mayas Animation Preferences to normal
+		
+	keyTangent -global -itt $tangentInSetting;
+	keyTangent -global -ott $tangentOutSetting;
+	
+	// Saves settings to curves attributes
+	
+	AddAttributeOptions;
+}
+
+
+
+// random positive or negative, used by randomScatterX randomScatterY and randomScatterZ
+
+global proc string PositiveNegative()
+{
+	string $positiveNegative = "";
+	int $posNeg = `rand 2`;
+
+	if ($posNeg == 0)
+	{
+		$positiveNegative = "-";
+	}
+	
+	return $positiveNegative;
+}
+
+
+
+// Front and Up axis can not be the same, if they are, switch the other one.
+
+global proc SwitchAxisUp()
+{
+	if (`radioButtonGrp -q -select DAPupAxis` == `radioButtonGrp -q -select DAPfollowAxis`)
+	{
+		if (`radioButtonGrp -q -select DAPupAxis` == 1 && `radioButtonGrp -q -select DAPfollowAxis` == 1)
+		{
+			radioButtonGrp -edit -select 2 DAPfollowAxis;
+		}
+		
+		if (`radioButtonGrp -q -select DAPupAxis` == 2 && `radioButtonGrp -q -select DAPfollowAxis` == 2)
+		{
+			radioButtonGrp -edit -select 1 DAPfollowAxis;
+		}
+		
+		if (`radioButtonGrp -q -select DAPupAxis` == 3 && `radioButtonGrp -q -select DAPfollowAxis` == 3)
+		{
+			radioButtonGrp -edit -select 2 DAPfollowAxis;
+		}
+	}
+}
+
+global proc SwitchAxisFollow()
+{
+	if (`radioButtonGrp -q -select DAPupAxis` == `radioButtonGrp -q -select DAPfollowAxis`)
+	{
+		if (`radioButtonGrp -q -select DAPupAxis` == 1 && `radioButtonGrp -q -select DAPfollowAxis` == 1)
+		{
+			radioButtonGrp -edit -select 2 DAPupAxis;
+		}
+		
+		if (`radioButtonGrp -q -select DAPupAxis` == 2 && `radioButtonGrp -q -select DAPfollowAxis` == 2)
+		{
+			radioButtonGrp -edit -select 1 DAPupAxis;
+		}
+		
+		if (`radioButtonGrp -q -select DAPupAxis` == 3 && `radioButtonGrp -q -select DAPfollowAxis` == 3)
+		{
+			radioButtonGrp -edit -select 2 DAPupAxis;
+		}
+	}
+}
+
+
+
+// update text field in the UI
+
+global proc string AssignGeom()
+{
+	string $aObj[] = `ls -sl -l`;
+	string $geomGroup = $aObj[0];
+	
+	if (size($aObj) == 0)
+	{
+		$geomGroup = "Assign Object";
+		warning "No object selected. Select object you wish to duplicate and click the \"Object\" button to assign it.";
+	}
+	else
+	{
+		textField -edit -bgc .27 .27 .27 DAPtextFieldGeom;
+	}
+	
+	return `textField -edit -text $geomGroup DAPtextFieldGeom`;
+}
+
+global proc string AssignCurve()
+{
+	string $aObj[] = `ls -sl -l`;
+	string $geomGroup = $aObj[0];
+	
+	if (size($aObj) == 0)
+	{
+		CVCurveTool;
+		$geomGroup = "Assign Curve";
+		warning "No curve selected, create a curve and press enter.";
+	}
+	else
+	{
+		textField -edit -bgc .27 .27 .27 DAPtextFieldCurve;
+	}
+	
+	return `textField -edit -text $geomGroup DAPtextFieldCurve`;
+}
+
+
+
+global proc DAPfloatStateSwitch()
+{
+	if ( `optionVar -q DAP_FloatingState` == 1 )
+	{	
+		optionVar -intValue DAP_FloatingState 0;
+	}
+	else
+	{
+		optionVar -intValue DAP_FloatingState 1;
+	}
+}
+
+
+
+global proc DAPextrudeAlong()
+{
+	string $geomNew[];
+	string $geom = `textField -query -text DAPtextFieldGeom`;
+	string $curve = `textField -query -text DAPtextFieldCurve`;
+	
+	tokenize $geom "|" $geomNew;
+	int $lastGeomToken = (size ($geomNew) - 1);
+	$geomName = $geomNew[$lastGeomToken];
+
+	select -hierarchy $geom;
+	performFreezeTransformations(0);
+	$geomHierarchy = `ls -sl`;
+	float $rotatePivot[] = `xform -q -rotatePivot $geom`;
+	float $boundingBox[] = `polyEvaluate -boundingBox $geomHierarchy`;
+	xform -cp;
+	move -x $boundingBox[0] 0 0 ($geom + ".scalePivot") ($geom + ".rotatePivot");
+	float $geomLength = $boundingBox[1] - $boundingBox[0];
+	$curveLength = `arclen $curve`;
+	int $duplicate = ($curveLength / `abs $geomLength`) + .5;
+	float $scaleMultiplier = ($curveLength / ($duplicate * `abs $geomLength`)) - .001;
+	duplicate $geom;
+	$newGeom = `ls -sl`;
+	select $newGeom;
+	group -name ($geom + "_strip");
+	$stripGroup = `ls -sl`;
+	
+	for ($i = 1; $i < $duplicate; ++$i)
+	{
+		duplicate $newGeom;
+		move -r `abs $geomLength` 0 0 $newGeom;
+	}
+	
+	select `listRelatives -f -allDescendents -type mesh $stripGroup`;
+	
+	// print ("size is " + size(`ls -sl`) + "\n");
+	
+	if ($duplicate >= 2)
+	{
+		polyUnite -ch 0 $stripGroup;
+	}
+	
+	if (size(`ls -sl`) >= 2)
+	{
+		polyUnite -ch 0 $stripGroup;
+	}
+	else
+	{
+		pickWalk -d up;
+	}
+	
+	$newGeom = `ls -sl`;
+	PolySelectConvert 3;
+	polyMergeVertex  -d 0.01 -am 1 -ch 0;
+	select $newGeom;
+	scale -r $scaleMultiplier 1 1 $newGeom;
+	rename ($geom + "_extruded");
+	$newGeom = `ls -sl`;
+	float $boundingBox[] = `polyEvaluate -boundingBox $newGeom[0]`;
+	xform -cp;
+	move -x $boundingBox[0] 0 0 ($newGeom[0] + ".scalePivot") ($newGeom[0] + ".rotatePivot");
+	select -add $curve;
+	PathAnimation;
+	flow -divisions ($duplicate * 3) 2 2 -objectCentered 0 -localCompute 1 -localDivisions 2 2 2 $newGeom;
+}
+
+
+
+global proc PathAnimation()
+{
+	global string $gMotionPath;
+	if (`upAxis -q -axis` == "y")
+	{
+		$gMotionPath = `pathAnimation -follow true -followAxis x -upAxis y -worldUpType "scene"`;
+	}
+	else
+	{
+		$gMotionPath = `pathAnimation -follow true -followAxis x -upAxis z -worldUpType "scene"`;
+	}
+}
+
+
+
+global proc UpdateMotionPath()
+{
+	global string $gMotionPath;
+	string $motionPath[] = `listConnections -type motionPath`;
+	if (size($motionPath) == 0)
+	{
+		warning "Object has no connecting Motion Path.";
+	}
+	else
+	{
+		$gMotionPath = $motionPath[0];
+		textField -edit -text $gMotionPath DAPtextFieldMotionPath;
+		attrFieldSliderGrp -edit -at ( $gMotionPath + ".bankScale" ) DAPattrFieldBankScale;
+		attrFieldSliderGrp -edit -at ( $gMotionPath + ".bankLimit" ) DAPattrFieldBankLimit;
+	}
+}
+
+
+
+// Reverse curve direction
+
+global proc ReversePathDirection()
+{
+	string $curve = `textField -query -text DAPtextFieldCurve`;
+	reverseCurve -rpo 1 $curve;
+}
+
+// Detach objects from the curve
+
+global proc DetachObjectsFromPath()
+{
+	float $version = `getApplicationVersionAsFloat`;
+	
+	if ($version == 2008)
+	{
+		print "This feature is disabled for Maya 2008";
+	}
+	else
+	{
+		global string $gGroup;
+		source channelBoxCommand;
+
+		if (`objExists $gGroup` == 0)
+		{
+			print "Nothing to detach\n";
+		}
+		else
+		{
+			cycleCheck -e off;
+			select $gGroup;
+			ungroup -w;
+
+			string $obj;
+			string $aObj[] = `ls -sl`;
+			for ($obj in $aObj)
+			{
+				CBdeleteConnection ($obj + ".tx");
+				CBdeleteConnection ($obj + ".ty");
+				CBdeleteConnection ($obj + ".tz");
+				CBdeleteConnection ($obj + ".rx");
+				CBdeleteConnection ($obj + ".ry");
+				CBdeleteConnection ($obj + ".rz");
+				delete -constraints -mp $obj;
+				
+				if (`attributeExists "blendOrient1" $obj`)
+				{
+					deleteAttr -attribute "blendOrient1" $obj;
+				}
+			}
+			cycleCheck -e on;
+		}
+	}
+}
+
+// delete the objects from the path
+
+global proc DeleteObjectsFromPath()
+{
+	global string $gGroup;
+	if (`objExists $gGroup` == 0)
+	{
+		print "Nothing to delete\n";
+	}
+	else
+	{
+		delete $gGroup;
+	}
+}
+
+// Refresh deformation
+
+global proc DeleteDeformed()
+{
+	string $geom = (`textField -query -text DAPtextFieldGeom` + "_extruded*");
+	if (`objExists $geom` == 0)
+	{
+		print "Nothing to refresh\n";
+	}
+	else
+	{
+		delete -ch $geom;
+		delete $geom;
+	}
+}
+
+// detach deformed object from path
+
+global proc DetachDeformedFromPath()
+{
+	string $geom = (`textField -query -text DAPtextFieldGeom` + "_extruded*");
+	if (`objExists $geom` == 0)
+	{
+		print "Nothing to detach\n";
+	}
+	else
+	{
+		select $geom;
+		DeleteHistory;
+		DeleteMotionPaths;
+	}
+}
+
+
+// Add attribute with duplicate settings
+
+global proc AddAttributeOptions()
+{
+	string $curve = `textField -q -text DAPtextFieldCurve`;
+	int $iEndQuantity = `intSliderGrp -query -value DAPintSliderQuantity`;
+	float $iDistance = `floatSliderGrp -query -value DAPfloatSliderDistance`;
+	float $iBufferStart = `floatSliderGrp -query -value DAPfloatSliderBufferStart`;
+	float $iBufferEnd = `floatSliderGrp -query -value DAPfloatSliderBufferEnd`;
+	float $iFrontTwistValue = `floatSliderGrp -query -value DAPfloatSliderFrontTwist`;
+	float $iUpTwistValue = `floatSliderGrp -query -value DAPfloatSliderUpTwist`;
+	float $iSideTwistValue = `floatSliderGrp -query -value DAPfloatSliderSideTwist`;
+	int $iConstrainRotateX = `checkBoxGrp -q -value1 DUPcheckBoxGroupRotateConstrain`;
+	int $iConstrainRotateY = `checkBoxGrp -q -value2 DUPcheckBoxGroupRotateConstrain`;
+	int $iConstrainRotateZ = `checkBoxGrp -q -value3 DUPcheckBoxGroupRotateConstrain`;
+	int $iRotateBehavior = `radioButtonGrp -q -sl DUPradioButtonBehaviorRotate`;
+	int $iConstrainScaleX = `checkBoxGrp -q -value1 DUPcheckBoxGroupScaleConstrain`;
+	int $iConstrainScaleY = `checkBoxGrp -q -value2 DUPcheckBoxGroupScaleConstrain`;
+	int $iConstrainScaleZ = `checkBoxGrp -q -value3 DUPcheckBoxGroupScaleConstrain`;
+	int $iScaleBehavior = `radioButtonGrp -q -sl DUPradioButtonBehaviorScale`;
+	float $scaleX = `floatSliderGrp -query -value DAPfloatSliderScaleX`;
+	float $scaleY = `floatSliderGrp -query -value DAPfloatSliderScaleY`;
+	float $scaleZ = `floatSliderGrp -query -value DAPfloatSliderScaleZ`;
+	float $scatter = `floatSliderGrp -query -value DAPfloatSliderScatter`;
+	int $iScatterX = `checkBoxGrp -q -value1 DUPcheckBoxGroupScatter`;
+	int $iScatterY = `checkBoxGrp -q -value2 DUPcheckBoxGroupScatter`;
+	int $iScatterZ = `checkBoxGrp -q -value3 DUPcheckBoxGroupScatter`;
+	int $iDupType = `radioButtonGrp -q -select DAPdupType`;
+	int $iFollowAxis = `radioButtonGrp -q -select DAPfollowAxis`;
+	int $iUpAxis = `radioButtonGrp -q -select DAPupAxis`;
+	int $iInvertFollow = `radioButtonGrp -q -select DAPinvertFollow`;
+	int $iInvertUp = `radioButtonGrp -q -select DAPinvertUp`;
+	int $iWorldUpType = `radioButtonGrp -q -select DAPworldUpType`;
+
+	if (!`objExists ($curve + ".DAPoptions")`)
+	{
+		addAttr -dt "string" -ln "DAPoptions" $curve;
+	}
+	
+	float $float_array[] = {$iEndQuantity + 0.0,
+		$iDistance + 0.0,
+		$iBufferStart,
+		$iBufferEnd,
+		$iFrontTwistValue + 0.0,
+		$iUpTwistValue + 0.0,
+		$iSideTwistValue + 0.0,
+		$iConstrainRotateX + 0.0,
+		$iConstrainRotateY + 0.0,
+		$iConstrainRotateZ + 0.0,
+		$iRotateBehavior + 0.0,
+		$scaleX + 0.0,
+		$scaleY + 0.0,
+		$scaleZ + 0.0,
+		$iConstrainScaleX + 0.0,
+		$iConstrainScaleY + 0.0,
+		$iConstrainScaleZ + 0.0,
+		$iScaleBehavior,
+		$scatter,
+		$iScatterX,
+		$iScatterY,
+		$iScatterZ,
+		$iDupType,
+		$iFollowAxis,
+		$iUpAxis,
+		$iInvertFollow,
+		$iInvertUp,
+		$iWorldUpType};
+
+	string $string_options = ($float_array[0] 
+		+ " " + $float_array[1] 
+		+ " " + $float_array[2] 
+		+ " " + $float_array[3] 
+		+ " " + $float_array[4] 
+		+ " " + $float_array[5] 
+		+ " " + $float_array[6] 
+		+ " " + $float_array[7] 
+		+ " " + $float_array[8] 
+		+ " " + $float_array[9] 
+		+ " " + $float_array[10] 
+		+ " " + $float_array[11] 
+		+ " " + $float_array[12] 
+		+ " " + $float_array[13] 
+		+ " " + $float_array[14] 
+		+ " " + $float_array[15] 
+		+ " " + $float_array[16] 
+		+ " " + $float_array[17] 
+		+ " " + $float_array[18] 
+		+ " " + $float_array[19] 
+		+ " " + $float_array[20] 
+		+ " " + $float_array[21] 
+		+ " " + $float_array[22] 
+		+ " " + $float_array[23] 
+		+ " " + $float_array[24] 
+		+ " " + $float_array[25]
+		+ " " + $float_array[26]
+		+ " " + $float_array[27]);
+
+	setAttr ($curve + ".DAPoptions") -type "string" $string_options;
+}
+
+// Retrieve duplicate settings for selected curve
+
+global proc ApplyAttributeOptions()
+{
+	string $curve = `textField -q -text DAPtextFieldCurve`;
+	
+	if (!`objExists ($curve + ".DAPoptions")`)
+	{
+		addAttr -dt "string" -ln "DAPoptions" $curve;
+	}
+	
+	string $DAPoptions = `getAttr ($curve + ".DAPoptions")`;
+	
+	if ($DAPoptions != "")
+	{
+		string $string_array[] = stringToStringArray($DAPoptions, " ");
+		
+		int $Quantity = $string_array[0];
+		float $Distance = $string_array[1];
+		float $iBufferStart = $string_array[2];
+		float $iBufferEnd = $string_array[3];
+		float $FrontTwist = $string_array[4];
+		float $UpTwist = $string_array[5];
+		float $SideTwist = $string_array[6];
+		int $RotConX = $string_array[7];
+		int $RotConY = $string_array[8];
+		int $RotConZ = $string_array[9];
+		int $RotBehavior = $string_array[10];
+		float $ScaleX = $string_array[11];
+		float $ScaleY = $string_array[12];
+		float $ScaleZ = $string_array[13];
+		int $ScaleConX = $string_array[14];
+		int $ScaleConY = $string_array[15];
+		int $ScaleConZ = $string_array[16];
+		int $ScaleBehavior = $string_array[17];
+		float $Scatter = $string_array[18];
+		int $ScatterX = $string_array[19];
+		int $ScatterY = $string_array[20];
+		int $ScatterZ = $string_array[21];
+		int $DupType = $string_array[22];
+		int $FollowAxis = $string_array[23];
+		int $UpAxis = $string_array[24];
+		int $InvertFollow = $string_array[25];
+		int $InvertUp = $string_array[26];
+		int $WorldUpType = $string_array[27];
+
+		intSliderGrp -edit -value $Quantity DAPintSliderQuantity;
+		floatSliderGrp -edit -value $Distance DAPfloatSliderDistance;
+		floatSliderGrp -edit -value $iBufferStart DAPfloatSliderBufferStart;
+		floatSliderGrp -edit -value $iBufferEnd DAPfloatSliderBufferEnd;
+		floatSliderGrp -edit -value $FrontTwist DAPfloatSliderFrontTwist;
+		floatSliderGrp -edit -value $UpTwist DAPfloatSliderUpTwist;
+		floatSliderGrp -edit -value $SideTwist DAPfloatSliderSideTwist;
+		checkBoxGrp -edit -valueArray3 $RotConX $RotConY $RotConZ DUPcheckBoxGroupRotateConstrain;
+		radioButtonGrp -edit -sl $RotBehavior DUPradioButtonBehaviorRotate;
+		floatSliderGrp -edit -value $ScaleX DAPfloatSliderScaleX;
+		floatSliderGrp -edit -value $ScaleY DAPfloatSliderScaleY;
+		floatSliderGrp -edit -value $ScaleZ DAPfloatSliderScaleZ;
+		checkBoxGrp -edit -valueArray3 $ScaleConX $ScaleConY $ScaleConZ DUPcheckBoxGroupScaleConstrain;
+		radioButtonGrp -edit -sl $ScaleBehavior DUPradioButtonBehaviorScale;
+		floatSliderGrp -edit -value $Scatter DAPfloatSliderScatter;
+		checkBoxGrp -edit -valueArray3 $ScatterX $ScatterY $ScatterZ DUPcheckBoxGroupScatter;
+		radioButtonGrp -edit -sl $DupType DAPdupType;
+		radioButtonGrp -edit -sl $FollowAxis DAPfollowAxis;
+		radioButtonGrp -edit -sl $UpAxis DAPupAxis;
+		radioButtonGrp -edit -sl $InvertFollow DAPinvertFollow;
+		radioButtonGrp -edit -sl $InvertUp DAPinvertUp;
+		radioButtonGrp -edit -sl $WorldUpType DAPworldUpType;
+	}
+}
+
+// Buttons for Flow Path UI
+
+global proc SetFrontAxisX()
+{
+	global string $gMotionPath; 
+    setAttr ($gMotionPath + ".frontAxis") 0;
+}
+
+global proc SetFrontAxisY()
+{
+	global string $gMotionPath; 
+    setAttr ($gMotionPath + ".frontAxis") 1;
+}
+
+global proc SetFrontAxisZ()
+{
+	global string $gMotionPath; 
+    setAttr ($gMotionPath + ".frontAxis") 2;
+}
+
+global proc SetUpAxisX()
+{
+    global string $gMotionPath; 
+    setAttr ($gMotionPath + ".upAxis") 0;
+}
+
+global proc SetUpAxisY()
+{
+    global string $gMotionPath; 
+    setAttr ($gMotionPath + ".upAxis") 1;
+}
+
+global proc SetUpAxisZ()
+{
+	global string $gMotionPath; 
+    setAttr ($gMotionPath + ".upAxis") 2;
+}
+
+global proc SetInverseUpOn()
+{
+	global string $gMotionPath; 
+    setAttr ($gMotionPath + ".inverseUp") 1;
+}
+
+global proc SetInverseUpOff()
+{
+	global string $gMotionPath; 
+    setAttr ($gMotionPath + ".inverseUp") 0;
+}
+
+global proc SetInverseFrontOn()
+{
+	global string $gMotionPath; 
+    setAttr ($gMotionPath + ".inverseFront") 1;
+}
+
+global proc SetInverseFrontOff()
+{
+	global string $gMotionPath; 
+    setAttr ($gMotionPath + ".inverseFront") 0;
+}
+
+global proc SetWorldUpType0()
+{
+	global string $gMotionPath; 
+    setAttr ($gMotionPath + ".worldUpType") 0;
+}
+
+global proc SetWorldUpType1()
+{
+	global string $gMotionPath; 
+    setAttr ($gMotionPath + ".worldUpType") 1;
+}
+
+global proc SetWorldUpType2()
+{
+	global string $gMotionPath; 
+    setAttr ($gMotionPath + ".worldUpType") 2;
+}
+
+global proc SetWorldUpType3()
+{
+	global string $gMotionPath; 
+    setAttr ($gMotionPath + ".worldUpType") 3;
+}
+
+global proc SetWorldUpType4()
+{
+	global string $gMotionPath; 
+    setAttr ($gMotionPath + ".worldUpType") 4;
+}
+
+
+
+global proc DAPshelfButton()
+{
+	textToShelf ("DUP", "DupAlongPathToolbox;");
+}
+
+global proc DAPinitializeSettings()
+{
+	intSliderGrp -edit -value 10 DAPintSliderQuantity;
+	floatSliderGrp -edit -value 0 DAPfloatSliderDistance;
+	floatSliderGrp -edit -value 0 DAPfloatSliderBufferStart;
+	floatSliderGrp -edit -value 0 DAPfloatSliderBufferEnd;
+	floatSliderGrp -edit -value 0 DAPfloatSliderFrontTwist;
+	floatSliderGrp -edit -value 0 DAPfloatSliderUpTwist;
+	floatSliderGrp -edit -value 0 DAPfloatSliderSideTwist;
+	checkBoxGrp -edit -valueArray3 0 0 0 DUPcheckBoxGroupRotateConstrain;
+	radioButtonGrp -edit -sl 1 DUPradioButtonBehaviorRotate;
+	floatSliderGrp -edit -value 1 DAPfloatSliderScaleX;
+	floatSliderGrp -edit -value 1 DAPfloatSliderScaleY;
+	floatSliderGrp -edit -value 1 DAPfloatSliderScaleZ;
+	checkBoxGrp -edit -valueArray3 0 0 0 DUPcheckBoxGroupScaleConstrain;
+	radioButtonGrp -edit -sl 1 DUPradioButtonBehaviorScale;
+	floatSliderGrp -edit -value 0 DAPfloatSliderScatter;
+	checkBoxGrp -edit -valueArray3 0 0 0 DUPcheckBoxGroupScatter;
+	radioButtonGrp -edit -sl 1 DAPdupType;
+	radioButtonGrp -edit -sl 1 DAPfollowAxis;
+	radioButtonGrp -edit -sl 2 DAPupAxis;
+	
+	if (`upAxis -q -axis` == "z")
+	{
+		radioButtonGrp -edit -sl 3 DAPupAxis;
+	}
+	
+	radioButtonGrp -edit -sl 1 DAPinvertFollow;
+	radioButtonGrp -edit -sl 1 DAPinvertUp;
+	radioButtonGrp -edit -sl 1 DAPworldUpType;
+}
+
+global proc DAPupdates()
+{
+	showHelp -absolute "http://www.creativecrash.com/maya/downloads/scripts-plugins/modeling/curve-tools/c/duplicate-along-path";
+}
+
+global proc DAPbugs()
+{
+	showHelp -absolute "http://www.creativecrash.com/maya/downloads/scripts-plugins/modeling/curve-tools/c/duplicate-along-path/bugs#tabs";
+}
+
+global proc DAPfeatures()
+{
+	showHelp -absolute "http://www.creativecrash.com/maya/downloads/scripts-plugins/modeling/curve-tools/c/duplicate-along-path/feature_requests#tabs";
+}
+
+global proc DAPreviews()
+{
+	showHelp -absolute "http://www.creativecrash.com/maya/downloads/scripts-plugins/modeling/curve-tools/c/duplicate-along-path/comments#tabs";
+}
+
+global proc DAPhistory()
+{
+	showHelp -absolute "http://www.creativecrash.com/maya/downloads/scripts-plugins/modeling/curve-tools/c/duplicate-along-path/version_history#tabs";
+}
+
+
+// UI for duplicating along path
+
+global proc DupAlongPathToolbox()
+{
+	float $version = `getApplicationVersionAsFloat`;
+	global string $gMotionPath;
+	
+	string $geom = "Assign Object";
+	string $curve = "Assign Curve";
+	int $iQuantity;
+	float $iDistance;
+	float $iBufferStart;
+	float $iBufferEnd;
+	int $fCollapseRotate;
+	int $fCollapseScale;
+	int $fCollapseScatter;
+	int $fCollapseOptions;
+	int $fFloatingState;
+	float $fTwistFront;
+	float $fTwistUp;
+	float $fTwistSide;
+	int $fConstrainRotateX;
+	int $fConstrainRotateY;
+	int $fConstrainRotateZ;
+	int $iRotateBehavior = 1;
+	int $fConstrainScaleX;
+	int $fConstrainScaleY;
+	int $fConstrainScaleZ;
+	int $iScaleBehavior = 1;
+	float $scaleX = 1;
+	float $scaleY = 1;
+	float $scaleZ = 1;
+	float $scatter;
+	int $scatterX;
+	int $scatterY;
+	int $scatterZ;
+	int $iDupType = 1;
+	int $iFollowAxis = 1;
+	int $iUpAxis = 2;
+	int $upAxisSelect = 1;
+	
+	if (`upAxis -q -axis` == "z")
+	{
+		$upAxisSelect = 2;
+	}
+
+	if (`upAxis -q -axis` == "z")
+	{
+		$iUpAxis = 3;
+	}
+	
+	int $iInvertFollow = 1;
+	int $iInvertUp = 1;
+	int $iWorldUpType = 1;
+	
+	if ( `optionVar -exists DAP_Object` )
+		$geom = `optionVar -q DAP_Object`;
+	else
+		optionVar -stringValue DAP_Object $geom;
+		
+	if ( `optionVar -exists DAP_Curve` )
+		$curve = `optionVar -q DAP_Curve`;
+	else
+		optionVar -stringValue DAP_Curve $curve;
+		
+	if ( `optionVar -exists DAP_Quantity` )
+		$iQuantity = `optionVar -q DAP_Quantity`;
+	else
+		optionVar -intValue DAP_Quantity $iQuantity;
+	
+	if ( `optionVar -exists DAP_Distance` )
+		$iDistance = `optionVar -q DAP_Distance`;
+	else
+		optionVar -floatValue DAP_Distance $iDistance;
+		
+	if ( `optionVar -exists DAP_BufferStart` )
+		$iBufferStart = `optionVar -q DAP_BufferStart`;
+	else
+		optionVar -floatValue DAP_BufferStart $iBufferStart;
+		
+	if ( `optionVar -exists DAP_BufferEnd` )
+		$iBufferEnd = `optionVar -q DAP_BufferEnd`;
+	else
+		optionVar -floatValue DAP_BufferEnd $iBufferEnd;
+	
+	if ( `optionVar -exists DAP_CollapseRotate` )
+		$fCollapseRotate = `optionVar -q DAP_CollapseRotate`;
+	else
+		optionVar -intValue DAP_CollapseRotate $fCollapseRotate;
+		
+	if ( `optionVar -exists DAP_CollapseScale` )
+		$fCollapseScale = `optionVar -q DAP_CollapseScale`;
+	else
+		optionVar -intValue DAP_CollapseScale $fCollapseScale;
+		
+	if ( `optionVar -exists DAP_CollapseScatter` )
+		$fCollapseScatter = `optionVar -q DAP_CollapseScatter`;
+	else
+		optionVar -intValue DAP_CollapseScatter $fCollapseScatter;
+		
+	if ( `optionVar -exists DAP_CollapseOptions` )
+		$fCollapseOptions = `optionVar -q DAP_CollapseOptions`;
+	else
+		optionVar -intValue DAP_CollapseOptions $fCollapseOptions;
+	
+	if ( `optionVar -exists DAP_FloatingState` )
+		$fFloatingState = `optionVar -q DAP_FloatingState`;
+	else
+		optionVar -intValue DAP_FloatingState $fFloatingState;
+		
+	if ( `optionVar -exists DAP_TwistFront` )
+		$fTwistFront = `optionVar -q DAP_TwistFront`;
+	else
+		optionVar -floatValue DAP_TwistFront $fTwistFront;
+		
+	if ( `optionVar -exists DAP_TwistUp` )
+		$fTwistUp = `optionVar -q DAP_TwistUp`;
+	else
+		optionVar -floatValue DAP_TwistUp $fTwistUp;
+		
+	if ( `optionVar -exists DAP_TwistSide` )
+		$fTwistSide = `optionVar -q DAP_TwistSide`;
+	else
+		optionVar -floatValue DAP_TwistSide $fTwistSide;
+		
+	if ( `optionVar -exists DAP_ConstrainRotateX` )
+		$fConstrainRotateX = `optionVar -q DAP_ConstrainRotateX`;
+	else
+		optionVar -intValue DAP_ConstrainRotateX $fConstrainRotateX;
+		
+	if ( `optionVar -exists DAP_ConstrainRotateY` )
+		$fConstrainRotateY = `optionVar -q DAP_ConstrainRotateY`;
+	else
+		optionVar -intValue DAP_ConstrainRotateY $fConstrainRotateY;
+		
+	if ( `optionVar -exists DAP_ConstrainRotateZ` )
+		$fConstrainRotateZ = `optionVar -q DAP_ConstrainRotateZ`;
+	else
+		optionVar -intValue DAP_ConstrainRotateZ $fConstrainRotateZ;
+		
+	if ( `optionVar -exists DAP_ConstrainScaleX` )
+		$fConstrainScaleX = `optionVar -q DAP_ConstrainScaleX`;
+	else
+		optionVar -intValue DAP_ConstrainScaleX $fConstrainScaleX;
+		
+	if ( `optionVar -exists DAP_ConstrainScaleY` )
+		$fConstrainScaleY = `optionVar -q DAP_ConstrainScaleY`;
+	else
+		optionVar -intValue DAP_ConstrainScaleY $fConstrainScaleY;
+		
+	if ( `optionVar -exists DAP_ConstrainScaleZ` )
+		$fConstrainScaleZ = `optionVar -q DAP_ConstrainScaleZ`;
+	else
+		optionVar -intValue DAP_ConstrainScaleZ $fConstrainScaleZ;
+		
+	if ( `optionVar -exists DAP_ScaleX` )
+		$scaleX = `optionVar -q DAP_ScaleX`;
+	else
+		optionVar -floatValue DAP_ScaleX $scaleX;
+		
+	if ( `optionVar -exists DAP_ScaleY` )
+		$scaleY = `optionVar -q DAP_ScaleY`;
+	else
+		optionVar -floatValue DAP_ScaleY $scaleY;
+		
+	if ( `optionVar -exists DAP_ScaleZ` )
+		$scaleZ = `optionVar -q DAP_ScaleZ`;
+	else
+		optionVar -floatValue DAP_ScaleZ $scaleZ;
+		
+	if ( `optionVar -exists DAP_RotateBehavior` )
+		$iRotateBehavior = `optionVar -q DAP_RotateBehavior`;
+	else
+		optionVar -floatValue DAP_RotateBehavior $iRotateBehavior;
+		
+	if ( `optionVar -exists DAP_ScaleBehavior` )
+		$iScaleBehavior = `optionVar -q DAP_ScaleBehavior`;
+	else
+		optionVar -floatValue DAP_ScaleBehavior $iScaleBehavior;
+		
+	if ( `optionVar -exists DAP_Scatter` )
+		$scatter = `optionVar -q DAP_Scatter`;
+	else
+		optionVar -floatValue DAP_Scatter $scatter;
+		
+	if ( `optionVar -exists DAP_ScatterX` )
+		$scatterX = `optionVar -q DAP_ScatterX`;
+	else
+		optionVar -intValue DAP_ScatterX $scatterX;
+		
+	if ( `optionVar -exists DAP_ScatterY` )
+		$scatterY = `optionVar -q DAP_ScatterY`;
+	else
+		optionVar -intValue DAP_ScatterY $scatterY;
+		
+	if ( `optionVar -exists DAP_ScatterZ` )
+		$scatterZ = `optionVar -q DAP_ScatterZ`;
+	else
+		optionVar -intValue DAP_ScatterZ $scatterZ;
+		
+	if ( `optionVar -exists DAP_DupType` )
+		$iDupType = `optionVar -q DAP_DupType`;
+	else
+		optionVar -intValue DAP_DupType $iDupType;
+		
+	if ( `optionVar -exists DAP_FollowAxis` )
+		$iFollowAxis = `optionVar -q DAP_FollowAxis`;
+	else
+		optionVar -intValue DAP_FollowAxis $iFollowAxis;
+		
+	if ( `optionVar -exists DAP_UpAxis` )
+		$iUpAxis = `optionVar -q DAP_UpAxis`;
+	else
+		optionVar -intValue DAP_UpAxis $iUpAxis;
+	
+	if ( `optionVar -exists DAP_InvertFollow` )
+		$iInvertFollow = `optionVar -q DAP_InvertFollow`;
+	else
+		optionVar -intValue DAP_InvertFollow $iInvertFollow;
+	
+	if ( `optionVar -exists DAP_InvertUp` )
+		$iInvertUp = `optionVar -q DAP_InvertUp`;
+	else
+		optionVar -intValue DAP_InvertUp $iInvertUp;
+		
+	if ( `optionVar -exists DAP_WorldUpType` )
+		$iWorldUpType = `optionVar -q DAP_WorldUpType`;
+	else
+		optionVar -intValue DAP_WorldUpType $iWorldUpType;
+
+	string $window = "JGdupPathWindow";
+	string $dock = "JGdupPathDock";
+	
+	if (`window -exists $window` == 1)
+	{ 
+		deleteUI $window;
+	}
+	if ($version >= 2011)
+	{
+		if (`dockControl -exists $dock` == 1)
+		{ 
+			deleteUI $dock;
+		}
+	}
+	
+	window -title "Duplicate Along Path 1.5.0" -s 0 $window;
+		
+		menuBarLayout;
+		menu -label "Settings";
+			menuItem -label "Create DAP Shelf Button" -c "DAPshelfButton";
+			menuItem -label "Reset Settings" -c "DAPinitializeSettings";
+		menu -label "Help";
+			menuItem -label "Check for updates..." -c DAPupdates;
+			menuItem -label "Write a review..." -c DAPreviews;
+			menuItem -label "Version history..." -c DAPhistory;
+			menuItem -label "Request a feature..." -c DAPfeatures;
+			menuItem -label "Report a Bug..." -c DAPbugs;
+			setParent ..;
+	
+		columnLayout -adj 0 -rs 4;
+			
+			rowColumnLayout 
+				-numberOfColumns 2 
+				-columnAttach 1 "both" 5 
+				-columnWidth 1 170 
+				-columnWidth 2 80;
+				
+				textField 
+					-editable 0 
+					-text $geom 
+					DAPtextFieldGeom;
+				button 
+					-label "Object" 
+					-ann "Load object to duplicate or deform along path." 
+					-command "AssignGeom";
+				textField 
+					-editable 0 
+					-text $curve 
+					DAPtextFieldCurve;
+				
+				rowColumnLayout 
+					-numberOfColumns 2
+					-columnWidth 1 40 
+					-columnWidth 2 40;
+					button 
+						-label "Curve" 
+						-ann "Load curve to duplicate or deform along." 
+						-command "AssignCurve;";
+					button 
+						-label "Load" 
+						-ann "Load curve settings." 
+						-command "ApplyAttributeOptions;";
+					setParent ..;
+				setParent ..;
+					
+			string $form = `formLayout`;
+			string $tabs = `tabLayout DUP_ToolTabLayout`;
+			
+			formLayout 
+				-edit 
+				-attachForm $tabs "top" 0 
+				-attachForm $tabs "left" 0 
+				-attachForm $tabs "bottom" 0 
+				-attachForm $tabs "right" 0 
+				$form;
+			
+				string $child1 = `rowColumnLayout -numberOfColumns 1 -columnWidth 1 245`;
+			
+					rowColumnLayout -numberOfColumns 1 -columnWidth 1 245;
+						
+						intSliderGrp 
+							-field true 
+							-label "Quantity"
+							-ann "Define the number of duplicates along the path."
+							-changeCommand "DupAlongPath" 
+							-cw 1 55 
+							-cw 2 55 
+							-minValue 1 
+							-maxValue 25 
+							-fieldMinValue 1 
+							-fieldMaxValue 1000 
+							-value $iQuantity 
+							DAPintSliderQuantity;
+						
+						floatSliderGrp 
+							-field true 
+							-label "Distance"
+							-ann "Define the distance between duplicates in centimeters.  Zero will distribute duplicates evenly along the path."
+							-changeCommand "DupAlongPath" 
+							-cw 1 55 
+							-cw 2 55 
+							-minValue 0 
+							-maxValue 25 
+							-fieldMinValue 0 
+							-fieldMaxValue 100000 
+							-pre 2 
+							-value $iDistance 
+							DAPfloatSliderDistance;
+							
+						floatSliderGrp
+							-field true
+							-label "Start %"
+							-ann "Percent buffer at the start of the curve."
+							-changeCommand "DupAlongPath"
+							-cw 1 55 
+							-cw 2 55 
+							-minValue 0
+							-maxValue .999
+							-precision 3
+							-value $iBufferEnd
+							DAPfloatSliderBufferEnd;
+						
+						floatSliderGrp 
+							-field true
+							-label "End %"
+							-ann "Percent buffer at the end of the curve."
+							-changeCommand "DupAlongPath"
+							-cw 1 55 
+							-cw 2 55 
+							-minValue 0
+							-maxValue .999
+							-precision 3
+							-value $iBufferStart
+							DAPfloatSliderBufferStart;
+						
+						rowColumnLayout 
+							-numberOfColumns 4 
+							-columnWidth 1 61 
+							-columnWidth 2 61 
+							-columnWidth 3 61 
+							-columnWidth 4 60;
+							
+							button 
+								-label "Refresh" 
+								-ann "Refreshes the duplications." 
+								-command "DupAlongPath";
+							button 
+								-label "Reverse" 
+								-ann "Reverses the direction of the curve." 
+								-command "ReversePathDirection";
+							button 
+								-label "Delete" 
+								-ann "Deletes the duplications." 
+								-command "DeleteObjectsFromPath";
+							button 
+								-label "Detach" 
+								-ann "Detatches duplications from motion path and removes constraints." 
+								-command "DetachObjectsFromPath";
+							
+							setParent ..;
+						setParent ..;
+					
+					frameLayout
+						-label "ROTATE"
+						-li 4
+						-width 245
+						-borderStyle "etchedIn"
+						-collapse $fCollapseRotate
+						-collapsable 1
+						-cc ("optionVar -intValue DAP_CollapseRotate 1")
+						-ec ("optionVar -intValue DAP_CollapseRotate 0") one;
+					
+						rowColumnLayout 
+							-numberOfColumns 1 
+							-columnWidth 1 240;
+							
+							floatSliderGrp 
+								-field true 
+								-label "Front" 
+								-changeCommand "DupAlongPath" 
+								-cw 1 40 
+								-cw 2 38 
+								-minValue 0 
+								-maxValue 360 
+								-fieldMinValue 0 
+								-fieldMaxValue 360 
+								-pre 1 
+								-value $fTwistFront 
+								DAPfloatSliderFrontTwist;
+							floatSliderGrp 
+								-field true 
+								-label "Up" 
+								-changeCommand "DupAlongPath" 
+								-cw 1 40 
+								-cw 2 38 
+								-minValue 0 
+								-maxValue 360 
+								-fieldMinValue 0 
+								-fieldMaxValue 360 
+								-pre 1 
+								-value $fTwistUp 
+								DAPfloatSliderUpTwist;
+							floatSliderGrp 
+								-field true 
+								-label "Side" 
+								-changeCommand "DupAlongPath" 
+								-cw 1 40 
+								-cw 2 38 
+								-minValue 0 
+								-maxValue 360 
+								-fieldMinValue 0 
+								-fieldMaxValue 360 
+								-pre 1 
+								-value $fTwistSide 
+								DAPfloatSliderSideTwist;
+					
+						rowColumnLayout 
+							-numberOfColumns 1 
+							-columnAttach 1 "both" 5 
+							-columnWidth 1 240;
+							
+							checkBoxGrp 
+								-numberOfCheckBoxes 3 
+								-cw4 70 50 50 50 
+								-label "Constrain" 
+								-labelArray3 "X" "Y" "Z" 
+								-valueArray3 $fConstrainRotateX $fConstrainRotateY $fConstrainRotateZ 
+								-changeCommand "DupAlongPath" 
+								DUPcheckBoxGroupRotateConstrain;
+							radioButtonGrp 
+								-numberOfRadioButtons 3 
+								-cw4 50 50 60 60 
+								-sl $iRotateBehavior 
+								-label "Type" 
+								-labelArray3 "Fixed" "Additive" "Random" 
+								-changeCommand "DupAlongPath" 
+								DUPradioButtonBehaviorRotate;
+							
+							setParent ..;
+						setParent ..;
+					setParent ..;
+					
+					frameLayout
+						-label "SCALE"
+						-li 4
+						-width 245
+						-borderStyle "etchedIn"
+						-collapse $fCollapseScale
+						-collapsable 1
+						-cc ("optionVar -intValue DAP_CollapseScale 1")
+						-ec ("optionVar -intValue DAP_CollapseScale 0") two;
+					
+						rowColumnLayout 
+							-numberOfColumns 1 
+							-columnWidth 1 240;
+							
+							floatSliderGrp 
+								-field true 
+								-label "X" 
+								-changeCommand "DupAlongPath" 
+								-cw 1 25 
+								-cw 2 30 
+								-minValue 0 
+								-maxValue 2 
+								-fieldMinValue 0 
+								-fieldMaxValue 10 
+								-pre 2 
+								-value $scaleX 
+								DAPfloatSliderScaleX;
+							floatSliderGrp 
+								-field true 
+								-label "Y" 
+								-changeCommand "DupAlongPath" 
+								-cw 1 25 
+								-cw 2 30 
+								-minValue 0 
+								-maxValue 2 
+								-fieldMinValue 0 
+								-fieldMaxValue 10 
+								-pre 2 
+								-value $scaleY 
+								DAPfloatSliderScaleY;
+							floatSliderGrp 
+								-field true 
+								-label "Z" 
+								-changeCommand "DupAlongPath" 
+								-cw 1 25 
+								-cw 2 30 
+								-minValue 0 
+								-maxValue 2 
+								-fieldMinValue 0 
+								-fieldMaxValue 10 
+								-pre 2 
+								-value $scaleZ 
+								DAPfloatSliderScaleZ;
+							
+						rowColumnLayout 
+							-numberOfColumns 1 
+							-columnAttach 1 "both" 5 
+							-columnWidth 1 235;
+							
+							checkBoxGrp 
+								-numberOfCheckBoxes 3 
+								-cw4 70 50 50 50 
+								-label "Constrain" 
+								-labelArray3 "X" "Y" "Z" 
+								-valueArray3 $fConstrainScaleX $fConstrainScaleY $fConstrainScaleZ 
+								-changeCommand "DupAlongPath" 
+								DUPcheckBoxGroupScaleConstrain;
+							radioButtonGrp 
+								-numberOfRadioButtons 3 
+								-cw4 50 50 60 60 
+								-sl $iScaleBehavior 
+								-label "Type" 
+								-labelArray3 "Fixed" "Additive" "Random" 
+								-changeCommand "DupAlongPath" 
+								DUPradioButtonBehaviorScale;
+							
+							setParent ..;
+						setParent ..;
+					setParent ..;
+					
+					frameLayout
+						-label "SCATTER"
+						-li 4
+						-width 245
+						-borderStyle "etchedIn"
+						-collapse $fCollapseScatter
+						-collapsable 1
+						-cc ("optionVar -intValue DAP_CollapseScatter 1")
+						-ec ("optionVar -intValue DAP_CollapseScatter 0");
+					
+						rowColumnLayout 
+							-numberOfColumns 1 
+							-columnWidth 1 240;
+							
+							floatSliderGrp 
+								-field true 
+								-label "Range" 
+								-changeCommand "DupAlongPath" 
+								-cw 1 45 
+								-cw 2 30 
+								-minValue 0 
+								-maxValue 100 
+								-fieldMinValue 0 
+								-fieldMaxValue 1000 
+								-value $scatter 
+								DAPfloatSliderScatter;
+							
+						rowColumnLayout 
+							-numberOfColumns 1 
+							-columnAttach 1 "both" 5 
+							-columnWidth 1 235;
+							
+							checkBoxGrp 
+								-numberOfCheckBoxes 3 
+								-cw4 70 50 50 50 
+								-label "Direction" 
+								-labelArray3 "X" "Y" "Z" 
+								-valueArray3 $scatterX $scatterY $scatterZ 
+								-changeCommand "DupAlongPath" 
+								DUPcheckBoxGroupScatter;
+								
+							setParent ..;
+						setParent ..;
+					setParent ..;
+					
+					frameLayout
+						-label "OPTIONS"
+						-li 4
+						-width 245
+						-borderStyle "etchedIn"
+						-collapse $fCollapseOptions
+						-collapsable 1
+						-cc ("optionVar -intValue DAP_CollapseOptions 1")
+						-ec ("optionVar -intValue DAP_CollapseOptions 0");
+					
+						rowColumnLayout 
+							-numberOfColumns 1 
+							-columnAttach 1 "both" 5 
+							-columnWidth 1 245;
+							
+							radioButtonGrp 
+								-numberOfRadioButtons 2 
+								-cw3 70 50 60 
+								-sl $iDupType 
+								-label "Duplicate" 
+								-labelArray2 "Copy" "Instance" 
+								-changeCommand "DupAlongPath" 
+								DAPdupType;
+							radioButtonGrp 
+								-numberOfRadioButtons 3 
+								-cw4 70 50 50 50 
+								-sl $iFollowAxis 
+								-label "Front Axis"  
+								-labelArray3 "X" "Y" "Z" 
+								-changeCommand "SwitchAxisFollow; DupAlongPath;" 
+								DAPfollowAxis;
+							radioButtonGrp 
+								-numberOfRadioButtons 3 
+								-cw4 70 50 50 50 
+								-sl $iUpAxis 
+								-label "Up Axis" 
+								-labelArray3 "X" "Y" "Z" 
+								-changeCommand "SwitchAxisUp; DupAlongPath;" 
+								DAPupAxis;
+							radioButtonGrp 
+								-numberOfRadioButtons 2 
+								-cw3 70 50 50 
+								-sl $iInvertFollow 
+								-label "Front Invert" 
+								-labelArray2 "No" "Yes" 
+								-changeCommand "DupAlongPath" 
+								DAPinvertFollow;
+							radioButtonGrp 
+								-numberOfRadioButtons 2 
+								-cw3 70 50 50 
+								-sl $iInvertUp 
+								-label "Up Invert" 
+								-labelArray2 "No" "Yes" 
+								-changeCommand "DupAlongPath" 
+								DAPinvertUp;
+							radioButtonGrp 
+								-numberOfRadioButtons 2 
+								-cw3 70 60 60 
+								-sl $iWorldUpType 
+								-label "World Up" 
+								-labelArray2 "Scene" "Normal" 
+								-changeCommand "DupAlongPath" 
+								DAPworldUpType;
+							
+							setParent ..;
+						setParent ..;
+					setParent ..;
+				
+			string $child2 = `rowColumnLayout -numberOfColumns 1 -columnWidth 1 245`;
+				
+				text -label "\nAlign object on X Axis.\n";
+				button 
+					-label "Duplicate, Merge, and Deform Along Path"
+					-ann "Duplicates object in a strip and deforms it along the defined path"
+					-command "DAPextrudeAlong";
+				text -label "";
+					
+				rowColumnLayout 
+							-numberOfColumns 4 
+							-columnWidth 1 61 
+							-columnWidth 2 61 
+							-columnWidth 3 61 
+							-columnWidth 4 61;
+					button 
+						-label "Refresh" 
+						-ann "Refreshes the Extrusion." 
+						-command "DeleteDeformed; DAPextrudeAlong;";
+					button 
+						-label "Reverse" 
+						-ann "Reverses the direction of the curve." 
+						-command "ReversePathDirection";
+					button 
+						-label "Delete" 
+						-ann "Deletes the Extrusion." 
+						-command "DeleteDeformed";
+					button 
+						-label "Detach"
+						-ann "Deletes history and motion path for deformed object"
+						-command "DetachDeformedFromPath";
+						
+					setParent ..;
+				
+				columnLayout -adjustableColumn true;	
+
+					// Create Options
+					text -label "\n";
+					textField -text $gMotionPath DAPtextFieldMotionPath;
+					button -label "Link to Motion Path of Selected Geometry" -command UpdateMotionPath;
+					
+					columnLayout;
+						checkBox
+						-label "Inverse Up"
+						-onc SetInverseUpOn
+						-ofc SetInverseUpOff;
+						
+						checkBox
+						-label "Inverse Front"
+						-onc SetInverseFrontOn
+						-ofc SetInverseFrontOff;
+						
+						radioButtonGrp 
+						-numberOfRadioButtons 2
+						-label "Up Axis"
+						-cw 1 45
+						-cw 2 40
+						-cw 3 40
+						-labelArray2 "Y" "Z"
+						-sl $upAxisSelect
+						-on1 SetUpAxisY
+						-on2 SetUpAxisZ;
+						setParent ..;
+					
+					text -align "left" -label "\nWorld Up Type\n";
+					
+					columnLayout;
+						string $collection1 = `radioCollection`;
+						string $rb1, $rb2, $rb3, $rb4, $rb5;
+						$rb1 = `radioButton -label "Scene Up" -select -onc SetWorldUpType0`;
+						$rb2 = `radioButton -label "Object Up" -onc SetWorldUpType1`;
+						$rb3 = `radioButton -label "Object Rotate Up" -onc SetWorldUpType2`;
+						$rb4 = `radioButton -label "Vector" -onc SetWorldUpType3`;
+						$rb5 = `radioButton -label "Normal" -onc SetWorldUpType4`;
+						setParent ..;
+
+					//front up and side twist, bank scale and limit sliders
+					
+					
+					rowColumnLayout -nc 2 -cw 1 200 -cw 2 200;
+					//if (size($gMotionPath) > 0)
+					//{
+						if (exists ($gMotionPath + ".bank"))
+						{
+							setAttr ($gMotionPath + ".bank") 1;
+						
+							string $slider = `attrFieldSliderGrp
+							-label "Bank Scale"
+							-adjustableColumn 3
+							-columnAlign 1 "right"
+							-columnWidth 1 84
+							-columnWidth 4 1
+							-smn -100
+							-smx 100
+							-at ( $gMotionPath + ".bankScale" )
+							DAPattrFieldBankScale`;
+							
+							string $slider = `attrFieldSliderGrp
+							-label "Bank Limit"
+							-adjustableColumn 3
+							-columnAlign 1 "right"
+							-columnWidth 1 84
+							-columnWidth 4 1
+							-smn -100
+							-smx 100
+							-at ( $gMotionPath + ".bankLimit" )
+							DAPattrFieldBankLimit`;
+						}
+					//}
+				setParent ..;
+			setParent ..;
+
+	tabLayout -edit
+		-tabLabel $child1 "Duplicate"
+		-tabLabel $child2 "Deform"
+		$tabs;
+	
+	window -edit -h 650 -w 259 $window;
+	
+	if ($version >= 2012)
+	{
+		dockControl
+			-label "Duplicate Along Path v1.5.0"
+			-content $window
+			-floating $fFloatingState
+			-floatChangeCommand "DAPfloatStateSwitch"
+			-area "right"
+			-allowedArea "left"
+			-allowedArea "right"
+			$dock;
+	}
+	if ($version == 2011)
+	{
+		dockControl
+			-label "Duplicate Along Path v1.5.0"
+			-content $window
+			-floating $fFloatingState
+			-area "right"
+			-allowedArea "left"
+			-allowedArea "right"
+			$dock;
+	}
+	if ($version <= 2010)
+	{
+		showWindow $window;
+	}
+}
