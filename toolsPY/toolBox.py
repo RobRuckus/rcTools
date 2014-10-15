@@ -9,9 +9,9 @@ def runMethod(method,string,*args): exec(method+string) #Delay Function
 import maya.cmds as mc 
 import maya.mel as mel 
 ################
-from rcTools2 import *
-import rcTools2.toolsPY.rcMaya2AE as AE
-import rcTools2.toolsPY.rcFileManager as fileMGR
+from rcTools import *
+import rcTools.toolsPY.rcMaya2AE as AE
+import rcTools.toolsPY.rcFileManager as fileMGR
 ################source every mel in toolsMEL: toolsMEL
 for each in os.listdir(toolsMEL):
 	file,ext=os.path.splitext(each)
@@ -37,18 +37,21 @@ def UI():
 		#globalsUI()
 		assignUI()
 		materialsUI()
-		existMATUI()
-		mc.setParent('TABS')
-		
+		#existMATUI()
+
 		#mc.scrollLayout('MATERIALS')
-		
 		#mel.eval('source "'+toolsMEL.replace('\\','/')+'ddoMaterialManager.mel''"') 
 		#mel.eval("ddoMaterialManager_2013")
-		
+		mc.setParent('TABS')
 		#mc.setParent('TABS')
 		
 		#OUTPUT
 		mc.scrollLayout('OUTPUT')
+		AE.UI()
+		mc.setParent('TABS')
+		#SCRIPTS
+
+		mc.scrollLayout('SCRIPTS')
 		mc.rowColumnLayout(numberOfColumns=8)
 		mc.iconTextButton(w=rowWidth/8,h=rowWidth/8)
 		mc.iconTextButton(w=rowWidth/8,h=rowWidth/8)
@@ -59,11 +62,6 @@ def UI():
 		mc.iconTextButton(w=rowWidth/8,h=rowWidth/8,ann="Export RenderLayers to Files",l= "L2F" ,i= (iconPath +"L2F.png"),c=partial(runMethod,'mel.eval','("rcLayers2Files")'))
 		mc.iconTextButton(w=rowWidth/8,h=rowWidth/8,ann="Render Manager",l= "RenderManager" ,i= (iconPath +"renderMGR.png"),c=partial(runMethod,'mel.eval','("rcRenderMGR")'))
 		mc.setParent('..')
-		AE.UI()
-		mc.setParent('TABS')
-		#SCRIPTS
-
-		mc.scrollLayout('SCRIPTS')
 		scriptsUI()
 		mc.setParent('TABS')
 		

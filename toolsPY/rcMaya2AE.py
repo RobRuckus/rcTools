@@ -25,7 +25,7 @@ except:
 import subprocess
 import os
 import maya.cmds as mc
-from rcTools2.main import *
+from rcToolsc.main import *
 ###########
 from functools import partial
 def runMethod(method,string,*args): exec(method+string) #Delay Function
@@ -275,15 +275,21 @@ def writeJSX(sceneData,objects,flags):
 	############
 	jsxFile=scriptFile(sceneData.ws()+'/data/','_AFXImport.jsx')
 	imageFolderName='_images'
-	minTimeName=str(sceneData.minTime()).zfill(sceneData.framePad())
-	maxTimeName=str(sceneData.maxTime()).zfill(sceneData.framePad())
+	if aePres.get('ImageSource')=='images':
+		minTimeName=str(sceneData.minTime()).zfill(sceneData.framePad())
+		maxTimeName=str(sceneData.maxTime()).zfill(sceneData.framePad())
+		images=sceneData.renderOutput()[1]
+	else:
+		minTimeName=str(mc.currentTime(q=True).zfill(sceneData.framePad())
+		maxTimeName=str(mc.currentTime(q=True)+1).zfill(sceneData.framePad())
+		images=sceneData.renderOutput()[1]
 	############
 	#imageNameExtension='[%s-%s]%s'%(minTimeName,maxTimeName,os.path.splitext(sceneData.renderOutput()[0])[1]) #[004-0091].png
 	#if aePrefs.get('ImageLabel')=='Label1': layerNames=[str(rlmAttrs().get('shotName'))+'.'+str(x) + str(imageNameExtension) for x in sceneData['outputLayers']]#ShotName.Layer.[000=000]
 	#if aePrefs.get('ImageLabel')=='Label2': layerNames=[str(rlmAttrs().get('shotName'))+'.'+str(x) for x in sceneData['outputLayers']]#ShotName.Layer
 	#if aePrefs.get('ImageLabel')=='Label3': layerNames=[str(x) for x in sceneData['outputLayers']]#Layer
 	layerNames=sceneData.renderOutput()[0]
-	images=sceneData.renderOutput()[1]
+	
 	############
 	jsxFile.write('app.beginUndoGroup("rcMaya2AE");')
 	############
@@ -306,7 +312,6 @@ def writeJSX(sceneData,objects,flags):
 	jsxFile.write('if(imageFolder==""){imageFolder=app.project.items.addFolder(imageFolderName)};')
 	#ADD IF NOT EXISTS SHOT FOLDER
 		#else update Shot Folder
-	
 	#ADD else UPDATE
 	jsxFile.write('//ADD COMP')
 	jsxFile.write('var shotComp="";')

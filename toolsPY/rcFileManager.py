@@ -7,7 +7,7 @@ from functools import partial
 def runMethod(method,string,*args): exec(method+string) #Delay Function
 ################
 import maya.cmds as mc 
-from rcTools2 import *
+from rcTools import *
 ################
 browselistWidth=250
 targetlistWidth=370
