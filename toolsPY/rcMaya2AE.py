@@ -25,7 +25,7 @@ except:
 import subprocess
 import os
 import maya.cmds as mc
-from rcToolsc.main import *
+from rcTools.main import *
 ###########
 from functools import partial
 def runMethod(method,string,*args): exec(method+string) #Delay Function
