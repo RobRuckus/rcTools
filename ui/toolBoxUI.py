@@ -1,6 +1,6 @@
 import maya.cmds as mc
 
-class toolbox4():
+class toolboxUI():
 	def __init(self,name):
 		self.rowWidth=300
 		self.name=name
