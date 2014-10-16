@@ -9,7 +9,7 @@ def runMethod(method,string,*args): exec(method+string) #Delay Function
 import maya.cmds as mc 
 import maya.mel as mel 
 ################
-from rcTools import *
+from rcTools.main import *
 import rcTools.toolsPY.rcMaya2AE as AE
 import rcTools.toolsPY.rcFileManager as fileMGR
 ################source every mel in toolsMEL: toolsMEL
@@ -17,23 +17,17 @@ for each in os.listdir(toolsMEL):
 	file,ext=os.path.splitext(each)
 	path= os.path.join(toolsMEL.replace('\\','/'),each)
 	if ext =='.mel': mel.eval('source "%s"'%path)
-###############
-osType=sys.platform
-import ctypes
-if 'dar' not in osType: 
-	user32= ctypes.windll.user32
-	screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
-else: screensize=(1920,1080)
+ui=ui()
 ###############
 def UI():
 		if mc.window('rcToolsWin',ex=1): mc.deleteUI('rcToolsWin',window=1)
 		if mc.dockControl('rcToolsDock',ex=1): mc.deleteUI('rcToolsDock')
 		mc.window('rcToolsWin',t='rcToolBox')
 		
-		mc.tabLayout('TABS',w=rowWidth+35,imw=15)
+		mc.tabLayout('TABS',w=ui.rowWidth+35,imw=15)
 		
 		#MAIN
-		mc.scrollLayout('MAIN',w=rowWidth+15,h=screensize[1]-360)
+		mc.scrollLayout('MAIN',w=ui.rowWidth+15,h=ui.screensize[1]-360)
 		#globalsUI()
 		assignUI()
 		materialsUI()
@@ -53,14 +47,14 @@ def UI():
 
 		mc.scrollLayout('SCRIPTS')
 		mc.rowColumnLayout(numberOfColumns=8)
-		mc.iconTextButton(w=rowWidth/8,h=rowWidth/8)
-		mc.iconTextButton(w=rowWidth/8,h=rowWidth/8)
-		mc.iconTextButton(w=rowWidth/8,h=rowWidth/8)
-		mc.iconTextButton(w=rowWidth/8,h=rowWidth/8)  
-		mc.iconTextButton(w=rowWidth/8,h=rowWidth/8)
-		mc.iconTextButton(w=rowWidth/8,h=rowWidth/8,ann="Export to AFX",l= "L2F" ,i= (iconPath +"AE_Export_32.png"),c=partial(runMethod,'mel.eval','("rcExport2AE")'))
-		mc.iconTextButton(w=rowWidth/8,h=rowWidth/8,ann="Export RenderLayers to Files",l= "L2F" ,i= (iconPath +"L2F.png"),c=partial(runMethod,'mel.eval','("rcLayers2Files")'))
-		mc.iconTextButton(w=rowWidth/8,h=rowWidth/8,ann="Render Manager",l= "RenderManager" ,i= (iconPath +"renderMGR.png"),c=partial(runMethod,'mel.eval','("rcRenderMGR")'))
+		mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8)
+		mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8)
+		mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8)
+		mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8)  
+		mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8)
+		mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8,ann="Export to AFX",l= "L2F" ,i= (iconPath +"AE_Export_32.png"),c=partial(runMethod,'mel.eval','("rcExport2AE")'))
+		mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8,ann="Export RenderLayers to Files",l= "L2F" ,i= (iconPath +"L2F.png"),c=partial(runMethod,'mel.eval','("rcLayers2Files")'))
+		mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8,ann="Render Manager",l= "RenderManager" ,i= (iconPath +"renderMGR.png"),c=partial(runMethod,'mel.eval','("rcRenderMGR")'))
 		mc.setParent('..')
 		scriptsUI()
 		mc.setParent('TABS')
@@ -356,37 +350,37 @@ class set():
 set=set()
 ###############
 def scriptsUI():
-	mc.frameLayout(l='TOADSTORM',w=rowWidth,cll=1,cl=1)
-	mc.button(w=rowWidth,l='Highlight Component Shading',c=partial(runMethod,'btnSourcePy','(hfShading,hfHighlightBadShaded)'))
-	mc.button(w=rowWidth,l='Split Component Shading')#partial(runMethod,'button','('+each+')'))
-	mc.button(w=rowWidth,l='Nuke Component Shading')
-	mc.button(w=rowWidth,l='Rename Duplicate Nodes')
+	mc.frameLayout(l='TOADSTORM',w=ui.rowWidth,cll=1,cl=1)
+	mc.button(w=ui.rowWidth,l='Highlight Component Shading',c=partial(runMethod,'btnSourcePy','(hfShading,hfHighlightBadShaded)'))
+	mc.button(w=ui.rowWidth,l='Split Component Shading')#partial(runMethod,'button','('+each+')'))
+	mc.button(w=ui.rowWidth,l='Nuke Component Shading')
+	mc.button(w=ui.rowWidth,l='Rename Duplicate Nodes')
 	mc.setParent('..')
 	#Frame Layout each Folder with button for each Mel inside It 
 	for folder in ls.dir(scriptsMEL):
-		mc.frameLayout(l=folder,w=rowWidth,cll=1,cl=0)#mc.text(l=folder+':',align='left')
-		mc.rowColumnLayout(w=rowWidth,numberOfColumns=1)
+		mc.frameLayout(l=folder,w=ui.rowWidth,cll=1,cl=0)#mc.text(l=folder+':',align='left')
+		mc.rowColumnLayout(w=ui.rowWidth,numberOfColumns=1)
 		for item in sorted(ls.dir(os.path.join(scriptsMEL,folder),folder=0)):
 			file,ext=os.path.splitext(item)
 			path= os.path.join(scriptsMEL,folder) 
 			if ext =='.mel': 
-				mc.button(w=rowWidth,l=file,c=partial(runMethod,'btnScript','("'+file+'","'+folder+'")'))
+				mc.button(w=ui.rowWidth,l=file,c=partial(runMethod,'btnScript','("'+file+'","'+folder+'")'))
 		mc.setParent('..')
 		mc.setParent('..')
 		
 	#Frame Layout for Mels in Main folder 
-	mc.frameLayout(l='GENERAL',w=rowWidth,cll=1,cl=0)
-	mc.rowColumnLayout(w=rowWidth,numberOfColumns=1)
+	mc.frameLayout(l='GENERAL',w=ui.rowWidth,cll=1,cl=0)
+	mc.rowColumnLayout(w=ui.rowWidth,numberOfColumns=1)
 	for each in sorted(each for each in ls.dir(scriptsMEL,folder=0)):
 		file,ext=os.path.splitext(each)
 		path= scriptsMEL +'\\'+each
 		if ext =='.mel':
-			mc.button(w=rowWidth,l=file,c=partial(runMethod,'btnScript','("'+file+'")'))
+			mc.button(w=ui.rowWidth,l=file,c=partial(runMethod,'btnScript','("'+file+'")'))
 def assignUI():
-	mc.frameLayout('ASSIGNFRAME',w=rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='ASSIGN')
-	mc.rowColumnLayout(numberOfColumns=2,columnWidth=[(1,rowWidth/2),(2,rowWidth/2)])
+	mc.frameLayout('ASSIGNFRAME',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='ASSIGN')
+	mc.rowColumnLayout(numberOfColumns=2,columnWidth=[(1,ui.rowWidth/2),(2,ui.rowWidth/2)])
 	
-	mc.columnLayout('SHAPECTRL',w=rowWidth/2-5)
+	mc.columnLayout('SHAPECTRL',w=ui.rowWidth/2-5)
 	mc.gridLayout(numberOfColumns=5,cellWidthHeight=[25,25])
 	mc.text(l='Piv'); mc.separator(style='in'); mc.button(l='Cntr',bgc=[.2,.2,.2],c=partial(runMethod,'mel.eval','("rcSetPivot CENTER")'))
 	mc.button(l='Orig',bgc=[.2,.2,.2],c=partial(runMethod,'mel.eval','("rcSetPivot ORIGIN")'))
@@ -423,19 +417,19 @@ def assignUI():
 	mc.button(l='Grp',ann='Custom Naming Grouping Procedure',bgc=[.2,.2,.2],c=partial(runMethod,'mel.eval','("rcCtGrp")'))
 	mc.setParent('..')
    
-	mc.separator(style='in',h=borders*3)
-	mc.checkBoxGrp('smoothPreview',h=checkBoxHeight,ncb=1,vr=1,l1='Smooth Preview',v1=1)
+	mc.separator(style='in',h=ui.borders*3)
+	mc.checkBoxGrp('smoothPreview',h=ui.checkBoxHeight,ncb=1,vr=1,l1='Smooth Preview',v1=1)
    
 
 	mc.textFieldGrp('rsmoothField',l='  Render Smooth:',text='2',cw2=[90,30],cat=[1,'left',1])
 	mc.textFieldGrp('dsmoothField',l='  Display Smooth:',text='0',cw2=[90,30],cat=[1,'left',1])
-	mc.button(h=buttons_large,w=rowWidth/2-8,l='APPLY',c=partial(runMethod,'set.smooth','(0)')) 
-	mc.button(h=buttons_small,w=rowWidth/2-8,l='RESET',ann='Remove Overrides for object',c=partial(runMethod,'set.smooth','(1)'))
-	mc.separator(style='in',h=borders*10)
+	mc.button(h=ui.btn_large,w=ui.rowWidth/2-8,l='APPLY',c=partial(runMethod,'set.smooth','(0)')) 
+	mc.button(h=ui.btn_small,w=ui.rowWidth/2-8,l='RESET',ann='Remove Overrides for object',c=partial(runMethod,'set.smooth','(1)'))
+	mc.separator(style='in',h=ui.borders*10)
 	mc.setParent('..')
 	
 	
-	mc.columnLayout(w=rowWidth/2)#h=(len(ls.renderAtts())*(checkBoxHeight+borders+2))+(buttons_large+buttons_small)
+	mc.columnLayout(w=ui.rowWidth/2)#h=(len(ls.renderAtts())*(ui.checkBoxHeight+ui.borders+2))+(ui.btn_large+ui.btn_small)
 	
 	mc.gridLayout(numberOfColumns=5,cellWidthHeight=[25,25])
 	mc.text(l='Disp');mc.separator(style='in');mc.separator(style='in');mc.separator(style='in');mc.button(h=25,w=42,ann='Set Viewport to Green for PlayBlast',l='RE',bgc=[.0,.5,.0],c=partial(runMethod,'set.view','(opt=1)'))
@@ -455,16 +449,16 @@ def assignUI():
 	mc.text(l='Attr');mc.separator(style='in');mc.separator(style='in');mc.separator(style='in');mc.separator(style='in')
 	mc.setParent('..')
 	
-	mc.separator(style='in',bgc=[.2,.2,.2],h=borders*3)
-	for each in ls.renderAtts(): mc.checkBoxGrp(each,h=checkBoxHeight,ncb=1,vr=1,l1=each,v1=1)
-	mc.separator(style='in',bgc=[.2,.2,.2],h=borders*3)
-	mc.button(h=buttons_large,w=rowWidth/2-8,l='APPLY',c=partial(runMethod,'set.flags','(value="Apply")')) 
+	mc.separator(style='in',bgc=[.2,.2,.2],h=ui.borders*3)
+	for each in ls.renderAtts(): mc.checkBoxGrp(each,h=ui.checkBoxHeight,ncb=1,vr=1,l1=each,v1=1)
+	mc.separator(style='in',bgc=[.2,.2,.2],h=ui.borders*3)
+	mc.button(h=ui.btn_large,w=ui.rowWidth/2-8,l='APPLY',c=partial(runMethod,'set.flags','(value="Apply")')) 
 	
 	mc.rowColumnLayout(numberOfColumns=4)
-	mc.button(h=buttons_small,l='ON',c=partial(runMethod,'set.flags','(value=1)'))
-	mc.button(h=buttons_small,l='OFF',c=partial(runMethod,'set.flags','(value=0)'))
-	mc.button(h=buttons_small,l='NUKE',en=0,ann='Remove Overrides for object',c=partial(runMethod,'setRenderFlags','(value=0)'))
-	mc.button(h=buttons_small,l='XRAY',en=0,ann='Remove Overrides for object',c=partial(runMethod,'setRenderFlags','(value=0)'))
+	mc.button(h=ui.btn_small,l='ON',c=partial(runMethod,'set.flags','(value=1)'))
+	mc.button(h=ui.btn_small,l='OFF',c=partial(runMethod,'set.flags','(value=0)'))
+	mc.button(h=ui.btn_small,l='NUKE',en=0,ann='Remove Overrides for object',c=partial(runMethod,'setRenderFlags','(value=0)'))
+	mc.button(h=ui.btn_small,l='XRAY',en=0,ann='Remove Overrides for object',c=partial(runMethod,'setRenderFlags','(value=0)'))
    
 	mc.setParent('MAIN')  
 
@@ -472,14 +466,14 @@ def assignUI():
 
 
 def materialsUI():
-	icon=rowWidth/8
-	mc.frameLayout('rcMATERIALS',bgc=[.4,.2,.4],w=rowWidth,bs='in',fn='smallBoldLabelFont',cll=1)
+	icon=ui.rowWidth/8
+	mc.frameLayout('rcMATERIALS',bgc=[.4,.2,.4],w=ui.rowWidth,bs='in',fn='smallBoldLabelFont',cll=1)
 	if mc.frameLayout('GLOBAL',q=1,ex=1)==1: mc.frameLayout('GLOBAL',e=1,cl=1)#CLOSE GLOBALS WIN
 
 	mc.separator(style='in')
 	mc.rowColumnLayout(numberOfColumns=2)
-	mc.text( font= "tinyBoldLabelFont" ,w= rowWidth/2, h= 8,l ="    Create/Assign Layers:",al= "left")
-	mc.text( font= "tinyBoldLabelFont" ,w= rowWidth/2, h= 8,l ="    Scripts:",al= "left")
+	mc.text( font= "tinyBoldLabelFont" ,w= ui.rowWidth/2, h= 8,l ="    Create/Assign Layers:",al= "left")
+	mc.text( font= "tinyBoldLabelFont" ,w= ui.rowWidth/2, h= 8,l ="    Scripts:",al= "left")
 	mc.setParent('..')
 	
 	mc.rowColumnLayout(numberOfColumns=8)
@@ -505,14 +499,14 @@ def materialsUI():
 	mc.iconTextButton(w=icon,h=icon,ann="Assign/Create ALPHA RAMP",l= "A" ,i= (iconPath +'RAMP_A_32.png'),c=partial(runMethod,'mel.eval','("rcAssignShader RAMP_A")'))
   
 	
-	mc.button(h=buttons_large,w=icon,bgc=[.5,0,0],l="R",c= partial(runMethod,'set.shader','("RED")'))
-	mc.button(h=buttons_large,w=icon,bgc= [0 ,.5 ,0 ],l= "G" ,c=partial(runMethod,'set.shader','( "GREEN")'))
-	mc.button(h=buttons_large,w=icon,bgc= [0 ,0 ,.5] ,l= "B" ,c= partial(runMethod,'set.shader','( "BLUE")'))
-	mc.iconTextButton(h=buttons_large,w=icon,bgc= [0 ,0 ,0] ,l= "A" ,c=partial(runMethod,'set.shader','( "ALPHA")'),i='textureEditorDisplayAlpha.png')
-	mc.button(h=buttons_large,w=icon,bgc= [0 ,.5 ,.5],l= "C" ,c= partial(runMethod,'set.shader','( "CYAN")'))
-	mc.button(h=buttons_large,w=icon,bgc= [.5 ,0, .5],l= "M" ,c= partial(runMethod,'set.shader','( "MAGENTA")'))
-	mc.button(h=buttons_large,w=icon,bgc= [.5 ,.5 ,0],l= "Y" ,c= partial(runMethod,'set.shader','( "YELLOW")'))
-	mc.button(h=buttons_large,w=icon,bgc= [0 ,0 ,0],l= "K" ,c= partial(runMethod,'set.shader','( "BLACK")'))
+	mc.button(h=ui.btn_large,w=icon,bgc=[.5,0,0],l="R",c= partial(runMethod,'set.shader','("RED")'))
+	mc.button(h=ui.btn_large,w=icon,bgc= [0 ,.5 ,0 ],l= "G" ,c=partial(runMethod,'set.shader','( "GREEN")'))
+	mc.button(h=ui.btn_large,w=icon,bgc= [0 ,0 ,.5] ,l= "B" ,c= partial(runMethod,'set.shader','( "BLUE")'))
+	mc.iconTextButton(h=ui.btn_large,w=icon,bgc= [0 ,0 ,0] ,l= "A" ,c=partial(runMethod,'set.shader','( "ALPHA")'),i='textureEditorDisplayAlpha.png')
+	mc.button(h=ui.btn_large,w=icon,bgc= [0 ,.5 ,.5],l= "C" ,c= partial(runMethod,'set.shader','( "CYAN")'))
+	mc.button(h=ui.btn_large,w=icon,bgc= [.5 ,0, .5],l= "M" ,c= partial(runMethod,'set.shader','( "MAGENTA")'))
+	mc.button(h=ui.btn_large,w=icon,bgc= [.5 ,.5 ,0],l= "Y" ,c= partial(runMethod,'set.shader','( "YELLOW")'))
+	mc.button(h=ui.btn_large,w=icon,bgc= [0 ,0 ,0],l= "K" ,c= partial(runMethod,'set.shader','( "BLACK")'))
 	
 	
 	mc.setParent('..')
@@ -520,42 +514,42 @@ def materialsUI():
 	mc.separator(style='in')
 	
 	
-	#mc.frameLayout('frame_MATERIAL',w=rowWidth,l='Existing Materials List',ec=partial(runMethod,'existMAT','()'),cll=1)
+	#mc.frameLayout('frame_MATERIAL',w=ui.rowWidth,l='Existing Materials List',ec=partial(runMethod,'existMAT','()'),cll=1)
 	#existMAT()
 	mc.setParent('..')
 	mc.setParent('MAIN')
 def existMATUI():
 	if mc.scrollLayout('materiallist',q=1,ex=1)==True: mc.deleteUI('materiallist')
 	mc.setParent('MAIN')
-	mc.scrollLayout('materiallist',w=rowWidth,h=390)#h=len(ls.shaders())*25)
-	mc.rowColumnLayout(w=rowWidth-10,numberOfColumns=2)
+	mc.scrollLayout('materiallist',w=ui.rowWidth,h=390)#h=len(ls.shaders())*25)
+	mc.rowColumnLayout(w=ui.rowWidth-10,numberOfColumns=2)
 	for each in sorted(ls.shaders()):
-		mc.button(w=rowWidth-55,l=each,c=partial(runMethod,'mc.select','(\''+ str(each)+'\')'))
+		mc.button(w=ui.rowWidth-55,l=each,c=partial(runMethod,'mc.select','(\''+ str(each)+'\')'))
 		mc.button(w=45,l='ASSIGN',c=partial(runMethod,'mc.hyperShade','(assign=\''+ str(each)+'\')'))
 		#mc.button(w=40,l='GRAPH')
 	   
 	mc.setParent('..');mc.setParent('..')     
 def globalsUI():
-	mc.frameLayout('GLOBAL',w=rowWidth,l='GLOBALS',bgc=[.4,.2,.4],bs='in',fn='smallBoldLabelFont',cl=1)
-	mc.rowColumnLayout(w=rowWidth,numberOfColumns=4)
+	mc.frameLayout('GLOBAL',w=ui.rowWidth,l='GLOBALS',bgc=[.4,.2,.4],bs='in',fn='smallBoldLabelFont',cl=1)
+	mc.rowColumnLayout(w=ui.rowWidth,numberOfColumns=4)
 	#mc.text(l='Anti\nAlias:',w=35,font='tinyBoldLabelFont',h=textHeight,al='right')
-	#mc.button(h=buttons_med,w=rowWidth/4,l='LOW -2/0 \n .10',c=partial(runMethod,'mel.eval','("rcSetGlobals LOW")'))
-	#mc.button(h=buttons_med,w=rowWidth/4,l='MED  0/2 \n .05',c=partial(runMethod,'mel.eval','("rcSetGlobals MED")'))
-	#mc.button(h=buttons_med,w=rowWidth/4,l='HI 2/0 \n .02',c=partial(runMethod,'mel.eval','("rcSetGlobals HIGH")')) 
+	#mc.button(h=buttons_med,w=ui.rowWidth/4,l='LOW -2/0 \n .10',c=partial(runMethod,'mel.eval','("rcSetGlobals LOW")'))
+	#mc.button(h=buttons_med,w=ui.rowWidth/4,l='MED  0/2 \n .05',c=partial(runMethod,'mel.eval','("rcSetGlobals MED")'))
+	#mc.button(h=buttons_med,w=ui.rowWidth/4,l='HI 2/0 \n .02',c=partial(runMethod,'mel.eval','("rcSetGlobals HIGH")')) 
 	mc.text(l='Final\nGather:',w=35,font='tinyBoldLabelFont',h=textHeight,al='right')
-	mc.button(h=buttons_med,w=rowWidth/4,l='LOW 50/.1 \n .10',c=partial(runMethod,'mel.eval','("rcSetGlobals LOW")'))
-	mc.button(h=buttons_med,w=rowWidth/4,l='MED  250/.1 \n .05',c=partial(runMethod,'mel.eval','("rcSetGlobals MED")'))
-	mc.button(h=buttons_med,w=rowWidth/4,l='HI 2/0 \n .02',c=partial(runMethod,'mel.eval','("rcSetGlobals HIGH")'))
+	mc.button(h=buttons_med,w=ui.rowWidth/4,l='LOW 50/.1 \n .10',c=partial(runMethod,'mel.eval','("rcSetGlobals LOW")'))
+	mc.button(h=buttons_med,w=ui.rowWidth/4,l='MED  250/.1 \n .05',c=partial(runMethod,'mel.eval','("rcSetGlobals MED")'))
+	mc.button(h=buttons_med,w=ui.rowWidth/4,l='HI 2/0 \n .02',c=partial(runMethod,'mel.eval','("rcSetGlobals HIGH")'))
 	
 	mc.text(l='Image\nFormat:',w=35,font='tinyBoldLabelFont',h=textHeight,al='right')
-	mc.button(h=buttons_med,w=rowWidth/4,l='PNG\n 16BIT',c=partial(runMethod,'mel.eval','("rcSetGlobals PNG")'))
-	mc.button(h=buttons_med,w=rowWidth/4,l='TIF \n 16Bit',c=partial(runMethod,'mel.eval','("rcSetGlobals TIF")'))
-	mc.button(h=buttons_med,w=rowWidth/4,l='EXR\n 32BIT',c=partial(runMethod,'mel.eval','("rcSetGlobals EXR")'))
+	mc.button(h=buttons_med,w=ui.rowWidth/4,l='PNG\n 16BIT',c=partial(runMethod,'mel.eval','("rcSetGlobals PNG")'))
+	mc.button(h=buttons_med,w=ui.rowWidth/4,l='TIF \n 16Bit',c=partial(runMethod,'mel.eval','("rcSetGlobals TIF")'))
+	mc.button(h=buttons_med,w=ui.rowWidth/4,l='EXR\n 32BIT',c=partial(runMethod,'mel.eval','("rcSetGlobals EXR")'))
 	
 	mc.text(l='Image\nPrefix:',w=35,font='tinyBoldLabelFont',h=textHeight,al='right')
-	mc.button(h=buttons_med,w=rowWidth/4,l='Layers',c=partial(runMethod,'mel.eval','("rcSetGlobals -layers")'))
-	mc.button(h=buttons_med,w=rowWidth/4,l='Passes',c=partial(runMethod,'mel.eval','("rcSetGlobals -passes")'))
-	mc.button(h=buttons_med,w=rowWidth/4,l='',c=partial(runMethod,'mel.eval','("rcSetGlobals ")'))
+	mc.button(h=buttons_med,w=ui.rowWidth/4,l='Layers',c=partial(runMethod,'mel.eval','("rcSetGlobals -layers")'))
+	mc.button(h=buttons_med,w=ui.rowWidth/4,l='Passes',c=partial(runMethod,'mel.eval','("rcSetGlobals -passes")'))
+	mc.button(h=buttons_med,w=ui.rowWidth/4,l='',c=partial(runMethod,'mel.eval','("rcSetGlobals ")'))
 	
 	mc.setParent('..')
 	mc.setParent('..')

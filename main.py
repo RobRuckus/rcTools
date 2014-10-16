@@ -4,6 +4,7 @@ import sys
 import maya.cmds as mc
 import maya.mel as mel 
 from datetime import datetime
+import ctypes
 ###########PATH VARIABLES
 importPath= os.path.dirname(__file__)
 iconPath=os.path.join(importPath,'icons','')
@@ -26,6 +27,10 @@ def userDirectory():#RETURN USERDIRECTORY FOR MAC/WIN
 #########
 class ui():#UI VARIABLES
 	def __init__(self):
+		if 'dar' not in sys.platform: 
+			user32= ctypes.windll.user32
+			self.screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
+		else: self.screensize=(1920,1080)
 		self.btn_small=20
 		self.btn_med=25
 		self.btn_large=30

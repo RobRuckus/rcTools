@@ -280,8 +280,8 @@ def writeJSX(sceneData,objects,flags):
 		maxTimeName=str(sceneData.maxTime()).zfill(sceneData.framePad())
 		images=sceneData.renderOutput()[1]
 	else:
-		minTimeName=str(mc.currentTime(q=True).zfill(sceneData.framePad())
-		maxTimeName=str(mc.currentTime(q=True)+1).zfill(sceneData.framePad())
+		minTimeName=str(mc.currentTime(q=True).zfill(sceneData.framePad()))
+		maxTimeName=str((mc.currentTime(q=True)+1).zfill(sceneData.framePad()))
 		images=sceneData.renderOutput()[1]
 	############
 	#imageNameExtension='[%s-%s]%s'%(minTimeName,maxTimeName,os.path.splitext(sceneData.renderOutput()[0])[1]) #[004-0091].png
