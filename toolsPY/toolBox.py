@@ -17,7 +17,7 @@ for each in os.listdir(toolsMEL):
 	file,ext=os.path.splitext(each)
 	path= os.path.join(toolsMEL.replace('\\','/'),each)
 	if ext =='.mel': mel.eval('source "%s"'%path)
-ui=ui()
+ui=ui('toolBox')
 ###############
 def UI():
 		if mc.window('rcToolsWin',ex=1): mc.deleteUI('rcToolsWin',window=1)

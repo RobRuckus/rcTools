@@ -25,8 +25,9 @@ def userDirectory():#RETURN USERDIRECTORY FOR MAC/WIN
 		userDirectory=os.environ['USERPROFILE']
 	return userDirectory
 #########
-class ui():#UI VARIABLES
-	def __init__(self):
+
+class ui():
+	def __init__(self,name):
 		if 'dar' not in sys.platform: 
 			user32= ctypes.windll.user32
 			self.screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
@@ -42,8 +43,39 @@ class ui():#UI VARIABLES
 		self.iconSize=13
 		self.borders=2
 		self.tabWidth=765
+		self.rowWidth=300
 		self.titleFont='boldLabelFont'
 		self.fieldFont='fixedWidthFont'
+		
+		self.name=name
+		self.window=self.name+'Window'
+		self.dock=self.name+'Dock'
+		self.parent='parent'
+		
+	def win(self,**kwargs):
+		if mc.window(self.window,ex=True):mc.deleteUI(self.window,window=True)
+		if mc.dockControl(self.dock,ex=True): mc.deleteUI(self.dock)
+		mc.window(self.window,t=self.name)
+		mc.formLayout(w=self.rowWidth)
+		
+		mc.dockControl(self.dock,area='left',content=self.window,label=self.name,**kwargs)
+	def toolBox(self):
+		mc.tabLayout('TABS',w=self.rowWidth+35,imw=15)
+		self.tab('General')
+		self.tab('Output')
+	def show(self):
+		mc.showWindow(self.window)
+	def tab(self,name):
+		mc.setParent('TABS')
+		mc.scrollLayout(name,w=self.rowWidth+15,h=self.screensize[1]-360)
+		
+	def frame(self,name):
+		self.frame=mc.frameLayout('frame'+self.name,bgc=[.2,.2,.2],fn='smallBoldLabeFont',bs='in',l=name)
+	def buttonRow(self,columns=8,**kwargs):
+		mc.rowColumnLayout(numberOfColumns=columns)
+		for each in range(columns):
+			pass
+			#mc.iconTextButton(w=self.rowWidth/columns,h=self.rowWidth/columns,args)#pass each arg of each button 
 class sceneData(object):
 	def __init__(self):
 		pass

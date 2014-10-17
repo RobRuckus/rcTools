@@ -31,7 +31,7 @@ from functools import partial
 def runMethod(method,string,*args): exec(method+string) #Delay Function
 ###########
 #UI VARIABLES FROM MAIN
-ui=ui()
+ui=ui('Maya2AE')
 ###########
 class aePrefs(iniFile):#aePrefs.ini 
 	def __init__(self):
@@ -275,7 +275,7 @@ def writeJSX(sceneData,objects,flags):
 	############
 	jsxFile=scriptFile(sceneData.ws()+'/data/','_AFXImport.jsx')
 	imageFolderName='_images'
-	if aePres.get('ImageSource')=='images':
+	if aePrefs.get('ImageSource')=='images':
 		minTimeName=str(sceneData.minTime()).zfill(sceneData.framePad())
 		maxTimeName=str(sceneData.maxTime()).zfill(sceneData.framePad())
 		images=sceneData.renderOutput()[1]
