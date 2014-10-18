@@ -25,7 +25,6 @@ def userDirectory():#RETURN USERDIRECTORY FOR MAC/WIN
 		userDirectory=os.environ['USERPROFILE']
 	return userDirectory
 #########
-
 class ui():
 	def __init__(self,name):
 		if 'dar' not in sys.platform: 
@@ -50,27 +49,27 @@ class ui():
 		self.name=name
 		self.window=self.name+'Window'
 		self.dock=self.name+'Dock'
-		self.parent='parent'
-		
+		self.tabs=self.name+'TABS'
+	def delete(self):
+		pass
 	def win(self,**kwargs):
 		if mc.window(self.window,ex=True):mc.deleteUI(self.window,window=True)
 		if mc.dockControl(self.dock,ex=True): mc.deleteUI(self.dock)
+		
 		mc.window(self.window,t=self.name)
 		mc.formLayout(w=self.rowWidth)
 		
 		mc.dockControl(self.dock,area='left',content=self.window,label=self.name,**kwargs)
 	def toolBox(self):
-		mc.tabLayout('TABS',w=self.rowWidth+35,imw=15)
-		self.tab('General')
-		self.tab('Output')
-	def show(self):
-		mc.showWindow(self.window)
-	def tab(self,name):
-		mc.setParent('TABS')
-		mc.scrollLayout(name,w=self.rowWidth+15,h=self.screensize[1]-360)
+		self.win()
+		mc.tabLayout(self.tabs,w=self.rowWidth+35,imw=15)
 		
+	def show(self): mc.showWindow(self.window)
+	def tab(self,name):
+		mc.setParent(self.tabs)
+		mc.scrollLayout(name,w=self.rowWidth+15,h=self.screensize[1]-360)	
 	def frame(self,name):
-		self.frame=mc.frameLayout('frame'+self.name,bgc=[.2,.2,.2],fn='smallBoldLabeFont',bs='in',l=name)
+		self.frame=mc.frameLayout(self.name+name,bgc=[.2,.2,.2],fn='smallBoldLabeFont',bs='in',l=name)
 	def buttonRow(self,columns=8,**kwargs):
 		mc.rowColumnLayout(numberOfColumns=columns)
 		for each in range(columns):
@@ -96,6 +95,8 @@ class sceneData(object):
 	def imageFilePrefix(self): return mc.getAttr('defaultRenderGlobals.imageFilePrefix')# Prefix from Render Globals : <RenderLayers>/<RenderPass>/<RenderLayer>.<RenderPass>
 	def imageFileSuffix(self): return  ''.join(mc.renderSettings(fin=1,lut=1))#masterLayer/<RenderPass>/masterLayer.0001.png
 	def imageFilePath(self): return  ''.join(mc.renderSettings(fin=1,lut=1,fp=1))#PROJECT/IMAGES/masterLayer/<RenderPass>/masterLayer.0001.png
+	def outputLayers(self): return self.renderOutput[0]
+	def outputImages(self): return self.renderOutput[1]
 	def renderOutput(self):
 		outputLayers= []
 		outputImages=[]
@@ -174,6 +175,7 @@ class iniFile():#CRUD iniFiles
                     each=r'%s= %s'%(att,str(value))
                 file.write('%s\n'%each)
             file.close()
+########
 def rlmAttrs():#custom renderLayerManager Attributes for tools using customAttr class
 	rlm=customAttr('renderLayerManager')
 	rlm.define('project',mc.workspace(q=1,rd=1))
@@ -185,6 +187,7 @@ def rlmAttrs():#custom renderLayerManager Attributes for tools using customAttr 
 	rlm.define('enableSingleFileName',False)
 	rlm.define('singleFileName','custom')
 	rlm.define('notes',' ')
+########
 ########TOOL Classes
 class ls():
     def renderAtts(self):#return custom Attribute List 
@@ -469,7 +472,7 @@ class set():
                             mc.setAttr( sel + '.' + att , mc.checkBoxGrp(att,q=1, v1=1))
         else:
             for each in ls.renderAtts(): mc.checkBoxGrp(each,e=1,v1=value)
-########
+#######
 ls=ls()
 create=create()
 set=set()
