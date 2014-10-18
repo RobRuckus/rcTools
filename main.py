@@ -50,8 +50,7 @@ class ui():
 		self.window=self.name+'Window'
 		self.dock=self.name+'Dock'
 		self.tabs=self.name+'TABS'
-	def delete(self):
-		pass
+	
 	def win(self,**kwargs):
 		if mc.window(self.window,ex=True):mc.deleteUI(self.window,window=True)
 		if mc.dockControl(self.dock,ex=True): mc.deleteUI(self.dock)
@@ -60,16 +59,14 @@ class ui():
 		mc.formLayout(w=self.rowWidth)
 		
 		mc.dockControl(self.dock,area='left',content=self.window,label=self.name,**kwargs)
+	###toolBox
 	def toolBox(self):
 		self.win()
 		mc.tabLayout(self.tabs,w=self.rowWidth+35,imw=15)
-		
-	def show(self): mc.showWindow(self.window)
-	def tab(self,name):
+	def tab(self,name):#tab command for toolBox
 		mc.setParent(self.tabs)
 		mc.scrollLayout(name,w=self.rowWidth+15,h=self.screensize[1]-360)	
-	def frame(self,name):
-		self.frame=mc.frameLayout(self.name+name,bgc=[.2,.2,.2],fn='smallBoldLabeFont',bs='in',l=name)
+	def frame(self,name): mc.frameLayout(self.name+name,bgc=[.2,.2,.2],fn='smallBoldLabeFont',bs='in',l=name)
 	def buttonRow(self,columns=8,**kwargs):
 		mc.rowColumnLayout(numberOfColumns=columns)
 		for each in range(columns):
