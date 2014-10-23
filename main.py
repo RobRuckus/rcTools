@@ -10,6 +10,7 @@ importPath= os.path.dirname(__file__)
 iconPath=os.path.join(importPath,'icons','')
 toolsPY=os.path.join(importPath,'toolsPY','')
 toolsMEL=os.path.join(importPath,'toolsMEL','')
+toolsJSX=os.path.join(importPath,'toolsJSX','')
 scriptsMEL=os.path.join(importPath,'scriptsMEL','')
 scriptsPY=os.path.join(importPath,'scriptsPY','')
 ##########
@@ -24,7 +25,7 @@ def userDirectory():#RETURN USERDIRECTORY FOR MAC/WIN
 	else:
 		userDirectory=os.environ['USERPROFILE']
 	return userDirectory
-#########
+##########
 class ui():
 	def __init__(self,name):
 		if 'dar' not in sys.platform: 
@@ -117,7 +118,7 @@ class sceneData(object):
 							outputImages.append(outReplacedLayer.replace('<RenderPass>',connection).replace('defaultRenderLayer','masterLayer').replace(nameConvert(self.renderCameras[0]),camera))
 							outputLayers.append('%s.%s.%s'%(camera,layer.replace('defaultRenderLayer','masterLayer'),connection))      
 		return[[str(x) for x in outputLayers],[str(x) for x in outputImages]]
-#####
+##########
 class customAttr():#CRUD attributes on Nodes
     def __init__(self,holder):
         self.holder=holder	
@@ -172,7 +173,7 @@ class iniFile():#CRUD iniFiles
                     each=r'%s= %s'%(att,str(value))
                 file.write('%s\n'%each)
             file.close()
-########
+#########
 def rlmAttrs():#custom renderLayerManager Attributes for tools using customAttr class
 	rlm=customAttr('renderLayerManager')
 	rlm.define('project',mc.workspace(q=1,rd=1))
@@ -184,7 +185,8 @@ def rlmAttrs():#custom renderLayerManager Attributes for tools using customAttr 
 	rlm.define('enableSingleFileName',False)
 	rlm.define('singleFileName','custom')
 	rlm.define('notes',' ')
-########
+#########
+
 ########TOOL Classes
 class ls():
     def renderAtts(self):#return custom Attribute List 
@@ -469,7 +471,7 @@ class set():
                             mc.setAttr( sel + '.' + att , mc.checkBoxGrp(att,q=1, v1=1))
         else:
             for each in ls.renderAtts(): mc.checkBoxGrp(each,e=1,v1=value)
-#######
+########
 ls=ls()
 create=create()
 set=set()
