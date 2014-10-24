@@ -25,9 +25,11 @@ def userDirectory():#RETURN USERDIRECTORY FOR MAC/WIN
 	else:
 		userDirectory=os.environ['USERPROFILE']
 	return userDirectory
-
+def scriptsDrive(folder=None):
+	if folder: return os.path.join(main.userDirectory(),'Google Drive','scripts',folder,'')
+	else: return os.path.join(main.userDirectory(),'Google Drive','scripts','')
 ##########
-class ui():
+class ui():#UI Class for Maya
 	def __init__(self,name):
 		if 'dar' not in sys.platform: 
 			user32= ctypes.windll.user32
@@ -74,9 +76,7 @@ class ui():
 		for each in range(columns):
 			pass
 			#mc.iconTextButton(w=self.rowWidth/columns,h=self.rowWidth/columns,args)#pass each arg of each button 
-class sceneData(object):
-	def __init__(self):
-		pass
+class sceneData():#
 	def ws(self): return os.path.normpath(mc.workspace(q=True,rd=True))
 	def wsImagesName(self): return mc.workspace('images',q=True,fileRuleEntry=True)
 	def wsImagesFolder(self): return os.path.normpath(os.path.join(self.ws,self.wsImagesName))

@@ -386,7 +386,7 @@ global proc rcSetPivot(string $opt){
         	}
         	break;
         case "ORIGIN":
-        	for($each in $sel) move -a 0 0 0 ($each + ".rotatePivot") ($each + ".scalePivot");
+        	for($each in $sel) move -a -rpr 0 0 0 ($each + ".rotatePivot") ($each + ".scalePivot");
         
         case "CENTER":
         	for ($each in $sel) CenterPivot $each;
@@ -945,6 +945,15 @@ global proc rccAssignDisplacementSwitch(string $shader, string $obj, string $dis
 	}
 
 ////SET
+global proc rcSetCameraClip() {
+	string $panelSet[] = {"modelPanel1", "modelPanel2", "modelPanel3", "modelPanel4"};
+	for($thisPanel in $panelSet){
+	string $camera = `modelEditor -q -camera $thisPanel`; 
+	eval select `getCameraNode view $camera` `getCameraNode up $camera` $camera;
+	setAttr ($camera + ".nearClipPlane") .5;
+	setAttr ($camera + ".farClipPlane") 100000;
+	};
+	};
 global proc rcSetImagePrefix(string $opt){//Image Prefix Flags
 	rcSetGlobals -d;
 	string $rcRenderFolder = `getAttr renderLayerManager.shotName`;

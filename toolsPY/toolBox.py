@@ -10,7 +10,6 @@ from functools import partial
 def delay(method,string,*args): exec(method+string) #Delay Function
 ################
 from rcTools.main import *
-
 ################source every mel in toolsMEL: toolsMEL
 for each in os.listdir(toolsMEL):
 	file,ext=os.path.splitext(each)
@@ -71,7 +70,7 @@ def assignUI():
 	mc.columnLayout('SHAPECTRL',w=ui.rowWidth/2-5)
 	mc.gridLayout(numberOfColumns=5,cellWidthHeight=[25,25])
 	mc.text(l='Piv'); mc.separator(style='in'); mc.button(l='Cntr',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcSetPivot CENTER")'))
-	mc.button(l='Orig',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcSetPivot ORIGIN")'))
+	mc.button(l='Orig',bgc=[.2,.2,.2],en=0,c=partial(delay,'mel.eval','("rcSetPivot ORIGIN")'))
 	mc.button(l='Sel',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcSetPivot SELECTED")'))
 	mc.button(l='',c=partial(delay,'mel.eval','(toMiddle(\"max\" ,\"max\", \"max\")'))
 	mc.button(l='')
@@ -120,7 +119,11 @@ def assignUI():
 	mc.columnLayout(w=ui.rowWidth/2)#h=(len(ls.renderAtts())*(ui.checkBoxHeight+ui.borders+2))+(ui.btn_large+ui.btn_small)
 	
 	mc.gridLayout(numberOfColumns=5,cellWidthHeight=[25,25])
-	mc.text(l='Disp');mc.separator(style='in');mc.separator(style='in');mc.separator(style='in');mc.button(h=25,w=42,ann='Set Viewport to Green for PlayBlast',l='RE',bgc=[.0,.5,.0],c=partial(delay,'set.view','(opt=1)'))
+	mc.text(l='Disp');
+	mc.separator(style='in');
+	mc.separator(style='in');
+	mc.button(h=25,w=42,ann='Set Camera Clips',l='CC',c=partial(delay,'mel.eval','("rcSetCameraClip")'));
+	mc.button(h=25,w=42,ann='Set Viewport to Green for PlayBlast',l='RE',bgc=[.0,.5,.0],c=partial(delay,'set.view','(opt=1)'))
 	
 	mc.setParent('..')
 	
@@ -194,12 +197,8 @@ def materialsUI():
 	mc.button(h=ui.btn_large,w=icon,bgc= [.5 ,.5 ,0],l= "Y" ,c= partial(delay,'set.shader','( "YELLOW")'))
 	mc.button(h=ui.btn_large,w=icon,bgc= [0 ,0 ,0],l= "K" ,c= partial(delay,'set.shader','( "BLACK")'))
 	
-	
 	mc.setParent('..')
-	
 	mc.separator(style='in')
-	
-	
 	#mc.frameLayout('frame_MATERIAL',w=ui.rowWidth,l='Existing Materials List',ec=partial(delay,'existMAT','()'),cll=1)
 	#existMAT()
 	mc.setParent('..')
