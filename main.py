@@ -25,6 +25,7 @@ def userDirectory():#RETURN USERDIRECTORY FOR MAC/WIN
 	else:
 		userDirectory=os.environ['USERPROFILE']
 	return userDirectory
+
 ##########
 class ui():
 	def __init__(self,name):

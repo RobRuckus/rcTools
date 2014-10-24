@@ -1,1 +1,1 @@
-﻿var script=(new File($.fileName)).parentalert(script);
+﻿var iconPath=(new File($.fileName)).parent;var imagePath=File(iconPath+'cleanUp.png');alert(imagePath);

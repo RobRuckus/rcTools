@@ -1,0 +1,1 @@
+﻿var script=(new File($.fileName)).parentalert(script);
