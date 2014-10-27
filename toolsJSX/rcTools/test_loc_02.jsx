@@ -1,0 +1,1 @@
+﻿function scriptLocation(){var script=(new File($.fileName)).parentscript=script.toString()+'/icons/';alert(script);}scriptLocation();
