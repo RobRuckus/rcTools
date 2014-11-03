@@ -50,7 +50,6 @@ class write(main.scriptFile):
 		
 	def layers(self,sceneData):
 		self.write('var layers=%s;'%layerNames)
-		
 		self.write("//Layers ")
 		self.write('for(layerIndex=0;layerIndex<=layers.length-1;layerIndex++){')
 		self.write('	var layerPH="";')
@@ -70,6 +69,10 @@ class write(main.scriptFile):
 		self.write('	layerPH.name=layers[layerIndex];')
 		self.write('	}')
 		self.write('}') 		
+	def retrieve(self,itemType):
+		
+		pass
+		
 	def do(self):#execute written jsx by commandline (writesApplescript for mac)
 		self.write('app.endUndoGroup()')
 		if 'darwin' in sys.platform:
