@@ -4,9 +4,11 @@ import subprocess
 from rcTools import main 
 from rcTools.toolsPY import rcMaya2AE as AE
 class write(main.scriptFile):
-	def __init__(self):
-		self.folder=os.path.join(main.sceneData().ws(),'data')
-		main.scriptFile.__init__(self,self.folder,'_AFXImport.jsx')
+	def __init__(self,filePath):
+		self.folder=filePath
+		main.scriptFile.__init__(self,self.folder)
+		#self.folder=os.path.join(main.sceneData().ws(),'data')
+		#main.scriptFile.__init__(self,self.folder,'_AFXImport.jsx')
 		##
 		self.imageFolderName='_images'
 		self.imageFolderIndex=self.imageFolderName+'index'
@@ -33,7 +35,7 @@ class write(main.scriptFile):
 		self.write('	if   (item.name=="%s"){ %s = item;};'%(folderName,folderIndex))
 		self.write('	}')
 		self.write('if(%s==""){%s=app.project.items.addFolder("%s")};'%(folderIndex,folderIndex,folderName))	
-	def comp(self,sceneData):
+	def comp(self,sceneData):#ADDCOMP 
 		self.write('var shotName="%s";'%sceneData.shotName())
 		self.write('var width=%d;'%sceneData.frameWidth())
 		self.write('var height=%d;'%sceneData.frameHeight())
@@ -73,6 +75,7 @@ class write(main.scriptFile):
 		
 		pass
 		
+	#########
 	def do(self):#execute written jsx by commandline (writesApplescript for mac)
 		self.write('app.endUndoGroup()')
 		if 'darwin' in sys.platform:

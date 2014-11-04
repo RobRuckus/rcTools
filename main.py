@@ -141,8 +141,10 @@ class customAttr():#CRUD attributes on Nodes
         return mc.getAttr(self._attName(att))	
 	
 class scriptFile():#Creates/Writes Files Line by Line
-    def __init__(self,path,fileName):
-        self.fileName= os.path.join(path,fileName).replace('\\','/')
+    def __init__(self,fileName):
+        self.fileName= fileName.replace('\\','/')
+        #self.fileName= os.path.join(path,fileName).replace('\\','/')
+        
         file=open(self.fileName,'w')
         file.close() 
     def write(self,line):

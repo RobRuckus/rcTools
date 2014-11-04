@@ -153,21 +153,21 @@ def UI():
 	mc.iconTextScrollList('AEXRenderLayerScroll',w=ui.rowWidth,h=240)
 	mc.setParent('renderLayers2AFX')
 	########
-	#mc.separator(h=15,style='in')
-	#mc.checkBox('Objects',l='Objects:',en=0,v=int(aePrefs.get('Objects')),cc=partial(runMethod,'updateINI',"('Objects')"))
-	#mc.checkBox('chkImportRCam',l='Import render Cameras:',vis=0,v=0,en=0)
+	mc.separator(h=15,style='in')
+	mc.checkBox('Objects',l='Objects:',vis=0,en=0,v=int(aePrefs.get('Objects')),cc=partial(runMethod,'updateINI',"('Objects')"))
+	mc.checkBox('chkImportRCam',l='Import render Cameras:',vis=0,v=0,en=0)
 	
-	#mc.rowLayout(w=ui.rowWidth,numberOfColumns=3)
-	#mc.button(w=ui.rowWidth/3,h=ui.btn_large,al='left',l=' + ',c=partial(runMethod,'btnTag','(mc.ls(sl=1))')) 
-	#mc.button(en=0,h=ui.btn_large,w=ui.rowWidth/3,al='center',l=' - ',c=partial(runMethod,'btnNuke','("sel")')) 
-	#mc.button(h=ui.btn_large,w=ui.rowWidth/3,al='right',l='NUKE',c=partial(runMethod,'btnNuke','("all")'))
-	#mc.setParent('..')
+	mc.rowLayout(w=ui.rowWidth,vis=0,numberOfColumns=3)
+	mc.button(w=ui.rowWidth/3,h=ui.btn_large,al='left',l=' + ',c=partial(runMethod,'btnTag','(mc.ls(sl=1))')) 
+	mc.button(en=0,h=ui.btn_large,w=ui.rowWidth/3,al='center',l=' - ',c=partial(runMethod,'btnNuke','("sel")')) 
+	mc.button(h=ui.btn_large,w=ui.rowWidth/3,al='right',l='NUKE',c=partial(runMethod,'btnNuke','("all")'))
+	mc.setParent('..')
 	
-	#mc.iconTextScrollList('AEXObjListScroll',w=ui.rowWidth,h=200,vis=1)
-	#mc.setParent('renderLayers2AFX')
+	mc.iconTextScrollList('AEXObjListScroll',w=ui.rowWidth,h=200,vis=0)
+	mc.setParent('renderLayers2AFX')
 	########
-	#mc.checkBox('chkAbsFrames',l='Use Timeline Frame Numbers',vis=0,v=1)
-	#mc.checkBox('chkOverrideTime',l='Override Timeline',vis=0,v=0,en=0)
+	mc.checkBox('chkAbsFrames',l='Use Timeline Frame Numbers',vis=0,v=1)
+	mc.checkBox('chkOverrideTime',l='Override Timeline',vis=0,v=0,en=0)
 	mc.button(l='EXPORT',w=ui.rowWidth,bgc=[.586,.473,.725],align='center',h=ui.btn_large,c=partial(runMethod,'btnExport','()'))
 
 	mc.setParent('..')
@@ -248,7 +248,8 @@ def getOutputFlags():
 
 ###############
 def writeAppleScript(jsxFile,AEApp):
-	script=scriptFile(userDirectory(),'runJSX.scpt')
+	#script=scriptFile(userDirectory(),'runJSX.scpt')
+	script=scriptFile(os.path.join(userDirectory(),'runJSX.scpt'))
 	script.write('set theFile to "%s"'%jsxFile)
 	script.write('open for access theFile')
 	script.write('set fileContents to (read theFIle)')
@@ -271,7 +272,7 @@ def writeJSX(sceneData,objects,flags):
 		if debug: print AEpos
 		else: return AEpos
 	############
-	jsx=scriptFile(sceneData.ws()+'/data/','_AFXImport.jsx')
+	jsx=scriptFile(os.path.join(sceneData.ws(),'data','_AFXImport.jsx'))
 	imageFolderName='_images'
 	if aePrefs.get('ImageSource')=='images':
 		minTimeName=str(sceneData.minTime()).zfill(sceneData.framePad())

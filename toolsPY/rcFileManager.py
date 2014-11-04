@@ -7,15 +7,16 @@ from functools import partial
 def runMethod(method,string,*args): exec(method+string) #Delay Function
 ################
 import maya.cmds as mc 
-from rcTools import *
+from rcTools.main import *
 ################
 browselistWidth=250
 targetlistWidth=370
 row1=100
 row2=20
 ###############
+ui=ui('FileMGR')
 def UI():
-    	rlmAttrs()
+        rlmAttrs()
         images=os.path.join(mc.workspace(q=1,rd=1),"images",mc.getAttr("renderLayerManager.shotName"))
         if (mc.window('rcFileManage',exists=True)): mc.deleteUI('rcFileManage')
         mc.window('rcFileManage', mxb=0,title=' ',tlb=False,)
@@ -29,7 +30,7 @@ def UI():
 
 	mc.rowColumnLayout(numberOfColumns=3,columnWidth=[(1,row1),(2,row2),(3,480)])
 	
-	mc.text(al='right',font=titleFont,label='  Image Prefix: ')
+	mc.text(al='right',font=ui.titleFont,label='  Image Prefix: ')
 	mc.menuBarLayout()
 	mc.menu(label='Shot Name/')
 	mc.menuItem(label='<RenderLayer>/<RenderLayer>',c=partial(runMethod,'set.imagePrefix','("S__L__L")'))
@@ -40,7 +41,7 @@ def UI():
 	mc.menuItem(label='<RenderLayer>/<RenderLayer>.<RenderPass>',c=partial(runMethod,'set.imagePrefix','("L__L.P")'))
 	mc.menuItem(label='<RenderLayer>/<RenderPass>/<RenderLayer>.<RenderPass>',c=partial(runMethod,'set.imagePrefix','("L__P__L.P")'))
 	mc.setParent('..')
-	mc.textField('imageFilePrefix',font=fieldFont,en=1,text=mc.getAttr('defaultRenderGlobals.imageFilePrefix'))    
+	mc.textField('imageFilePrefix',font=ui.fieldFont,en=1,text=mc.getAttr('defaultRenderGlobals.imageFilePrefix'))    
 	
 	mc.setParent('..')
 	mc.setParent('..')
