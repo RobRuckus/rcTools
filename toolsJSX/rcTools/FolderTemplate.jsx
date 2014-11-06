@@ -1,0 +1,1 @@
+﻿app.beginUndoGroup("addFolders")var Folders=['_ASSETS','_COMPS','xOutput']for(var f=0;f<Folders.length;f++){    var _Index="";    for(var i=1;i<=app.project.numItems;i++){        var item=app.project.item(i);        if (item.name==Folders[f]){ _Index = item;};	}    if(_Index==""){_imagesIndex=app.project.items.addFolder(Folders[f])};    }app.endUndoGroup()

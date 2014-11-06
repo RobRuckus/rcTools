@@ -2,19 +2,20 @@ import os
 import sys
 import subprocess
 from rcTools import main 
-from rcTools.toolsPY import rcMaya2AE as AE
+#from rcTools.toolsPY import rcMaya2AE as AE
 class write(main.scriptFile):
 	def __init__(self,filePath):
 		self.folder=filePath
 		main.scriptFile.__init__(self,self.folder)
 		#self.folder=os.path.join(main.sceneData().ws(),'data')
 		#main.scriptFile.__init__(self,self.folder,'_AFXImport.jsx')
-		##
+		
+		##MOVE THIS TO CUSTOM 
 		self.imageFolderName='_images'
 		self.imageFolderIndex=self.imageFolderName+'index'
-		
 		self.write('app.beginUndoGroup("rcCommand")')
 		self.addFolder(self.imageFolderName)
+		
 	def _writeApplescript(self,jsxFile,AELoc):#write Applescript to Execute Javascript
 		script=self.scriptFile(self.folder,'runJSX.scpt')
 		script.write('set theFile to "%s"'%jsxFile)
@@ -25,7 +26,6 @@ class write(main.scriptFile):
 		script.write('  DoScript fileContents')
 		script.write('end tell')
 		return script.fileName
-
 	#####
 	def addFolder(self,folderName):#Creates Folder and/or Variable of Location 
 		folderIndex=folderName+'Index'

@@ -144,7 +144,7 @@ class scriptFile():#Creates/Writes Files Line by Line
     def __init__(self,fileName):
         self.fileName= fileName.replace('\\','/')
         #self.fileName= os.path.join(path,fileName).replace('\\','/')
-        
+        #if not os.path.os.path.dirname(self.fileName)
         file=open(self.fileName,'w')
         file.close() 
     def write(self,line):
