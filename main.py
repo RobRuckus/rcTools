@@ -266,6 +266,7 @@ class ls():
         return iter(p.stdout.readline,b'')
 class create():
 	def elementSeperate(self):
+		import random
 		sel=mc.ls(sl=1)
 		for each in sel:
 			SHADER=each+'_mat'
