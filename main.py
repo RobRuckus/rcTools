@@ -188,8 +188,6 @@ def rlmAttrs():#custom renderLayerManager Attributes for tools using customAttr 
 	rlm.define('enableSingleFileName',False)
 	rlm.define('singleFileName','custom')
 	rlm.define('notes',' ')
-#########
-
 ########TOOL Classes
 class ls():
     def renderAtts(self):#return custom Attribute List 
@@ -267,6 +265,20 @@ class ls():
         p=subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
         return iter(p.stdout.readline,b'')
 class create():
+	def elementSeperate(self):
+		sel=mc.ls(sl=1)
+		for each in sel:
+			SHADER=each+'_mat'
+			SG=each
+			MESH=mc.rename(each,each+'_MESH')
+			#create shader with name 
+			SN=mc.shadingNode('surfaceShader',n=SHADER,asShader=1)
+			SG=mc.sets(renderable=True,noSurfaceShader=True,empty=1,name=SG)
+			mc.connectAttr(SN+'.outColor', SG+'.surfaceShader',f=1)
+			mc.setAttr( SN+'.outColor', random.uniform(0,1),random.uniform(0,1),random.uniform(0,1),type='double3')
+			#assign shader with name 
+			mc.select(MESH)
+			mc.hyperShade(assign=SN)
  	def imageCard(self):
 		selImage=mc.fileDialog()
 		material=mc.shadingNode('lambert',asShader=1)

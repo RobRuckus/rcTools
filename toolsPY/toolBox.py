@@ -170,7 +170,7 @@ def materialsUI():
 	mc.iconTextButton(w=icon,h=icon,ann="Assign/Create Layer MASK_RGB" ,l= "MASK_RGB" ,i=(iconPath+"MASK_RGB.png"),c=partial(delay,'mel.eval','("rcAssignLayer MASK_RGB")'))
 	mc.iconTextButton(w=icon,h=icon,ann="Assign/Create Layer CONTOUR" ,l= "" ,i= 'baseLattice.svg',c=partial(delay,'createMat','("CONTOUR")'))
 	mc.textField('CONDIA',w=icon-5,fn='boldLabelFont',tx='01')
-	mc.iconTextButton(w=icon,h=icon)
+	mc.iconTextButton(w=icon,h=icon,ann='Seperate Objects For Element',i=iconPath+'VC',c=partial(delay,'create.elementSeperate','()'))
 	mc.iconTextButton(w=icon,h=icon,ann='Create Image Card From File',i=iconPath+'picture_32',c=partial(delay,'create.imageCard','()'))
 	mc.iconTextButton(w=icon,ann= "Convert Selected Shader to MIA",i= iconPath +"MIA.png", c= partial(delay,'mel.eval','( "convert2MIA")'))
 	mc.iconTextButton(w=icon,h=icon,ann= "Add Gamma Correct Nodes to Selected Shader" ,i= 'gammaCorrect.svg', c=partial(delay,'mel.eval','( "gammaUIMain")'))
