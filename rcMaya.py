@@ -14,21 +14,6 @@ toolsJSX=os.path.join(importPath,'toolsJSX','')
 scriptsMEL=os.path.join(importPath,'scriptsMEL','')
 scriptsPY=os.path.join(importPath,'scriptsPY','')
 ##########
-def nameConvert(string):#Convert Node Names with | to _ 
-	string=string.replace('|','_')
-	if string.startswith('_'): return string[1:]
-	else: return string
-def backupFolder(): return str(datetime.now()).replace('-','.').replace(' ','-').replace(':','.')
-def userDirectory():#RETURN USERDIRECTORY FOR MAC/WIN
-	if 'darwin' in sys.platform:
-		userDirectory=os.environ['HOME']
-	else:
-		userDirectory=os.environ['USERPROFILE']
-	return userDirectory
-def scriptsDrive(folder=None):
-	if folder: return os.path.join(main.userDirectory(),'Google Drive','scripts',folder,'')
-	else: return os.path.join(main.userDirectory(),'Google Drive','scripts','')
-##########
 class ui():#UI Class for Maya
 	def __init__(self,name):
 		if 'dar' not in sys.platform: 
@@ -273,10 +258,10 @@ class create():
 			SG=each
 			MESH=mc.rename(each,each+'_MESH')
 			#create shader with name 
-			SN=mc.shadingNode('surfaceShader',n=SHADER,asShader=1)
+			SN=mc.shadingNode('lambert',n=SHADER,asShader=1)
 			SG=mc.sets(renderable=True,noSurfaceShader=True,empty=1,name=SG)
 			mc.connectAttr(SN+'.outColor', SG+'.surfaceShader',f=1)
-			mc.setAttr( SN+'.outColor', random.uniform(0,1),random.uniform(0,1),random.uniform(0,1),type='double3')
+			mc.setAttr( SN+'.color', random.uniform(0,1),random.uniform(0,1),random.uniform(0,1),type='double3')
 			#assign shader with name 
 			mc.select(MESH)
 			mc.hyperShade(assign=SN)

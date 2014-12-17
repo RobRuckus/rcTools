@@ -26,7 +26,7 @@ def _copy(source,target):
 		if os.path.isfile(sourceItem): shutil.copyfile(sourceItem,targetItem)
 		if os.path.isdir(sourceItem): _copyTree(sourceItem,targetItem)
 
-##Procedures		
+##Procedures	
 def AFX():
 	'''
 	Setup User Prefs and Scripts in After Effects 
@@ -52,4 +52,3 @@ def MAYA():
 	pass
 def remove():
 	pass
-	

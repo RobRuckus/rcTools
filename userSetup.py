@@ -7,4 +7,3 @@ def userDirectory():
 		userDirectory=os.environ['USERPROFILE']
 	return userDirectory
 sys.path.append(os.path.join(userDirectory()))
-

@@ -25,7 +25,6 @@ VERSION HISTORY
 	V1.5.0- Fixed issue with unknown nodes kicking error and not exporting Added Multi-Application Support Interface Update 
 	V1.2.0- Fixed error when baking namespace of referenced objects. updated to work with default win7 64bit location of CS5 breaks when updating an object that originally had "null*" (just delete the baked object before updating)
 */
-
 //tell application "Adobe After Effects CS3" 
 //DoScriptFile \"/var/tmp/AfterFx123.jsx\" 
 //end tell 
@@ -249,6 +248,19 @@ global proc btnCmdExport(){
 	//if (`window -exists AE_ExportWindow`) deleteUI AE_ExportWindow; select -cl;
 	}
 //WRITE
+global proc writeAppleScript(string $file,string $app){
+	string $cmd;
+	$cmd += "set theFile to \""+$file+"\"";
+	$cmd +="open for acces theFile";
+	$cmd +="set fileContents to (read theFIle )";
+	$cmd +="close access theFile";
+	$cmd +="tell application \""+$app+"\"";
+	$cmd +=" DoScript fileContents";
+	$cmd +="end tell";
+	int $fd= `fopen ($file + ".scpt") "w"`;
+	fprint  $fd ($cmd);
+	fclose $fd;
+	}	
 global proc writeJSX(string $name){
 	string $cmd;
 	$cmd += "for(var index=1;index<=app.project.numItems;index++){ //RENAME OLD \n";
@@ -288,7 +300,7 @@ global proc writeMA(string $name){
 	
 	int $camWidth= `getAttr defaultResolution.width`; 
 	int $camHeight= `getAttr defaultResolution.height`;
-	int $camAspect=`getAttr defaultResolution.deviceAspectRatio`;
+	//int $camAspect=`getAttr defaultResolution.deviceAspectRatio`;
 	
 	if(`checkBox -q -v chkBoxForce1080`){
 		setAttr defaultResolution.width 1920;
@@ -311,7 +323,7 @@ global proc writeMA(string $name){
 	if(`checkBox -q -v chkBoxForce1080`){
 	setAttr defaultResolution.width $camWidth;
 	setAttr defaultResolution.height $camHeight;
-	setAttr defaultResolution.deviceAspectRatio $camAspect;
+	setAttr defaultResolution.deviceAspectRatio ($camWidth/float($camHeight));
 	
 	
 	}
@@ -456,11 +468,11 @@ global proc rcExport2AE(){//UI
 	
 	separator -h 10 -style "in";
 	optionMenu -label  "Export to:" xportOptionMenu;
-		menuItem -label "Adobe After Effects CS5";
-		menuItem -label "Adobe After Effects CS6";
-		menuItem -label "Adobe After Effects CC2014";
+		menuItem -label "After Effects CS5";
+		menuItem -label "After Effects CS6";
+		menuItem -label "After Effects CC2014";
 		menuItem -label "Maya ASCII File";
-		optionMenu -e -sl 2 xportOptionMenu;
+		optionMenu -e -sl 3 xportOptionMenu;
 	separator -h 2 -style "in" -vis 1;
 	button  -l "EXPORT" -en 0 -ann "Must Have a Baked Camera to Export" -w $btnW -h 35 -align "center" -c "btnCmdExport" btnAEExport;
 	

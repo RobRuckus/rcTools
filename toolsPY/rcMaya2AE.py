@@ -25,7 +25,7 @@ except:
 import subprocess
 import os
 import maya.cmds as mc
-from rcTools.main import *
+from rcTools.rcMaya import *
 ###########
 from functools import partial
 def runMethod(method,string,*args): exec(method+string) #Delay Function
@@ -154,16 +154,16 @@ def UI():
 	mc.setParent('renderLayers2AFX')
 	########
 	mc.separator(h=15,style='in')
-	mc.checkBox('Objects',l='Objects:',vis=0,en=0,v=int(aePrefs.get('Objects')),cc=partial(runMethod,'updateINI',"('Objects')"))
+	mc.checkBox('Objects',l='Objects:',v=int(aePrefs.get('Objects')),cc=partial(runMethod,'aePrefs.checkBox',"('Objects')"))
 	mc.checkBox('chkImportRCam',l='Import render Cameras:',vis=0,v=0,en=0)
 	
-	mc.rowLayout(w=ui.rowWidth,vis=0,numberOfColumns=3)
+	mc.rowLayout(w=ui.rowWidth,numberOfColumns=3)
 	mc.button(w=ui.rowWidth/3,h=ui.btn_large,al='left',l=' + ',c=partial(runMethod,'btnTag','(mc.ls(sl=1))')) 
 	mc.button(en=0,h=ui.btn_large,w=ui.rowWidth/3,al='center',l=' - ',c=partial(runMethod,'btnNuke','("sel")')) 
 	mc.button(h=ui.btn_large,w=ui.rowWidth/3,al='right',l='NUKE',c=partial(runMethod,'btnNuke','("all")'))
 	mc.setParent('..')
 	
-	mc.iconTextScrollList('AEXObjListScroll',w=ui.rowWidth,h=200,vis=0)
+	mc.iconTextScrollList('AEXObjListScroll',w=ui.rowWidth,h=200)
 	mc.setParent('renderLayers2AFX')
 	########
 	mc.checkBox('chkAbsFrames',l='Use Timeline Frame Numbers',vis=0,v=1)
@@ -373,8 +373,7 @@ def writeJSX(sceneData,objects,flags):
 	return jsx.fileName
 
 #################
+print  __name__
 if __name__== 'rcMaya2AE' :
 	ui.win(floating=True)
 	UI()
-
-

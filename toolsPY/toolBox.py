@@ -9,7 +9,7 @@ import maya.mel as mel
 from functools import partial
 def delay(method,string,*args): exec(method+string) #Delay Function
 ################
-from rcTools.main import *
+from rcTools.rcMaya import *
 ################source every mel in toolsMEL: toolsMEL
 for each in os.listdir(toolsMEL):
 	file,ext=os.path.splitext(each)

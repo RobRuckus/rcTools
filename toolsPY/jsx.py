@@ -1,8 +1,6 @@
 import os
 import sys
 import subprocess
-from rcTools import main 
-#from rcTools.toolsPY import rcMaya2AE as AE
 class write(main.scriptFile):
 	def __init__(self,filePath):
 		self.folder=filePath
