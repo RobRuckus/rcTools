@@ -65,6 +65,7 @@ def scriptsUI():
 			mc.button(w=ui.rowWidth,l=file,c=partial(delay,'btnScript','("'+file+'")'))
 def assignUI():
 	mc.frameLayout('ASSIGNFRAME',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='ASSIGN')
+	mc.floatSliderGrp('lambertslider',label='Lambert1 Transparent',minValue=0,maxValue=1,cc=partial(delay,'lambertset','()'))
 	mc.rowColumnLayout(numberOfColumns=2,columnWidth=[(1,ui.rowWidth/2),(2,ui.rowWidth/2)])
 	
 	mc.columnLayout('SHAPECTRL',w=ui.rowWidth/2-5)
@@ -149,7 +150,7 @@ def assignUI():
 	mc.button(h=ui.btn_small,l='ON',c=partial(delay,'set.flags','(value=1)'))
 	mc.button(h=ui.btn_small,l='OFF',c=partial(delay,'set.flags','(value=0)'))
 	mc.button(h=ui.btn_small,l='NUKE',en=0,ann='Remove Overrides for object',c=partial(delay,'setRenderFlags','(value=0)'))
-	mc.button(h=ui.btn_small,l='XRAY',en=0,ann='Remove Overrides for object',c=partial(delay,'setRenderFlags','(value=0)'))
+	mc.button(h=ui.btn_small,l='XRAY',ann='Remove Overrides for object',c=partial(delay,'set.xray','()'))
    
 	mc.setParent('MAIN')  
 

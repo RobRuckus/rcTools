@@ -365,6 +365,9 @@ class set():
             if not mc.confirmDialog(t='rc.Tools',button=['Yes','No'],m='Set Render to MR?',cb='No',ma='center',ds='No')=='No':
                 mc.setAttr('defaultRenderGlobalist.currentRenderer','mentalRay',type='string')
     rlmAttrs()
+    def xray(self):
+    	for each in mc.ls(sl=1,s=1,dag=1): 
+    		mc.displaySurface(each,xRay=not mc.displaySurface(each,q=1,xRay=1)[0])
     def imagePrefix(self,option='L__L'):
     	if option=='S__L__L': prefix =str(mc.getAttr('renderLayerManager.shotName'))+"/<RenderLayer>/<RenderLayer>"
     	if option=='S__L__L.P': prefix =str(mc.getAttr('renderLayerManager.shotName'))+"/<RenderLayer>/<RenderLayer>.<RenderPass>"
@@ -435,6 +438,9 @@ class set():
         else:
             for each in ls.renderAtts(): mc.checkBoxGrp(each,e=1,v1=value)
 ########
+def lambertset():
+	num=mc.floatSliderGrp('lambertslider',q=1,value=1)
+	mc.setAttr('lambert1.transparency',num,num,num,type='double3')
 ls=ls()
 create=create()
 set=set()
