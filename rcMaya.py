@@ -56,23 +56,25 @@ class ui():#UI Class for Maya
 class sceneData():#
 	def ws(self): return os.path.normpath(mc.workspace(q=True,rd=True))
 	def wsImagesName(self): return mc.workspace('images',q=True,fileRuleEntry=True)
-	def wsImagesFolder(self): return os.path.normpath(os.path.join(self.ws,self.wsImagesName))
+	def wsImagesFolder(self): return os.path.normpath(os.path.join(self.ws(),self.wsImagesName()))
 	def frameWidth(self): return mc.getAttr('defaultResolution.width')
 	def frameHeight(self): return mc.getAttr('defaultResolution.height')
 	def framePad(self): return mc.getAttr('defaultRenderGlobals.extensionPadding')
+	def startFrame(self):return mc.getAttr('defaultRenderGlobals.startFrame')
+	def endFrame(self):return mc.getAttr('defaultRenderGlobals.endFrame')
 	def minTime(self): return int(mc.playbackOptions(q=True,minTime=True))
 	def maxTime(self): return int(mc.playbackOptions(q=True,maxTime=True))
 	def fps(self): return  {"game":15.0, "film":24.0, "pal":25.0, "ntsc":30.0, "show":48.0, "palf":50.0, "ntscf":60.0}[mc.currentUnit(q=True, fullName=True, time=True)]
-	def timelineSeconds(self): return  (mc.playbackOptions(q=1,maxTime=1)+1)/self.fps()
+	def timelineSeconds(self): return ((self.endFrame()-self.startFrame())/self.fps())#return  (mc.playbackOptions(q=1,maxTime=1)+1)/self.fps()
 	def cameras(self): return [str(mc.listRelatives(sceneCamera,p=1,f=1)[0]) for sceneCamera in mc.ls(ca=1)]
 	def renderCameras(self): return [str(mc.listRelatives(renderCamera,p=1,f=1)[0]) for renderCamera in mc.ls(ca=1) if mc.getAttr(str(renderCamera)+'.renderable')]
-	def renderLayers(self): return  [str(x) for x in mc.ls(typ='renderLayer')]#convert unicode list to string list USES defaultRenderlayer = NEEDED for Logic
+	def renderLayers(self): return  [str(x) for x in mc.ls(typ='renderLayer') if not':' in   x]#convert unicode list to string list USES defaultRenderlayer = NEEDED for Logic
 	def renderLayerNames(self): return  ['masterLayer' if 'defaultRenderLayer' in x else x for x in self.renderLayers()]
 	def imageFilePrefix(self): return mc.getAttr('defaultRenderGlobals.imageFilePrefix')# Prefix from Render Globals : <RenderLayers>/<RenderPass>/<RenderLayer>.<RenderPass>
 	def imageFileSuffix(self): return  ''.join(mc.renderSettings(fin=1,lut=1))#masterLayer/<RenderPass>/masterLayer.0001.png
 	def imageFilePath(self): return  ''.join(mc.renderSettings(fin=1,lut=1,fp=1))#PROJECT/IMAGES/masterLayer/<RenderPass>/masterLayer.0001.png
-	def outputLayers(self): return self.renderOutput[0]
-	def outputImages(self): return self.renderOutput[1]
+	def outputLayers(self): return self.renderOutput()[0]
+	def outputImages(self): return self.renderOutput()[1]
 	def renderOutput(self):
 		outputLayers= []
 		outputImages=[]
@@ -206,22 +208,7 @@ class ls():
         p=subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
         return iter(p.stdout.readline,b'')
 class create():
-	def elementSeperate(self):
-		import random
-		sel=mc.ls(sl=1)
-		for each in sel:
-			SHADER=each+'_mat'
-			SG=each
-			MESH=mc.rename(each,each+'_MESH')
-			#create shader with name 
-			SN=mc.shadingNode('lambert',n=SHADER,asShader=1)
-			SG=mc.sets(renderable=True,noSurfaceShader=True,empty=1,name=SG)
-			mc.connectAttr(SN+'.outColor', SG+'.surfaceShader',f=1)
-			mc.setAttr( SN+'.color', random.uniform(0,1),random.uniform(0,1),random.uniform(0,1),type='double3')
-			#assign shader with name 
-			mc.select(MESH)
-			mc.hyperShade(assign=SN)
- 	def imageCard(self):
+	def imageCard(self):
 		selImage=mc.fileDialog()
 		material=mc.shadingNode('lambert',asShader=1)
 		fileNode=mc.shadingNode('file',asTexture=1)
@@ -438,9 +425,17 @@ class set():
         else:
             for each in ls.renderAtts(): mc.checkBoxGrp(each,e=1,v1=value)
 ########
-def lambertset():
+def rView():
+    panels=mc.getPanel(scriptType='renderWindowPanel')
+    form=mc.renderWindowEditor(panels[0],q=True,parent=True)
+    scroll= 'pass' #form - editorform +'scrollBarForm|scrollBar'
+    curIndex= mc.intScrollBar(scroll,q=True)
+    maxIndex= mc.renderWindowEditor('renderView',q=True,nbImages=True)
+
+def lambertset():#transparancy slider for toolbox
 	num=mc.floatSliderGrp('lambertslider',q=1,value=1)
 	mc.setAttr('lambert1.transparency',num,num,num,type='double3')
+#####
 ls=ls()
 create=create()
 set=set()

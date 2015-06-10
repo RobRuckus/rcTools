@@ -319,14 +319,12 @@ global proc writeMA(string $name){
 	file -force -options "v=0" -typ "mayaAscii" -es (`toNativePath($name + ".ma")`);
 	//RETURN SCENE TO DEFAULTS
 	currentUnit -l $workingUnits;
-	
 	if(`checkBox -q -v chkBoxForce1080`){
 	setAttr defaultResolution.width $camWidth;
 	setAttr defaultResolution.height $camHeight;
 	setAttr defaultResolution.deviceAspectRatio ($camWidth/float($camHeight));
-	
-	
 	}
+	if ($filetype[0]== "mayaBinary") file -type "mayaBinary";
  }
  
 //BackEnd
