@@ -29,7 +29,7 @@ def _copy(source,target):
 ##Procedures	
 def AFX():
 	'''
-	Setup User Prefs and Scripts in After Effects 
+	Copy User Prefs and Scripts in After Effects 
 	
 	'''
 	#copy personal scripts
