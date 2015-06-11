@@ -2,7 +2,7 @@ import os
 from pymel.core import *
 from pymel.all import *
 from PySide import QtGui
-from rcTools2.ui.loadUI import get_maya_window, load_ui_type
+from rcTools.ui.loadUI import get_maya_window, load_ui_type
 
 ui_file= os.path.join(os.path.dirname(os.path.realpath(__file__)),'FileManager.ui')#path to ui file 
 

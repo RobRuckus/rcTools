@@ -1,6 +1,10 @@
 import os
 import sys
 import subprocess
+import rcTools.main as main
+import rcTools.toolsPY.rcMaya2AE as AE
+
+
 class write(main.scriptFile):
 	def __init__(self,filePath):
 		self.folder=filePath
@@ -33,7 +37,7 @@ class write(main.scriptFile):
 		self.write('	if   (item.name=="%s"){ %s = item;};'%(folderName,folderIndex))
 		self.write('	}')
 		self.write('if(%s==""){%s=app.project.items.addFolder("%s")};'%(folderIndex,folderIndex,folderName))	
-	def comp(self,sceneData):#ADDCOMP 
+	def comp(self,sceneData):#COMP 
 		self.write('var shotName="%s";'%sceneData.shotName())
 		self.write('var width=%d;'%sceneData.frameWidth())
 		self.write('var height=%d;'%sceneData.frameHeight())
@@ -48,14 +52,14 @@ class write(main.scriptFile):
 		self.write('	}')
 		self.write('if(shotComp==""){ shotComp=app.project.items.addComp(shotName,width,height,1,seconds,fps);}')
 		
-	def layers(self,sceneData):
-		self.write('var layers=%s;'%layerNames)
+	def layers(self,sceneData):#LAYERS
+		self.write('var layers=%s;'%sceneData.outputLayers())
 		self.write("//Layers ")
 		self.write('for(layerIndex=0;layerIndex<=layers.length-1;layerIndex++){')
 		self.write('	var layerPH="";')
 		self.write('	var layer="";')
 		self.write('	for(var i=1;i<=%s.numItems;i++){'%self.imageFolderIndex)
-		self.write('		if (%s.item(i).name==layers[layerIndex]){ layerPH=%s.item(i)}'%(self.imageFolderIndex,self.imageFolderindex))
+		self.write('		if (%s.item(i).name==layers[layerIndex]){ layerPH=%s.item(i)}'%(self.imageFolderIndex,self.imageFolderIndex))
 		self.write('	}')
 		self.write('	if(layerPH==""){')
 		self.write('		layerPH=app.project.importPlaceholder(layers[layerIndex],width,height,fps,seconds);')
@@ -69,13 +73,16 @@ class write(main.scriptFile):
 		self.write('	layerPH.name=layers[layerIndex];')
 		self.write('	}')
 		self.write('}') 		
+	def nulls(self,nullObjects):#NULLS
+		pass
 	def retrieve(self,itemType):
 		
 		pass
 		
 	#########
-	def do(self):#execute written jsx by commandline (writesApplescript for mac)
-		self.write('app.endUndoGroup()')
+	def run(self):#execute written jsx by commandline (writesApplescript for mac)
+		#TODO check to see if endUNDO already exists (remove)
+		#self.write('app.endUndoGroup()')
 		if 'darwin' in sys.platform:
 			command='open '+aePrefs.get('AELoc').replace(' ','\ ') +'\n'+ 'osascript ' + self._writeAppleScript(self.fileName,os.path.basename(aePrefs.get('AELoc')).split('.')[0])
 			subprocess.Popen(command,shell=True)
@@ -83,3 +90,4 @@ class write(main.scriptFile):
 			command=AE.aePrefs.get('AELoc') +' -r ' +self.fileName
 			subprocess.Popen(command)
 			
+

@@ -13,8 +13,10 @@ browselistWidth=250
 targetlistWidth=370
 row1=100
 row2=20
+fieldFont='boldLabelFont'
 ###############
 ui=ui('FileMGR')
+sceneData=sceneData()
 def UI():
         rlmAttrs()
         images=os.path.join(mc.workspace(q=1,rd=1),"images",mc.getAttr("renderLayerManager.shotName"))
@@ -56,7 +58,7 @@ def UI():
 	mc.text('UNITS:  ',align='right',fn='tinyBoldLabelFont')
 	mc.text(str(mc.currentUnit(query=True)),align='left',fn='tinyBoldLabelFont')
 	mc.text('FPS:  ',align='right',fn='tinyBoldLabelFont')
-	mc.text(str(getSceneData()['fps']),align='left',fn='tinyBoldLabelFont')
+	mc.text(str(sceneData.fps()),align='left',fn='tinyBoldLabelFont')
 	mc.text('RENDER:  ',align='left',fn='tinyBoldLabelFont')
 	mc.text(str(mc.getAttr('defaultResolution.width'))+'x'+str(mc.getAttr('defaultResolution.height')),align='left',fn='tinyBoldLabelFont')
 	mc.setParent('..')
@@ -76,7 +78,7 @@ def l2fOutputFiles():
 			if mc.getAttr('renderLayerManager.enablePrefixRenderLayer'): l2fPrefix+= str(mc.getAttr('renderLayerManager.prefixRenderLayer'))+'.'
 			if mc.getAttr('renderLayerManager.enableSingleFileName'): return [l2fPrefix+ str(mc.getAttr('renderLayerManager.singleFileName'))+'.mb']
 			else:
-				for each in getSceneData()['layerNames']: l2fFiles.append(l2fPrefix+each+'.mb')
+				for each in sceneData.outputLayers() : l2fFiles.append(l2fPrefix+each+'.mb')
 		return l2fFiles
 def l2fOutputFolder():
 		l2fOutput=''
@@ -148,7 +150,7 @@ def bldBrowseList():#only on init
 	mc.optionMenu('browseOpt',e=1,sl=2)#Default
 	
 	mc.setParent('..')
-	bldBrowseList_scroll(os.path.join(getSceneData()['workspace'],'scenes/'))#Default
+	bldBrowseList_scroll(os.path.join(sceneData.ws(),'scenes/'))#Default
 def bldBrowseList_nav(opt):
 	if opt=='up':
 		bldBrowseList_scroll(mc.iconTextScrollList('browserlist',q=1,ann=1).rsplit('/',1)[0])
@@ -242,7 +244,7 @@ def bldTargetList_scroll(source):#init and refresh
 		for each in l2fOutputFiles():
 			mc.iconTextScrollList('targetlist',e=1,a=each,en=0,ann=l2fOutputFolder())
 	if opt==2:#Not Called!!
-		for each in getSceneData()['outputLayers']:
+		for each in sceneData.outputLayers():
 			mc.iconTextScrollList('targetlist',e=1,a=each,ann=l2fOutputFolder())
 		mc.iconTextScrollList('targetObj',ams=1,ra=1)
 	if not sel==None : 
@@ -260,11 +262,11 @@ def bldTargetList_scroll(source):#init and refresh
 def bldBrowseList_opt():#refresh Browse list only on 
 	opt=mc.optionMenu('browseOpt',q=1,sl=1)
 	if opt==1:
-		bldBrowseList_scroll(getSceneData()['workspace'])
+		bldBrowseList_scroll(sceneData.ws())
 	if opt==2:
-		bldBrowseList_scroll(os.path.join(getSceneData()['workspace'],'scenes/'))	
+		bldBrowseList_scroll(os.path.join(sceneData.ws(),'scenes/'))	
 	if opt==3:
-		bldBrowseList_scroll(getSceneData()['wsImagesFolder'])
+		bldBrowseList_scroll(sceneData.ws())
 	if opt==4:
 		bldBrowseList_scroll(l2fOutputFolder())
 	bldTargetList_column('browser')	

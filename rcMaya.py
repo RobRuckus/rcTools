@@ -71,8 +71,8 @@ class sceneData():#
 	def imageFilePrefix(self): return mc.getAttr('defaultRenderGlobals.imageFilePrefix')# Prefix from Render Globals : <RenderLayers>/<RenderPass>/<RenderLayer>.<RenderPass>
 	def imageFileSuffix(self): return  ''.join(mc.renderSettings(fin=1,lut=1))#masterLayer/<RenderPass>/masterLayer.0001.png
 	def imageFilePath(self): return  ''.join(mc.renderSettings(fin=1,lut=1,fp=1))#PROJECT/IMAGES/masterLayer/<RenderPass>/masterLayer.0001.png
-	def outputLayers(self): return self.renderOutput[0]
-	def outputImages(self): return self.renderOutput[1]
+	def outputLayers(self): return self.renderOutput()[0]
+	def outputImages(self): return self.renderOutput()[1]
 	def renderOutput(self):
 		outputLayers= []
 		outputImages=[]
