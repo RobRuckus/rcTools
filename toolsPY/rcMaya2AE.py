@@ -26,6 +26,7 @@ import subprocess
 import os
 import maya.cmds as mc
 from rcTools.rcMaya import *
+
 ###########
 from functools import partial
 def runMethod(method,string,*args): exec(method+string) #Delay Function
@@ -182,6 +183,12 @@ def tagListSelect():
 	for each in mc.iconTextScrollList('AEXObjListScroll',q=1,si=1): sel.append(each.replace("|","_")+'_pos')
 	mc.select(sel)
 def btnExport():
+	
+	#xport=jsx.write(os.path.join(sceneData.ws(),'data','_AFXImport.jsx'))
+	#xport.comp(sceneData())
+	#xport.layers(sceneData())
+	#xport.run()
+	
 	jsxFile=writeJSX(sceneData(),getTaggedObjData(),getOutputFlags())
 	if 'darwin' in sys.platform:#MAC COMMAND LINE
 		command='open ' + aePrefs.get('AELoc').replace(' ','\ ') +'\n'+ 'osascript ' + writeAppleScript(jsxFile,os.path.basename(aePrefs.get('AELoc')).split('.')[0])
