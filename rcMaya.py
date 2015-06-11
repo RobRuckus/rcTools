@@ -57,6 +57,13 @@ class sceneData():#
 	def ws(self): return os.path.normpath(mc.workspace(q=True,rd=True))
 	def wsImagesName(self): return mc.workspace('images',q=True,fileRuleEntry=True)
 	def wsImagesFolder(self): return os.path.normpath(os.path.join(self.ws(),self.wsImagesName()))
+	def shotName(self): 
+		try:
+			return mc.getAttr('renderLayerManager.shotName')
+		except:
+			rlmAttr()
+		finally:
+			return mc.getAttr('renderLayerManager.shotName')
 	def frameWidth(self): return mc.getAttr('defaultResolution.width')
 	def frameHeight(self): return mc.getAttr('defaultResolution.height')
 	def framePad(self): return mc.getAttr('defaultRenderGlobals.extensionPadding')

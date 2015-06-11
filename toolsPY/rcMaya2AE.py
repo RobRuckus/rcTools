@@ -269,10 +269,11 @@ def writeJSX(sceneData,objects,flags):
 		maxTimeName=str(sceneData.maxTime()).zfill(sceneData.framePad())
 		images=sceneData.renderOutput()[1]
 	else:#TMP Imagelocation
-		minTimeName=str(str(mc.currentTime(q=True)).zfill(sceneData.framePad()))
+		minTimeName=str(str(int(mc.currentTime(q=True))).zfill(sceneData.framePad()))
 		maxTimeName=str((str(mc.currentTime(q=True)+1)).zfill(sceneData.framePad()))
-		images=sceneData.outputImages()
+		images=sceneData.renderOutput()[1]
 		images=[str(img.replace(sceneData.wsImagesFolder(),os.path.join(sceneData.wsImagesFolder(),'tmp'))) for img in images]
+		images=[str(img.replace('0001',minTimeName)) for img in images]
 	############
 	#imageNameExtension='[%s-%s]%s'%(minTimeName,maxTimeName,os.path.splitext(sceneData.renderOutput()[0])[1]) #[004-0091].png
 	#if aePrefs.get('ImageLabel')=='Label1': layerNames=[str(rlmAttrs().get('shotName'))+'.'+str(x) + str(imageNameExtension) for x in sceneData['outputLayers']]#ShotName.Layer.[000=000]
