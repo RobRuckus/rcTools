@@ -1,0 +1,36 @@
+for obj in dict.values(objects):
+			if len(obj)>0:
+				for each in obj:
+					each=''.join(each)
+					objType=mc.getAttr(each+'.AECompFlag')
+					if objType=='light':
+						jsx.write('var newObj=shotComp.layers.addLight("'+each+'",[0,0])'+'')
+						jsx.write('   newObj.autoOrient=AutoOrientType.NO_AUTO_ORIENT;')
+					if objType=='transform':
+						jsx.write('var newObj= shotComp.layers.addNull(shotComp.duration) ')
+						jsx.write('	newObj.name="'+each+'";')
+						jsx.write('	newObj.threeDLayer=true;')
+					if objType=='camera':
+						jsx.write('var newObj= shotComp.layers.addCamera("'+each+'",[0,0])'+'')
+						#jsx.write('	newObj.property("zoom").
+					for index in range (int(sceneData.maxTime-sceneData.minTime)+1):#KEYFRAMES
+						curAETime=(index+sceneData.minTime)/sceneData['fps']
+						posValue = [i for sub in mc.getAttr(each.replace("|","_")+'_pos.translate',t=index+sceneData.minTime) for i in sub]#list with a tuple to list of the tuple 
+						rotValue= [i for sub in mc.getAttr(each.replace("|","_")+'_pos.rotate',t=index+sceneData.minTime) for i in sub]
+						#jsx.write('		newObj.position.setValueAtTime('+str(curAETime)+','+str(posValue)+');')
+						#jsx.write('		newObj.xRotation.setValueAtTime('+str(curAETime)+','+str(rotValue[0])+');')
+						#jsx.write('		newObj.yRotation.setValueAtTime('+str(curAETime)+','+str(rotValue[1])+');')
+						#jsx.write('		newObj.zRotation.setValueAtTime('+str(curAETime)+','+str(rotValue[2])+');')
+	#class scriptsJob:
+	#def __init__(self):
+		#self.myFunction()
+		#self.createScriptJob()
+	#def createScriptJob(self):
+		#self.scriptJobNum=mc.scriptJob(ct=['delete',self.myFunction],killwithScene=1)
+	#def deleteScriptJob(self):
+		#mc.scriptJob(k=self.scriptJobNum,force=1)
+	#def myFunction(self):
+		#if (mc.objExists('AEpyList'):
+			#for each in mc.iconTextScrollList('AEXObjListScroll'
+		#buildUILists()
+#scriptsJob=scriptsJob()	
