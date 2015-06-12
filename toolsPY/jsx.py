@@ -2,7 +2,8 @@ import os
 import sys
 import subprocess
 import rcTools.main as main
-import rcTools.toolsPY.rcMaya2AE as AE
+import maya.cmds as mc
+from rcTools.toolsPY.rcMaya2AE import aePrefs as AE
 class write(main.scriptFile):
 	def __init__(self,filePath):
 		self.folder=filePath
@@ -15,6 +16,7 @@ class write(main.scriptFile):
 		self.imageFolderIndex=self.imageFolderName+'Index'
 		self.write('app.beginUndoGroup("rcCommand")')
 		self.addFolder(self.imageFolderName)
+	
 		
 	def _writeAppleScript(self,jsxFile,AELoc):#write Applescript to Execute Javascript
 		script=main.scriptFile(os.path.join(main.userDirectory(),'runJSX.scpt'))
@@ -62,7 +64,7 @@ class write(main.scriptFile):
 		self.write(' ')
 		
 	def layers(self,sceneData):#LAYERS
-		if AE.aePrefs.get('ImageSource')=='images':
+		if AE.get('ImageSource')=='images':
 			minTimeName=str(sceneData.minTime()).zfill(sceneData.framePad())
 			maxTimeName=str(sceneData.maxTime()).zfill(sceneData.framePad())
 			images=sceneData.renderOutput()[1]
@@ -74,6 +76,8 @@ class write(main.scriptFile):
 			images=[str(img.replace('0001',minTimeName)) for img in images]
 		self.write('var layers=%s;'%sceneData.outputLayers())
 		self.write('var images=%s;'%images)
+		#for each in sceneData.outputLayers():
+			#self.write('var %s=""'%(each+'Item'))
 		self.write("//Layers ")
 		self.write('for(layerIndex=0;layerIndex<=layers.length-1;layerIndex++){')
 		self.write('	var layerPH="";')
@@ -88,12 +92,16 @@ class write(main.scriptFile):
 		self.write('		layer.enabled= false;')
 		self.write('		layer.moveToEnd();')
 		self.write('	}')
-		self.write('	if(File(images[layerIndex].replace(/\//gi,"\\\\")).exists){')
-		self.write('	layerPH.replaceWithSequence(new File(images[layerIndex].replace(/\//gi,"\\\\")),true);')
+		self.write('	if(File(images[layerIndex]).exists){')#replace(/\//gi,"\\\\")) OS BACKSLASHING
+		self.write('	layerPH.replaceWithSequence(new File(images[layerIndex]),true);')#replace(/\//gi,"\\\\")
 		self.write('	layerPH.name=layers[layerIndex];')
+		self.write('	layer.enabled=true;')
+		self.write('	app.executeCommand(app.findMenuCommandId("Fit to Comp Width"));')
 		self.write('	}')
-		self.write('}') 
-		self.write(' ')		
+		self.write('}')
+		self.write('	for(index=1;index<=shotComp.numLayers;index++){')
+		self.write('		shotComp.layers[index].selected=true;')
+		self.write('		app.executeCommand(app.findMenuCommandId("Fit to Comp")); }')	
 	def nulls(self,nullObjects):#NULLS
 		pass
 	def retrieve(self,itemType):

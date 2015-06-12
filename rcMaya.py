@@ -53,10 +53,10 @@ class ui():#UI Class for Maya
 		for each in range(columns):
 			pass
 			#mc.iconTextButton(w=self.rowWidth/columns,h=self.rowWidth/columns,args)#pass each arg of each button 
-class sceneData():#
-	def ws(self): return os.path.normpath(mc.workspace(q=True,rd=True))
+class sceneData():#Custom Returns of Scene Data
+	def ws(self): return mc.workspace(q=True,rd=True)
 	def wsImagesName(self): return mc.workspace('images',q=True,fileRuleEntry=True)
-	def wsImagesFolder(self): return os.path.normpath(os.path.join(self.ws(),self.wsImagesName()))
+	def wsImagesFolder(self): return os.path.join(self.ws(),self.wsImagesName())#removed os.path.normpath
 	def shotName(self): 
 		try:
 			return mc.getAttr('renderLayerManager.shotName')
@@ -102,7 +102,7 @@ class sceneData():#
 					else: connections=['masterBeauty']
 					for camera in self.renderCameras():       
 						for connection in connections:
-							outputImages.append(outReplacedLayer.replace('<RenderPass>',connection).replace('defaultRenderLayer','masterLayer').replace(nameConvert(self.renderCameras[0]),camera))
+							outputImages.append(outReplacedLayer.replace('<RenderPass>',connection).replace('defaultRenderLayer','masterLayer').replace(nameConvert(self.renderCameras[0]),camera))#BREAKS ON MULTI CAM
 							outputLayers.append('%s.%s.%s'%(camera,layer.replace('defaultRenderLayer','masterLayer'),connection))      
 		return[[str(x) for x in outputLayers],[str(x) for x in outputImages]]
 ##########

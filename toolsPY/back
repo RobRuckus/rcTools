@@ -1,0 +1,113 @@
+def writeAppleScript(jsxFile,AEApp):
+	#script=scriptFile(userDirectory(),'runJSX.scpt')
+	script=scriptFile(os.path.join(userDirectory(),'runJSX.scpt'))
+	script.write('set theFile to "%s"'%jsxFile)
+	script.write('open for access theFile')
+	script.write('set fileContents to (read theFIle)')
+	script.write('close access theFile')
+	script.write('tell application "%s"'%AEApp)
+	script.write('  DoScript fileContents')
+	script.write('end tell')
+	return script.fileName
+def writeJSX(sceneData,objects,flags):
+	imageFolderName='_fromMaya'
+	
+	def toAELens(focalLength,debug=1):
+		lens=focalLength*(sceneData.get('width')*0.03125)
+		if debug: print lens
+		else: return lens
+	def toAERot(rotation	,debug=1):
+		AErot=rotation
+		if debug: print AErot
+		else: return AErot
+	def toAEScale(position,debug=1):
+		AEpos=position
+		if debug: print AEpos
+		else: return AEpos
+	############
+	jsx=scriptFile(os.path.join(sceneData.ws(),'data','_AFXImport.jsx'))
+	images=sceneData.renderOutput()[1]
+	if aePrefs.get('ImageSource')=='images':
+		minTimeName=str(sceneData.minTime()).zfill(sceneData.framePad())
+		maxTimeName=str(sceneData.maxTime()).zfill(sceneData.framePad())
+	else:#TMP Imagelocation
+		minTimeName=str(str(int(mc.currentTime(q=True))).zfill(sceneData.framePad()))
+		#maxTimeName=str((str(mc.currentTime(q=True)+1)).zfill(sceneData.framePad()))
+		print sceneData.wsImagesFolder()
+		images=[str(img.replace(sceneData.wsImagesFolder(),os.path.join(sceneData.wsImagesFolder(),'tmp')).replace('0001',minTimeName)) for img in images]
+		print images
+		#images=[str(img.replace('0001',minTimeName)) for img in images]
+	############
+	#imageNameExtension='[%s-%s]%s'%(minTimeName,maxTimeName,os.path.splitext(sceneData.renderOutput()[0])[1]) #[004-0091].png
+	#if aePrefs.get('ImageLabel')=='Label1': layerNames=[str(rlmAttrs().get('shotName'))+'.'+str(x) + str(imageNameExtension) for x in sceneData['outputLayers']]#ShotName.Layer.[000=000]
+	#if aePrefs.get('ImageLabel')=='Label2': layerNames=[str(rlmAttrs().get('shotName'))+'.'+str(x) for x in sceneData['outputLayers']]#ShotName.Layer
+	#if aePrefs.get('ImageLabel')=='Label3': layerNames=[str(x) for x in sceneData['outputLayers']]#Layer
+	############
+	jsx.write('app.beginUndoGroup("rcMaya2AE");')
+	############
+	jsx.write('var shotName="%s";'%mc.getAttr('renderLayerManager.shotName'))
+	jsx.write('var imageFolderName="%s";'%imageFolderName)
+	jsx.write('var width=%d;'%sceneData.frameWidth())
+	jsx.write('var height=%d;'%sceneData.frameHeight())
+	jsx.write('var fps=%d;'%sceneData.fps())
+	jsx.write('var layers=%s;'%sceneData.renderOutput()[0])#TODO format from iconTextScrollList
+	if aePrefs.get('ImageSource')=='images': jsx.write('var seconds=%s;'%sceneData.timelineSeconds())
+	else: jsx.write('var seconds=%s;'%10)#default 10sec for stills
+	jsx.write('var images=%s;'%images)
+	jsx.write('//ADD IF NOT EXISTS IMAGE FOLDER AND INDEX \n')
+	jsx.write('var imageFolder="";')
+	jsx.write('for(var i=1;i<=app.project.numItems;i++){\n')
+	jsx.write('	var item=app.project.item(i);\n')
+	jsx.write('	if   (item.name==imageFolderName){ imageFolder = item;};')
+	jsx.write('	}')
+	jsx.write('if(imageFolder==""){imageFolder=app.project.items.addFolder(imageFolderName)};')
+	#else update Shot Folder
+	jsx.write('//ADD COMP ELSE UPDATE')
+	jsx.write('var shotComp="";')
+	jsx.write('for(var i=1;i<=app.project.numItems;i++){')
+	jsx.write('	var item=app.project.item(i);')
+	jsx.write('	if   (item.name==shotName){ shotComp = item;};')
+	jsx.write('	}')
+	jsx.write('if(shotComp==""){ shotComp=app.project.items.addComp(shotName,width,height,1,seconds,fps);}')
+	jsx.write(' else {')
+	jsx.write('		shotComp.name=shotName;')
+    	jsx.write('		shotComp.width=width;')
+    	jsx.write('		shotComp.height=height;')
+    	jsx.write('		shotComp.seconds=seconds;')
+    	jsx.write('		shotComp.fps=fps;')
+    	jsx.write('		}')
+	jsx.write("//IMPORT  ")
+	#LAYERS
+	if flags['layers']:
+		jsx.write("//Layers ")
+		jsx.write('for(layerIndex=0;layerIndex<=layers.length-1;layerIndex++){')
+		jsx.write('	var layerPH="";')
+		jsx.write('	var layer="";')
+		jsx.write('	for(var i=1;i<=imageFolder.numItems;i++){')
+		jsx.write('		if (imageFolder.item(i).name==layers[layerIndex]){ layerPH=imageFolder.item(i)}')
+		jsx.write('	}')
+		jsx.write('	if(layerPH==""){')
+		jsx.write('		layerPH=app.project.importPlaceholder(layers[layerIndex],width,height,fps,seconds);')
+		jsx.write('		layerPH.parentFolder=imageFolder;')
+		jsx.write('		layer=shotComp.layers.add(layerPH,seconds);')
+		jsx.write('		layer.enabled= false;')
+		jsx.write('		layer.moveToEnd();')
+		jsx.write('	}')
+		jsx.write('	if(File(images[layerIndex]).exists){')#replace(/\//gi,"\\\\")) OS BACKSLASHING
+		jsx.write('	layerPH.replaceWithSequence(new File(images[layerIndex]),true);')#replace(/\//gi,"\\\\")
+		jsx.write('	layerPH.name=layers[layerIndex];')
+		jsx.write('	layer.enabled=true;')
+		jsx.write('	app.executeCommand(app.findMenuCommandId("Fit to Comp Width"));')
+		jsx.write('	}')
+		jsx.write('}')
+		jsx.write('	for(index=1;index<=shotComp.numLayers;index++){')
+		jsx.write('		shotComp.layers[index].selected=true;')
+		jsx.write('		app.executeCommand(app.findMenuCommandId("Fit to Comp")); }')
+
+	#OBJECTS WIP
+	if flags['objects']:
+		jsx.write("//OBJECTS ")
+		jsx.write('app.endUndoGroup()')
+	return jsx.fileName
+
+
