@@ -439,9 +439,6 @@ def rView():
     curIndex= mc.intScrollBar(scroll,q=True)
     maxIndex= mc.renderWindowEditor('renderView',q=True,nbImages=True)
 
-def lambertset():#transparancy slider for toolbox
-	num=mc.floatSliderGrp('lambertslider',q=1,value=1)
-	mc.setAttr('lambert1.transparency',num,num,num,type='double3')
 #####
 ls=ls()
 create=create()

@@ -8,6 +8,7 @@ def runMethod(method,string,*args): exec(method+string) #Delay Function
 ################
 import maya.cmds as mc 
 from rcTools.rcMaya import *
+from rcTools.toolsPY import rcMaya2AE as AE
 ################
 browselistWidth=250
 targetlistWidth=370

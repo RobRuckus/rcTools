@@ -30,7 +30,7 @@ from rcTools.main import *
 
 ###########
 from functools import partial
-def runMethod(method,string,*args): exec(method+string) #Delay Function
+def runMethod(method,string,*args): exec(method+string) #Button Delay Function
 ###########
 #UI VARIABLES FROM MAIN
 ui=rc.ui('Maya2AE')
@@ -61,6 +61,7 @@ class aePrefs(iniFile):#aePrefs.ini
 	def set(self,att,value):#Write Value
     		self.write(att,value)
     		buildUILists()
+aePrefs=aePrefs()
 class write(scriptFile):
 	def __init__(self,filePath):
 		self.filePath=filePath
@@ -179,11 +180,20 @@ class write(scriptFile):
 			command=aePrefs.get('AELoc') +' -r ' +self.fileName
 			subprocess.Popen(command)
 
+class scene(rc.sceneData):
+	def outputLayer(self):
+		layers=self.outputLayers()
+		if aePrefs.get('ImageLabel')=='Label2':
+			layers=[str(layer.replace(layer,rc.sceneData.shotName()+'.'+layer)) for layer in layers]
+	def outputImages(self):
+		images=self.outputImages()
+		images=[str(img.replace(rc.sceneData.wsImagesFolder(),os.path.join(rc.sceneData.wsImagesFolder(),'tmp'))) for img in images]
+		images=[str(img.replace('0001',minTimeName)) for img in images]
+		
 ##########
-aePrefs=aePrefs()
 rlm=rc.customAttr('renderLayerManager')
 rc.rlmAttrs()
-########Actions
+########Maya Actions
 def tagAEFlag(sel):#AE COMP FLAG
 	if not mc.objExists(sel+'.AECompFlag') : mc.addAttr(sel,ln='AECompFlag',dt='string')		
 	#Determine Type
@@ -293,6 +303,7 @@ def UI():
 
 	mc.setParent('..')
 	buildUILists()
+	#mc.scriptJob('import rcMaya2AE',event=SceneOpened)
 def applyrlmAttrs(): 
 	mc.setAttr('renderLayerManager.shotName',mc.textField('compAnchor',q=1,text=1),type='string')
 	buildUILists()
@@ -367,5 +378,5 @@ def sendImage():
 	
 #################
 if __name__== 'rcMaya2AE' :
-	ui.win(floating=True)
+	ui.win()
 	UI()

@@ -244,6 +244,10 @@ def globalsUI():
 	mc.setParent('..')
 
 ###############
+
+def lambertset():#transparancy slider for toolbox
+	num=mc.floatSliderGrp('lambertslider',q=1,value=1)
+	mc.setAttr('lambert1.transparency',num,num,num,type='double3')
 def btnScript(script,folder=''):
 	if folder is not None: mel.eval('source "'+scriptsMEL.replace('\\','/')+folder+'/'+str(script)+'"')
 	else: mel.eval('source "'+scriptsMEL.replace('\\','/')+str(script)+'"')
