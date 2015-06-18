@@ -174,7 +174,7 @@ class write(scriptFile):
 		#TODO check to see if endUNDO already exists (remove)
 		#self.write('app.endUndoGroup()')
 		if 'darwin' in sys.platform:
-			command='open '+AE.aePrefs.get('AELoc').replace(' ','\ ') +'\n'+ 'osascript ' + self._writeAppleScript(self.fileName,os.path.basename(AE.aePrefs.get('AELoc')).split('.')[0])
+			command='open '+aePrefs.get('AELoc').replace(' ','\ ') +'\n'+ 'osascript ' + self._writeAppleScript(self.fileName,os.path.basename(AE.aePrefs.get('AELoc')).split('.')[0])
 			subprocess.Popen(command,shell=True)
 		else:
 			command=aePrefs.get('AELoc') +' -r ' +self.fileName
