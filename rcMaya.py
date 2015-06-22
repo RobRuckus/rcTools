@@ -53,7 +53,7 @@ class ui():#UI Class for Maya
 		for each in range(columns):
 			pass
 			#mc.iconTextButton(w=self.rowWidth/columns,h=self.rowWidth/columns,args)#pass each arg of each button 
-class sceneData():#Custom Returns of Scene Data
+class sceneData():#Custom Scene Data Returns
 	def ws(self): return mc.workspace(q=True,rd=True)
 	def wsImagesName(self): return mc.workspace('images',q=True,fileRuleEntry=True)
 	def wsImagesFolder(self): return os.path.join(self.ws(),self.wsImagesName())#removed os.path.normpath
@@ -82,7 +82,7 @@ class sceneData():#Custom Returns of Scene Data
 	def imageFilePath(self): return  ''.join(mc.renderSettings(fin=1,lut=1,fp=1))#PROJECT/IMAGES/masterLayer/<RenderPass>/masterLayer.0001.png
 	def outputLayers(self): return self.renderOutput()[0]
 	def outputImages(self): return self.renderOutput()[1]
-	def renderOutput(self):
+	def renderOutput(self):#Return Output Layers and Images MentalRay
 		outputLayers= []
 		outputImages=[]
 		currentLayer=str(mc.editRenderLayerGlobals(q=1,crl=1)).replace('defaultRenderLayer','masterLayer')

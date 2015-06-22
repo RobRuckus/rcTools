@@ -27,7 +27,6 @@ import os
 import maya.cmds as mc
 import rcTools.rcMaya as rc
 from rcTools.main import *
-
 ###########
 from functools import partial
 def runMethod(method,string,*args): exec(method+string) #Button Delay Function
@@ -62,26 +61,38 @@ class aePrefs(iniFile):#aePrefs.ini
     		self.write(att,value)
     		buildUILists()
 aePrefs=aePrefs()
+class scene(rc.sceneData):#Output Modifier for Layers and Images 
+	def outputLayer(self):
+		layers=self.renderOutput()[0]
+		print layers
+		if aePrefs.get('ImageLabel')=='Label2':
+			layers=[str(layer.replace(layer,self.shotName()+'.'+layer)) for layer in layers]
+		return layers
+	def outputImages(self):
+		images=self.renderOutput()[1]
+		if aePrefs.get('ImageSource')=='tmp':
+			minTimeName=str(str(int(mc.currentTime(q=True))).zfill(self.framePad()))
+			images=[str(img.replace(self.wsImagesFolder(),os.path.join(self.wsImagesFolder(),'tmp'))) for img in images]
+			images=[str(img.replace('0001',minTimeName)) for img in images]
+		return images		
+
 class write(scriptFile):
 	def __init__(self,filePath):
 		self.filePath=filePath
-		self.sceneData=rc.sceneData()
+		self.sceneData=scene()
 		scriptFile.__init__(self,self.filePath)
-		#self.folder=os.path.join(sceneData().ws(),'data')
-		#scriptFile.__init__(self,self.folder,'_AFXImport.jsx')
-		
-		##MOVE THIS TO CUSTOM 
-		self.imageFolderName='_fromMaya'
-		#####
-		self.imageFolderIndex=self.imageFolderName+'Index'
-		self.write('app.beginUndoGroup("rcMaya2AE_v1.2")')
-		self.addFolder(self.imageFolderName)
 		#Globals
 		self.write('var shotName="%s";'%self.sceneData.shotName())
 		self.write('var width=%d;'%self.sceneData.frameWidth())
 		self.write('var height=%d;'%self.sceneData.frameHeight())
 		self.write('var fps=%d;'%self.sceneData.fps())
 		self.write('var seconds=%s;'%self.sceneData.timelineSeconds())
+		
+		##CUSTOM Image Folder
+		self.imageFolderName='_fromMaya'
+		self.imageFolderIndex=self.imageFolderName+'Index'
+		self.write('app.beginUndoGroup("rcMaya2AE_v1.2")')
+		self.addFolder(self.imageFolderName)
 	
 		
 	def _writeAppleScript(self,jsxFile,AELoc):#write Applescript to Execute Javascript
@@ -105,8 +116,8 @@ class write(scriptFile):
 		self.write('	}')
 		self.write('if(%s==""){%s=app.project.items.addFolder("%s")};'%(folderIndex,folderIndex,folderName))	
 		self.write(' ')
-	def comp(self,sceneData):#COMP 
-		self.write('//ADD COMP')
+	def comp(self):#COMP 
+		self.write('//ADD/EDIT COMP')
 		self.write(' ')
 		self.write('var shotComp="";')
 		self.write('for(var i=1;i<=app.project.numItems;i++){')
@@ -115,7 +126,7 @@ class write(scriptFile):
 		self.write('	}')
 		self.write('if(shotComp==""){ shotComp=app.project.items.addComp(shotName,width,height,1,seconds,fps);}')
 		
-		self.write(' else {')
+		self.write('else {')
 		self.write('		shotComp.name=shotName;')
 		self.write('		shotComp.width=width;')
 		self.write('		shotComp.height=height;')
@@ -124,23 +135,9 @@ class write(scriptFile):
 		self.write('		}')
 		self.write(' ')
 		
-	def layers(self,sceneData):#LAYERS
-		images=sceneData.outputImages()
-		layers=sceneData.outputLayers()
-		if aePrefs.get('ImageSource')=='images':
-			minTimeName=str(sceneData.minTime()).zfill(sceneData.framePad())
-			maxTimeName=str(sceneData.maxTime()).zfill(sceneData.framePad())
-		else:#TMP Imagelocation
-			minTimeName=str(str(int(mc.currentTime(q=True))).zfill(sceneData.framePad()))
-			maxTimeName=str((str(mc.currentTime(q=True)+1)).zfill(sceneData.framePad()))
-			images=[str(img.replace(sceneData.wsImagesFolder(),os.path.join(sceneData.wsImagesFolder(),'tmp'))) for img in images]
-			images=[str(img.replace('0001',minTimeName)) for img in images]
-		if aePrefs.get('ImageLabel')=='Label2':
-			layers=[str(layer.replace(layer,sceneData.shotName()+'.'+layer)) for layer in layers]
-		self.write('var layers=%s;'%layers)
-		self.write('var images=%s;'%images)
-		#for each in sceneData.outputLayers():
-			#self.write('var %s=""'%(each+'Item'))
+	def layers(self):#LAYERS
+		self.write('var layers=%s;'%self.sceneData.outputLayers())
+		self.write('var images=%s;'%self.sceneData.outputImages())
 		self.write("//Layers ")
 		self.write('for(layerIndex=0;layerIndex<=layers.length-1;layerIndex++){')
 		self.write('	var layerPH="";')
@@ -155,16 +152,16 @@ class write(scriptFile):
 		self.write('		layer.enabled= false;')
 		self.write('		layer.moveToEnd();')
 		self.write('	}')
-		self.write('	if(File(images[layerIndex]).exists){')#replace(/\//gi,"\\\\")) OS BACKSLASHING
-		self.write('	layerPH.replaceWithSequence(new File(images[layerIndex]),true);')#replace(/\//gi,"\\\\")
+		self.write('	if(File(images[layerIndex]).exists){')
+		self.write('	layerPH.replaceWithSequence(new File(images[layerIndex]),true);')
 		self.write('	layerPH.name=layers[layerIndex];')
 		self.write('	layer.enabled=true;')
 		self.write('	app.executeCommand(app.findMenuCommandId("Fit to Comp Width"));')
 		self.write('	}')
 		self.write('}')
 		self.write('	for(index=1;index<=shotComp.numLayers;index++){')
-		self.write('		shotComp.layers[index].selected=true;')
-		self.write('		app.executeCommand(app.findMenuCommandId("Fit to Comp")); }')	
+		self.write('		shotComp.layers[index].selected=true;}')
+		self.write('		app.executeCommand(app.findMenuCommandId("Fit to Comp"));')	
 	def nulls(self,nullObjects):#NULLS
 		pass
 	def retrieve(self,itemType):
@@ -174,22 +171,12 @@ class write(scriptFile):
 		#TODO check to see if endUNDO already exists (remove)
 		#self.write('app.endUndoGroup()')
 		if 'darwin' in sys.platform:
-			command='open '+aePrefs.get('AELoc').replace(' ','\ ') +'\n'+ 'osascript ' + self._writeAppleScript(self.fileName,os.path.basename(AE.aePrefs.get('AELoc')).split('.')[0])
+			command='open '+aePrefs.get('AELoc').replace(' ','\ ') +'\n'+ 'osascript ' + self._writeAppleScript(self.fileName,os.path.basename(aePrefs.get('AELoc')).split('.')[0])
 			subprocess.Popen(command,shell=True)
 		else:
 			command=aePrefs.get('AELoc') +' -r ' +self.fileName
 			subprocess.Popen(command)
 
-class scene(rc.sceneData):
-	def outputLayer(self):
-		layers=self.outputLayers()
-		if aePrefs.get('ImageLabel')=='Label2':
-			layers=[str(layer.replace(layer,rc.sceneData.shotName()+'.'+layer)) for layer in layers]
-	def outputImages(self):
-		images=self.outputImages()
-		images=[str(img.replace(rc.sceneData.wsImagesFolder(),os.path.join(rc.sceneData.wsImagesFolder(),'tmp'))) for img in images]
-		images=[str(img.replace('0001',minTimeName)) for img in images]
-		
 ##########
 rlm=rc.customAttr('renderLayerManager')
 rc.rlmAttrs()
@@ -223,7 +210,7 @@ def constrainWS(sel,opt,suffix='_pos'):
 		mc.parentConstraint(sel,loc)
 #########UI
 def UI():
-	sceneData=rc.sceneData()
+	sceneData=scene()
 	mc.columnLayout('renderLayers2AFX')
 	mc.menuBarLayout(w=ui.rowWidth)
 	mc.separator(h=5,style='in')
@@ -273,7 +260,7 @@ def UI():
 		
 	mc.menuItem(l='Set Path',c=partial(runMethod,'aePrefs.path','()'))
 	mc.setParent('..')
-	#mc.button(l='EXPORT',w=ui.rowWidth,bgc=[.586,.473,.725],align='center',h=ui.btn_large,c=partial(runMethod,'btnExport','()'))
+	
 	mc.separator(h=5,style='in')
 	mc.rowColumnLayout(numberOfColumns=2,columnWidth=[(1, 70),(2, 215)])
 	mc.text(al='right',font='tinyBoldLabelFont',label='Comp Name: ',ann='The Name of the Comp that is Anchored to this Scene in After Effects')
@@ -299,7 +286,7 @@ def UI():
 	########
 	mc.checkBox('chkAbsFrames',l='Use Timeline Frame Numbers',vis=0,v=1)
 	mc.checkBox('chkOverrideTime',l='Override Timeline',vis=0,v=0,en=0)
-	
+	mc.button(l='EXPORT',w=ui.rowWidth,bgc=[.586,.473,.725],align='center',h=ui.btn_large,c=partial(runMethod,'btnExport','()'))
 
 	mc.setParent('..')
 	buildUILists()
@@ -324,10 +311,10 @@ def tagListCallBack():
 	for each in mc.iconTextScrollList('AEXObjListScroll',q=1,si=1): sel.append(each.replace("|","_")+'_pos')
 	mc.select(sel)
 def btnExport():
-	sceneData=rc.sceneData()
+	sceneData=scene()
 	xport = write(os.path.join(sceneData.ws(),'data','_AFXImport.jsx'))
-	xport.comp(sceneData)
-	xport.layers(sceneData)
+	xport.comp()
+	xport.layers()
 	xport.run()
 def btnPlus(sel):
 	for each in sel: 

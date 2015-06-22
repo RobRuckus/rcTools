@@ -1,9 +1,9 @@
-####IMPORT
+##########IMPORT
 import os 
 import sys
 from datetime import datetime
 import ctypes
-###########PATH VARIABLES
+#########PATH VARIABLES
 importPath= os.path.dirname(__file__)
 iconPath=os.path.join(importPath,'icons','')
 toolsPY=os.path.join(importPath,'toolsPY','')
@@ -23,15 +23,13 @@ def userDirectory():#IN usersetup.py for Maya RETURN USERDIRECTORY FOR MAC/WIN
 	else:
 		userDirectory=os.environ['USERPROFILE']
 	return userDirectory
-def scriptsDrive(folder=None):
+def scriptsDrive(folder=None):#Google Drive Scripts Folder Location
 	if folder: return os.path.join(main.userDirectory(),'Google Drive','scripts',folder,'')
 	else: return os.path.join(main.userDirectory(),'Google Drive','scripts','')
 ####################	
 class scriptFile():#Creates/Writes Files Line by Line
     def __init__(self,fileName):
         self.fileName= fileName.replace('\\','/')
-        #self.fileName= os.path.join(path,fileName).replace('\\','/')
-        #if not os.path.os.path.dirname(self.fileName)
         file=open(self.fileName,'w')
         file.close() 
     def write(self,line):
@@ -41,12 +39,12 @@ class scriptFile():#Creates/Writes Files Line by Line
 class iniFile():#CRUD iniFiles
     def __init__(self,fileName):
         self.fileName=fileName
-    def read(self):#Reads Contents of File
+    def _read(self):#Reads Contents of File
         with open(self.fileName,'r') as f:
             content=[w.replace('\n','') for w in f.readlines()]
         return content
     def get(self,att):
-        for each in self.read():
+        for each in self._read():
             if att in each:
                 return each.replace(att+'= ','')
         return None
@@ -56,7 +54,7 @@ class iniFile():#CRUD iniFiles
             file.write('%s= %s\n'%(att,str(value)))
             file.close()
         else:
-            contents=self.read()
+            contents=self._read()
             file=open(self.fileName,'w')
             for each in contents:
                 if att in each:
