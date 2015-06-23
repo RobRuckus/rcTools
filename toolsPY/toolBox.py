@@ -23,7 +23,6 @@ def UI():
 	ui.tab('MAIN')
 	assignUI()
 	materialsUI()
-	
 	ui.tab('SCRIPTS')
 	mc.rowColumnLayout(numberOfColumns=8)
 	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8)
@@ -35,7 +34,7 @@ def UI():
 	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8,ann="Export RenderLayers to Files",l= "L2F" ,i= (iconPath +"L2F.png"),c=partial(delay,'mel.eval','("rcLayers2Files")'))
 	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8,ann="Render Manager",l= "RenderManager" ,i= (iconPath +"renderMGR.png"),c=partial(delay,'mel.eval','("rcRenderMGR")'))
 	mc.setParent('..')
-	
+
 	scriptsUI()
 ###############
 def scriptsUI():

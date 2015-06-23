@@ -1,6 +1,7 @@
 ##########IMPORT
 import os 
 import sys
+import subprocess
 from datetime import datetime
 import ctypes
 #########PATH VARIABLES
@@ -26,6 +27,23 @@ def userDirectory():#IN usersetup.py for Maya RETURN USERDIRECTORY FOR MAC/WIN
 def scriptsDrive(folder=None):#Google Drive Scripts Folder Location
 	if folder: return os.path.join(main.userDirectory(),'Google Drive','scripts',folder,'')
 	else: return os.path.join(main.userDirectory(),'Google Drive','scripts','')
+def spawnBrowser(path):
+    '''
+    open the given folder in the default OS browser
+    '''
+    path=os.path.abspath(path)
+    if sys.platform == 'win32':
+        subprocess.Popen('explorer "%s"' % (path))
+    elif sys.platform == 'darwin':  # macOS
+        subprocess.Popen(['open', path])
+    else:  # linux
+        try:
+            subprocess.Popen(['xdg-open', path])
+        except OSError:
+            raise OSError('unsupported xdg-open call??')
+	
+
+
 ####################	
 class scriptFile():#Creates/Writes Files Line by Line
     def __init__(self,fileName):
