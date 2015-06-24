@@ -180,7 +180,7 @@ class writeAEX(scriptFile):
 		
 		
 		
-		self.write('shotCAM.property("Angle of View").setValueAtTime(%f,%f);\n'%(1,70))
+		#self.write('shotCAM.property("Angle of View").setValueAtTime(%f,%f);\n'%(1,70))
 	#########
 	def run(self):#execute written jsx by commandline (writesApplescript for mac)
 		#TODO check to see if endUNDO already exists (remove)

@@ -11,6 +11,7 @@ def delay(method,string,*args): exec(method+string) #Delay Function
 ################
 from rcTools.rcMaya import *
 from rcTools.toolsPY import toElement 
+from rcTools.toolsPY import rcMaya2AE as AE
 ################source every mel in toolsMEL: toolsMEL
 for each in os.listdir(toolsMEL):
 	file,ext=os.path.splitext(each)
@@ -23,6 +24,8 @@ def UI():
 	ui.tab('MAIN')
 	assignUI()
 	materialsUI()
+	ui.tab('AE')
+	AE.UI()
 	ui.tab('SCRIPTS')
 	mc.rowColumnLayout(numberOfColumns=8)
 	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8)
