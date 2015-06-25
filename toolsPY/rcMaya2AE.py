@@ -166,7 +166,6 @@ class writeAEX(scriptFile):
 		self.write('app.executeCommand(app.findMenuCommandId("Fit to Comp"));')	
 	
 	def objects(self):#Output Objects
-		self.write('//OBJECTS')
 		self.write('//CAMERA')
 		self.write('var shotCAM="";')
 		self.write('for(i=1;i<=shotComp.numLayers-1;i++){')
@@ -176,10 +175,18 @@ class writeAEX(scriptFile):
 		self.write('}')
 		self.write('if (shotCAM==""){')
 		self.write('	shotCAM=shotComp.layers.addCamera(shotName,[0,0])')
+		self.write('shotCAM.autoOrient=AutoOrientType.NO_AUTO_ORIENT;')#One Node Camera 
 		self.write('}')
 		
-		
-		
+		for each in dict.values(getTaggedObjData()):
+			if len(each)>0:
+				each=''.join(each)#list with a string to string 
+				for index in range(int(self.sceneData.endFrame()-self.sceneData.startFrame()+1)):
+					curAETime=index/self.sceneData.fps()
+					posValue = [i for sub in mc.getAttr(each.replace("|","_")+'_pos.translate',t=index+self.sceneData.minTime()) for i in sub]#list with a tuple to list of the tuple
+					self.write('shotCAM.position.setValueAtTime(%s,%s);'%(str(curAETime),str(posValue)))
+				
+		self.write('//NULLS')
 		#self.write('shotCAM.property("Angle of View").setValueAtTime(%f,%f);\n'%(1,70))
 	#########
 	def run(self):#execute written jsx by commandline (writesApplescript for mac)
