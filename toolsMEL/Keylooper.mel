@@ -1,0 +1,12 @@
+global int $min=1;
+global int $max=30;
+string $sel[]= `keyframe -q -n`;
+keyframe -e -iub true -r -o over -tc 6 pCube1_translateY ;//move timeline 
+setKeyframe -t $min $sel[0];
+setKeyframe -t $max $sel[0];
+
+
+for ($key in $sel
+  if key is > $max
+  cutKey -t key
+cutKey -t 30 
