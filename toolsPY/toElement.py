@@ -1,7 +1,7 @@
 import maya.cmds as mc 
 import random
 
-def renameSG():#renames SG to MAterial Name
+def renameSG():#renames SG by selecting material
 		sel=mc.ls(sl=1)
 		for each in sel:
 			material=each

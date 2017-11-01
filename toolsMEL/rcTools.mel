@@ -1,4 +1,4 @@
- /*______________________________________________________
+/*______________________________________________________
 Written By : Rob A Coakley robcoakley@gmail.com
 	thanks to:
 				Henry Foster
@@ -9,11 +9,13 @@ __________________________________________________________
 */
 ////WARNINGS AND DEFAULT SETUPS
 global proc plugMR(){//py
-	if (!`pluginInfo -query -l Mayatomr`){/////LOAD MR PLUGIN
+	//if (!`pluginInfo -query -l Mayatomr`){/////LOAD MR PLUGIN
 		//confirmDialog -title "rcTools" -m "Loading MentalRay Plugin!";
-		loadPlugin "Mayatomr.mll"; 
+		//if ( catch (loadPlugin "Mayatomr.mll")){
+		   // confirmDialog -title "rcTools" -m "NO MentalRay Plugin!";
+	//}}; 
 		//setAttr -type "string" "defaultRenderGlobals.currentRenderer" "mentalRay";}
-	}}
+	}
 global proc renderMR(){//py
 	if (!(`getAttr "defaultRenderGlobals.currentRenderer"` == "mentalRay")){/////RUNTIME (MR NECCESARY)
 	string $return=`confirmDialog -title "rcTools" -button "Yes" -button "No"-m "Set Renderer to MentalRay?"-cb "No"-ma"center"-ds "No"`;

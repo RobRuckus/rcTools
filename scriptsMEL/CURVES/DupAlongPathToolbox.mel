@@ -1,3 +1,8 @@
+// Duplicate Along Path v1.5.1
+// fixed a bug in 2016 by moving int $iStartNext and int $iEndNext out of
+//    the for loop
+// docked UI now shows up on top when loaded
+
 // Duplicate Along Path v1.5.0
 // author: John Germann
 
@@ -10,6 +15,7 @@
 // added auto switch for different scene up prefs
 // Moved deformer options to a new tab to avoid confusion
 // Added Start and End Buffers
+
 // + Add connections to deformer window
 // + Improve appearance of deformer window
 // + record new tutorial video
@@ -28,6 +34,8 @@ global proc DupAlongPath()
 	string $motionPath[];
 	int $iAdjustedQuantity;
 	int $currentDuplicate = 0;
+	int $iStartNext;
+	int $iEndNext;
 	
 	// check options
 	
@@ -309,6 +317,7 @@ global proc DupAlongPath()
 	// moving currentTime to number equal to # of duplicates because pathAnimation is tied to it
 
 	currentTime $iAdjustedQuantity;
+	//print ("----------------iAdjustedQuantity is " + $iAdjustedQuantity + "\n");
 
 	// scale constrain options
 		
@@ -329,10 +338,7 @@ global proc DupAlongPath()
 	// attach everything to motion path at different progressing start and end points
 
 	for ($obj in $aObj)
-	{
-		int $iStartNext;
-		int $iEndNext;
-		
+	{	
 		// random rotate
 	
 		if ($iRotateBehavior == 3)
@@ -1599,7 +1605,6 @@ global proc DupAlongPathToolbox()
 						-label "ROTATE"
 						-li 4
 						-width 245
-						-borderStyle "etchedIn"
 						-collapse $fCollapseRotate
 						-collapsable 1
 						-cc ("optionVar -intValue DAP_CollapseRotate 1")
@@ -1679,7 +1684,6 @@ global proc DupAlongPathToolbox()
 						-label "SCALE"
 						-li 4
 						-width 245
-						-borderStyle "etchedIn"
 						-collapse $fCollapseScale
 						-collapsable 1
 						-cc ("optionVar -intValue DAP_CollapseScale 1")
@@ -1759,7 +1763,6 @@ global proc DupAlongPathToolbox()
 						-label "SCATTER"
 						-li 4
 						-width 245
-						-borderStyle "etchedIn"
 						-collapse $fCollapseScatter
 						-collapsable 1
 						-cc ("optionVar -intValue DAP_CollapseScatter 1")
@@ -1804,7 +1807,6 @@ global proc DupAlongPathToolbox()
 						-label "OPTIONS"
 						-li 4
 						-width 245
-						-borderStyle "etchedIn"
 						-collapse $fCollapseOptions
 						-collapsable 1
 						-cc ("optionVar -intValue DAP_CollapseOptions 1")
@@ -1990,8 +1992,9 @@ global proc DupAlongPathToolbox()
 	if ($version >= 2012)
 	{
 		dockControl
-			-label "Duplicate Along Path v1.5.0"
+			-label "Duplicate Along Path v1.5.1"
 			-content $window
+			-visible true
 			-floating $fFloatingState
 			-floatChangeCommand "DAPfloatStateSwitch"
 			-area "right"
@@ -2002,8 +2005,9 @@ global proc DupAlongPathToolbox()
 	if ($version == 2011)
 	{
 		dockControl
-			-label "Duplicate Along Path v1.5.0"
+			-label "Duplicate Along Path v1.5.1"
 			-content $window
+			-visible true
 			-floating $fFloatingState
 			-area "right"
 			-allowedArea "left"

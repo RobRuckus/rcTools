@@ -325,11 +325,12 @@ class set():
     		create.shader(shader)
     	#
     	for each in selObj:
-    		if mc.nodeType(each)=='mesh' or mc.nodeType(each)=='nurbsSurface':
-    			mc.select(each)
-    			eachSn=mc.pickWalk(d='up')
-    			mc.select(eachSn)
-    			mc.hyperShade(assign=shaderName)
+    	    mc.sets(e=1,forceElement=shader+'SG')
+    		#if mc.nodeType(each)=='mesh' or mc.nodeType(each)=='nurbsSurface':
+    			#mc.select(each)
+    			#eachSn=mc.pickWalk(d='up')
+    			#mc.select(eachSn)
+    			#mc.hyperShade(assign=shaderName)
     def camera(self,cam):
     	for each in mc.ls(ca=1): 
     		if mc.getAttr(each+'.renderable'): mc.setAttr(each+'.renderable',0)
