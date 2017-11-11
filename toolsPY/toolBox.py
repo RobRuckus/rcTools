@@ -12,6 +12,7 @@ def delay(method,string,*args): exec(method+string) #Delay Function
 from rcTools.rcMaya import *
 from rcTools.toolsPY import toElement 
 from rcTools.toolsPY import rcMaya2AE as AE
+
 ################source every mel in toolsMEL: toolsMEL
 for each in os.listdir(toolsMEL):
 	file,ext=os.path.splitext(each)
@@ -23,8 +24,13 @@ def UI():
 	ui.toolBox()
 	ui.tab('MAIN')
 	assignUI()
+	existMATUI()
+	ui.tab('MATERIAL')
 	materialsUI()
-	ui.tab('AE')
+	#mel.eval("source \""+scriptsMEL+"dp_MaterialManager.mel\"")
+	#if ext =='.mel': mel.eval('source "%s"'%path)
+	#mel.eval("dp_MaterialManager")
+	ui.tab('BAKING')
 	AE.UI()
 	ui.tab('SCRIPTS')
 	mc.rowColumnLayout(numberOfColumns=8)
@@ -39,7 +45,12 @@ def UI():
 	mc.setParent('..')
 
 	scriptsUI()
+	mc.showWindow()
 ###############
+def digItUI():
+    mc.frameLayout('DigIt',w=ui.rowWidth,h=330,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='DigIt')
+    mc.setParent('MAIN')
+    
 def scriptsUI():
 	mc.frameLayout(l='TOADSTORM',w=ui.rowWidth,cll=1,cl=1)
 	mc.button(w=ui.rowWidth,l='Highlight Component Shading',c=partial(delay,'btnSourcePy','(hfShading,hfHighlightBadShaded)'))
@@ -75,28 +86,40 @@ def assignUI():
 	mc.columnLayout('SHAPECTRL',w=ui.rowWidth/2-5)
 	mc.gridLayout(numberOfColumns=5,cellWidthHeight=[25,25])
 	mc.text(l='Piv'); mc.separator(style='in'); mc.button(l='Cntr',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcSetPivot CENTER")'))
-	mc.button(l='Orig',bgc=[.2,.2,.2],en=0,c=partial(delay,'mel.eval','("rcSetPivot ORIGIN")'))
+	mc.button(l='Orig',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcSetPivot ORIGIN")'))
 	mc.button(l='Sel',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcSetPivot SELECTED")'))
 	mc.button(l='',c=partial(delay,'mel.eval','(toMiddle(\"max\" ,\"max\", \"max\")'))
 	mc.button(l='')
-	mc.text(l='')
-	mc.button(l='')
-	mc.button(l='')
-	mc.button(l='')
-	mc.button(l='')
+	
 	mc.button(l='Y+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mel.eval','("rcSetPivot YMax")'))
 	mc.button(l='')
 	mc.button(l='')
-	mc.text(l='')
+	mc.button(l='Z+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mel.eval','("rcSetPivot ZMax")'))
 	mc.button(l='X+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mel.eval','("rcSetPivot XMax")'))
 	mc.text(l='')
 	mc.button(l='X-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mel.eval','("rcSetPivot XMin")'))
-	mc.text(l='')
-	mc.text(l='')
-	mc.button(l='Z+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mel.eval','("rcSetPivot ZMax")'))
-	mc.button(l='Y-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mel.eval','("rcSetPivot YMin")'))
 	mc.button(l='Z-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mel.eval','("rcSetPivot ZMin")'))
+	mc.button(l='')
+	mc.button(l='')
+	mc.button(l='Y-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mel.eval','("rcSetPivot YMin")'))
+	mc.button(l='')
+	mc.button(l='')
+	mc.setParent('..')
+	mc.separator(style='in')
+	mc.separator(style='in')
+	mc.gridLayout(numberOfColumns=3,cellWidthHeight=[42,25])
+	mc.text(l='Normal:')
+	mc.button(l='Hard',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mc.polySetToFaceNormal','(setUserNormal=True)'))
+	mc.button(l='Soft',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mc.polySoftEdge','(a=180,ch=1)'))
 	mc.text(l='')
+	mc.textField('angleparameter',tx='70')
+	mc.button(l='Set',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mc.polySoftEdge','(a=mc.textField(\'angleparameter\',q=True,tx=1),ch=1)'))
+	
+	mc.setParent('..')
+	mc.separator(style='in')
+	
+	mc.gridLayout(numberOfColumns=5,cellWidthHeight=[25,25])
+	
 	mc.text(l='Obj')
 	mc.button(l='fObj',ann='Freeze Object\'s Transform, Rotation, Scale',bgc=[.3,.7,1],c=partial(delay,'mc.makeIdentity','(mc.ls(sl=1),apply=True,t=1,r=1,s=1,n=0,pn=1)')) 
 	mc.button(l='DpI',ann='Duplicate Input Graph',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("duplicate -rr -un")'))
@@ -108,17 +131,17 @@ def assignUI():
 	mc.button(l='Crv',ann='Create Curve from Selected Joint Group',c=partial(delay,'mel.eval','("Ctrl_Curve")')) 
 	mc.button(l='Grp',ann='Custom Naming Grouping Procedure',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcCtGrp")'))
 	mc.setParent('..')
-   
+	'''
 	mc.separator(style='in',h=ui.borders*3)
 	mc.checkBoxGrp('smoothPreview',h=ui.checkBoxHeight,ncb=1,vr=1,l1='Smooth Preview',v1=1)
-   
-
 	mc.textFieldGrp('rsmoothField',l='  Render Smooth:',text='2',cw2=[90,30],cat=[1,'left',1])
 	mc.textFieldGrp('dsmoothField',l='  Display Smooth:',text='0',cw2=[90,30],cat=[1,'left',1])
 	mc.button(h=ui.btn_large,w=ui.rowWidth/2-8,l='APPLY',c=partial(delay,'set.smooth','(0)')) 
 	mc.button(h=ui.btn_small,w=ui.rowWidth/2-8,l='RESET',ann='Remove Overrides for object',c=partial(delay,'set.smooth','(1)'))
 	mc.separator(style='in',h=ui.borders*10)
+	'''
 	mc.setParent('..')
+
 	
 	
 	mc.columnLayout(w=ui.rowWidth/2)#h=(len(ls.renderAtts())*(ui.checkBoxHeight+ui.borders+2))+(ui.btn_large+ui.btn_small)
@@ -127,7 +150,7 @@ def assignUI():
 	mc.text(l='Disp');
 	mc.separator(style='in');
 	mc.separator(style='in');
-	mc.button(h=25,w=42,ann='Set Camera Clips',l='CC',c=partial(delay,'mel.eval','("rcSetCameraClip")'));
+	mc.button(h=25,w=42,ann='Set Camera Clips to Meters',l='CC',c=partial(delay,'mel.eval','("rcSetCameraClip")'));
 	mc.button(h=25,w=42,ann='Set Viewport to Green for PlayBlast',l='RE',bgc=[.0,.5,.0],c=partial(delay,'set.view','(opt=1)'))
 	
 	mc.setParent('..')
