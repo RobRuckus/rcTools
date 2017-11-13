@@ -85,6 +85,7 @@ def assignUI():
 	
 	mc.columnLayout('SHAPECTRL',w=ui.rowWidth/2-5)
 	mc.gridLayout(numberOfColumns=5,cellWidthHeight=[25,25])
+	
 	mc.text(l='Piv'); mc.separator(style='in'); mc.button(l='Cntr',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcSetPivot CENTER")'))
 	mc.button(l='Orig',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcSetPivot ORIGIN")'))
 	mc.button(l='Sel',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcSetPivot SELECTED")'))
@@ -106,20 +107,8 @@ def assignUI():
 	mc.button(l='')
 	mc.setParent('..')
 	mc.separator(style='in')
-	mc.separator(style='in')
-	mc.gridLayout(numberOfColumns=3,cellWidthHeight=[42,25])
-	mc.text(l='Normal:')
-	mc.button(l='Hard',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mc.polySetToFaceNormal','(setUserNormal=True)'))
-	mc.button(l='Soft',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mc.polySoftEdge','(a=180,ch=1)'))
-	mc.text(l='')
-	mc.textField('angleparameter',tx='70')
-	mc.button(l='Set',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mc.polySoftEdge','(a=mc.textField(\'angleparameter\',q=True,tx=1),ch=1)'))
-	
-	mc.setParent('..')
-	mc.separator(style='in')
-	
+
 	mc.gridLayout(numberOfColumns=5,cellWidthHeight=[25,25])
-	
 	mc.text(l='Obj')
 	mc.button(l='fObj',ann='Freeze Object\'s Transform, Rotation, Scale',bgc=[.3,.7,1],c=partial(delay,'mc.makeIdentity','(mc.ls(sl=1),apply=True,t=1,r=1,s=1,n=0,pn=1)')) 
 	mc.button(l='DpI',ann='Duplicate Input Graph',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("duplicate -rr -un")'))
@@ -130,6 +119,19 @@ def assignUI():
 	mc.button(l='Sx',ann='Freeze Scales',bgc=[.3,.7,1],c=partial(delay,'mc.makeIdentity','(mc.ls(sl=1),apply=True,t=0,r=0,s=1,n=0,pn=1)'))  
 	mc.button(l='Crv',ann='Create Curve from Selected Joint Group',c=partial(delay,'mel.eval','("Ctrl_Curve")')) 
 	mc.button(l='Grp',ann='Custom Naming Grouping Procedure',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcCtGrp")'))
+	mc.setParent('..')
+	mc.separator(style='in')
+	mc.separator(style='in')
+	mc.separator(style='in')
+	mc.separator(style='in')
+	mc.gridLayout(numberOfColumns=3,cellWidthHeight=[42,25])
+	mc.text(l='Normal:')
+	mc.iconTextButton(l='Hard',i='polyHardEdge.png',ann='Set Selected Pivot to',c=partial(delay,'mc.polySetToFaceNormal','(setUserNormal=True)'))
+	mc.iconTextButton(l='Soft',i='polySoftEdge.png',ann='Set Selected Pivot to',c=partial(delay,'mc.polySoftEdge','(a=180,ch=1)'))
+	mc.text(l='')
+	mc.textField('angleparameter',tx='70')
+	mc.button(l='Set',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mc.polySoftEdge','(a=mc.textField(\'angleparameter\',q=True,tx=1),ch=1)'))
+	
 	mc.setParent('..')
 	'''
 	mc.separator(style='in',h=ui.borders*3)

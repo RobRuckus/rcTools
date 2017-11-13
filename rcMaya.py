@@ -34,6 +34,7 @@ class ui():#UI Class for Maya
 	
 	def win(self,**kwargs):
 		if mc.window(self.window,ex=True):mc.deleteUI(self.window,window=True)
+		if mc.dockControl(self.dock,ex=True):mc.deleteUI(self.dock)
 		#if mc.workspaceControl(self.dock,ex=True): mc.deleteUI(self.dock)
 		#mc.workspaceControl(self.dock,dockToPanel=['rcTools','left',1],label=self.name,floating=False)
 		mc.window(self.window,t=self.name,dc=['topLeft','bottomLeft'],w=350)#,nde=True
