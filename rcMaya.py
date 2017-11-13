@@ -38,7 +38,7 @@ class ui():#UI Class for Maya
 		#mc.workspaceControl(self.dock,dockToPanel=['rcTools','left',1],label=self.name,floating=False)
 		mc.window(self.window,t=self.name,dc=['topLeft','bottomLeft'],w=350)#,nde=True
 		mc.formLayout(w=self.rowWidth)
-		#mc.dockControl(self.dock,area='left',content=self.window,label=self.name,floating=False,**kwargs)
+		mc.dockControl(self.dock,area='left',content=self.window,label=self.name,floating=False,**kwargs)
 		
 	###toolBox
 	def toolBox(self):
