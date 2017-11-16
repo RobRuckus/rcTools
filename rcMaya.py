@@ -442,6 +442,34 @@ def rView():
     maxIndex= mc.renderWindowEditor('renderView',q=True,nbImages=True)
 
 #####
+       
+def conform():
+    sel=mc.ls(sl=True)
+    prompt=mc.promptDialog(t="Conform",m="Name:",tx="forest",button="Go")
+    objName= mc.promptDialog(q=1,t=1)
+    mesh= mc.rename(sel,objName+'_mesh')
+    material=(objName+'_material')
+    if not mesh==objName+'_mesh':
+        mc.rename(objName+'_mesh',objName+'_mesh'+'_old')
+        #print 'sel= ' +sel
+        mc.rename(mesh,objName+'_mesh')
+        mc.confirmDialog(b='Ok',m='Renamed Original as _old')
+        
+    if not mc.objExists(material): 
+        mc.shadingNode('blinn',name=material,asShader=1)
+        
+        colorImage=mc.shadingNode('file',asTexture=True,name=objName+'_file_color',isColorManaged=True)
+        mc.setAttr(colorImage+'.fileTextureName','sourceimages/'+objName+'_color.png',type='string')
+        mc.connectAttr(colorImage+'.outColor',material+'.color')
+        
+        specImage=mc.shadingNode('file',asTexture=True,name=objName+'_file_spec',isColorManaged=True)
+        mc.setAttr(specImage+'.fileTextureName','sourceimages/'+objName+'_spec.png',type='string')
+        mc.connectAttr(specImage+'.outColor',material+'.specularColor')
+    mc.select(objName+'_mesh')
+    mc.hyperShade(assign=material)
+    
+
+    
 ls=ls()
 create=create()
 set=set()
