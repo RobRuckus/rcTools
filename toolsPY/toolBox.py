@@ -12,7 +12,6 @@ def delay(method,string,*args): exec(method+string) #Delay Function
 from rcTools.rcMaya import *
 from rcTools.toolsPY import toElement 
 from rcTools.toolsPY import rcMaya2AE as AE
-
 ################source every mel in toolsMEL: toolsMEL
 for each in os.listdir(toolsMEL):
 	file,ext=os.path.splitext(each)
@@ -24,13 +23,16 @@ def UI():
 	ui.toolBox()
 	ui.tab('MAIN')
 	assignUI()
-	existMATUI()
-	ui.tab('MATERIAL')
 	materialsUI()
+	
+	existMATUI()
+	
+	ui.tab('MATERIAL')
+	
 	#mel.eval("source \""+scriptsMEL+"dp_MaterialManager.mel\"")
 	#if ext =='.mel': mel.eval('source "%s"'%path)
 	#mel.eval("dp_MaterialManager")
-	ui.tab('BAKING')
+	ui.tab('COMP')
 	AE.UI()
 	ui.tab('SCRIPTS')
 	mc.rowColumnLayout(numberOfColumns=8)
@@ -124,15 +126,7 @@ def assignUI():
 	mc.separator(style='in')
 	mc.separator(style='in')
 	mc.separator(style='in')
-	mc.gridLayout(numberOfColumns=3,cellWidthHeight=[42,25])
-	mc.text(l='Normal:')
-	mc.iconTextButton(l='Hard',i='polyHardEdge.png',ann='Set Selected Pivot to',c=partial(delay,'mc.polySetToFaceNormal','(setUserNormal=True)'))
-	mc.iconTextButton(l='Soft',i='polySoftEdge.png',ann='Set Selected Pivot to',c=partial(delay,'mc.polySoftEdge','(a=180,ch=1)'))
-	mc.text(l='')
-	mc.textField('angleparameter',tx='70')
-	mc.button(l='Set',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mc.polySoftEdge','(a=mc.textField(\'angleparameter\',q=True,tx=1),ch=1)'))
 	
-	mc.setParent('..')
 	'''
 	mc.separator(style='in',h=ui.borders*3)
 	mc.checkBoxGrp('smoothPreview',h=ui.checkBoxHeight,ncb=1,vr=1,l1='Smooth Preview',v1=1)
@@ -180,7 +174,16 @@ def assignUI():
 	mc.button(h=ui.btn_small,l='OFF',c=partial(delay,'set.flags','(value=0)'))
 	mc.button(h=ui.btn_small,l='NUKE',en=0,ann='Remove Overrides for object',c=partial(delay,'setRenderFlags','(value=0)'))
 	mc.button(h=ui.btn_small,l='XRAY',ann='Remove Overrides for object',c=partial(delay,'set.xray','()'))
-   
+	mc.setParent('..')
+	mc.gridLayout(numberOfColumns=3,cellWidthHeight=[42,25])
+	mc.text(l='Normal:')
+	mc.iconTextButton(l='Hard',i='polyHardEdge.png',ann='Set Selected Pivot to',c=partial(delay,'mc.polySetToFaceNormal','(setUserNormal=True)'))
+	mc.iconTextButton(l='Soft',i='polySoftEdge.png',ann='Set Selected Pivot to',c=partial(delay,'mc.polySoftEdge','(a=180,ch=1)'))
+	mc.text(l='')
+	mc.textField('angleparameter',tx='70')
+	mc.button(l='Set',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mc.polySoftEdge','(a=mc.textField(\'angleparameter\',q=True,tx=1),ch=1)'))
+	
+	mc.setParent('..')
 	mc.setParent('MAIN')  
 
 
@@ -271,7 +274,10 @@ def globalsUI():
 	mc.setParent('..')
 
 ###############
-
+def conform():
+    sel=mc.ls(sel=True)
+    prompt 
+     
 def lambertset():#transparancy slider for toolbox
 	num=mc.floatSliderGrp('lambertslider',q=1,value=1)
 	mc.setAttr('lambert1.transparency',num,num,num,type='double3')
