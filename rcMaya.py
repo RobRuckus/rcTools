@@ -453,23 +453,41 @@ def conform():
         mc.rename(objName+'_mesh',objName+'_mesh'+'_old')
         #print 'sel= ' +sel
         mc.rename(mesh,objName+'_mesh')
-        mc.confirmDialog(b='Ok',m='Renamed Original as _old')
-        
-    if not mc.objExists(material): 
-        mc.shadingNode('blinn',name=material,asShader=1)
-        
-        colorImage=mc.shadingNode('file',asTexture=True,name=objName+'_file_color',isColorManaged=True)
-        mc.setAttr(colorImage+'.fileTextureName','sourceimages/'+objName+'_color.png',type='string')
-        mc.connectAttr(colorImage+'.outColor',material+'.color')
-        
-        specImage=mc.shadingNode('file',asTexture=True,name=objName+'_file_spec',isColorManaged=True)
-        mc.setAttr(specImage+'.fileTextureName','sourceimages/'+objName+'_spec.png',type='string')
-        mc.connectAttr(specImage+'.outColor',material+'.specularColor')
+        mc.confirmDialog(b='Ok',m='Existing Objects Renamed '+objName+'_old')      
+    matNode(objName)
     mc.select(objName+'_mesh')
     mc.hyperShade(assign=material)
-    
 
-    
+def fileNode(name,outAttr):
+    if outAttr == 'spec' : connectedAttr = 'specularColor'
+    else: connectedAttr = outAttr
+    obj=name+'_file_' + outAttr   
+    if not mc.objExists(obj):
+        image=mc.shadingNode('file',asTexture=True,name=obj)
+        mc.setAttr(image+'.fileTextureName','sourceimages/'+name+'_'+outAttr+'.png',type='string')
+        mc.connectAttr(image+'.outColor',name+'_material.'+connectedAttr)
+        return image
+    else:
+        pass
+        #mc.confirmDialog(b='Ok',m=obj+' Already Exists')
+        try:
+            mc.connectAttr(obj+'.outColor',name+'_material.'+connectedAttr)
+        except:#catch already connected error
+            textureFile=mc.getAttr(obj+'.fileTextureName')
+            if not textureFile=='sourceimages/'+name+'_'+outAttr+'.png':#check for conformity 
+                mc.confirmDialog(b='Ok',m = 'Texture File Mismatch: '+ textureFile)      
+            else: print textureFile + ' Already Connected'
+       
+def matNode(name):
+        material= name+'_material'
+        if not mc.objExists(material): 
+            mc.shadingNode('blinn',name=material,asShader=1)
+        else:
+            print material + ' already exists'
+            #mc.confirmDialog(b='Ok',m= material + ' Already Exists')
+        fileNode(name,'color')
+        fileNode(name,'spec')        
+      
 ls=ls()
 create=create()
 set=set()
