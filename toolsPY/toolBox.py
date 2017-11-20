@@ -274,11 +274,7 @@ def globalsUI():
 	mc.setParent('..')
 	mc.setParent('..')
 
-###############
-def conform():
-    sel=mc.ls(sel=True)
-    prompt 
-     
+############### 
 def lambertset():#transparancy slider for toolbox
 	num=mc.floatSliderGrp('lambertslider',q=1,value=1)
 	mc.setAttr('lambert1.transparency',num,num,num,type='double3')

@@ -442,7 +442,16 @@ def rView():
     maxIndex= mc.renderWindowEditor('renderView',q=True,nbImages=True)
 
 #####
-       
+def orderAtt():
+	for index, each in enumerate(mc.ls(sl=1)):
+		try:
+			mc.addAttr(each,ln='order',at='long',dv=index)
+			mc.setAttr(str(each)+'.order',e=1,keyable=1)
+		except:
+			print'tried'
+		finally:
+			mc.setAttr(str(each)+'.order',index)
+		
 def conform():
     sel=mc.ls(sl=True)
     prompt=mc.promptDialog(t="Conform",m="Name:",tx="forest",button="Go")
