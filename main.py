@@ -10,7 +10,7 @@ iconPath=os.path.join(importPath,'icons','')
 toolsPY=os.path.join(importPath,'toolsPY','')
 toolsMEL=os.path.join(importPath,'toolsMEL','')
 toolsJSX=os.path.join(importPath,'toolsJSX','')
-scriptsMEL=os.path.join(importPath,'scriptsMEL','')
+scriptsMEL=os.path.join(importPath,'scriptsMEL','').replace('\\','/')
 scriptsPY=os.path.join(importPath,'scriptsPY','')
 ##########
 def nameConvert(string):#Convert Node Names with | to _ 

@@ -360,7 +360,7 @@ class set():
         if not mc.getAttr('defaultRenderGlobals.currentRenderer') =='mentalRay':
             if not mc.confirmDialog(t='rc.Tools',button=['Yes','No'],m='Set Render to MR?',cb='No',ma='center',ds='No')=='No':
                 mc.setAttr('defaultRenderGlobalist.currentRenderer','mentalRay',type='string')
-    rlmAttrs()
+    #rlmAttrs()
     def xray(self):
     	for each in mc.ls(sl=1,s=1,dag=1): 
     		mc.displaySurface(each,xRay=not mc.displaySurface(each,q=1,xRay=1)[0])
@@ -442,13 +442,14 @@ def rView():
     maxIndex= mc.renderWindowEditor('renderView',q=True,nbImages=True)
 
 #####
+
 def orderAtt():
 	for index, each in enumerate(mc.ls(sl=1)):
 		try:
 			mc.addAttr(each,ln='order',at='long',dv=index)
 			mc.setAttr(str(each)+'.order',e=1,keyable=1)
 		except:
-			print'tried'
+			pass
 		finally:
 			mc.setAttr(str(each)+'.order',index)
 		
