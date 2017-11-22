@@ -40,15 +40,13 @@ class ui():#UI Class for Maya
 		mc.window(self.window,t=self.name,dc=['topLeft','bottomLeft'],w=350)#,nde=True
 		mc.formLayout(w=self.rowWidth)
 		mc.dockControl(self.dock,area='left',content=self.window,label=self.name,floating=False,**kwargs)
-		
-	###toolBox
 	def toolBox(self):
 		self.win()
 		mc.tabLayout(self.tabs,w=self.rowWidth+35,imw=15)
 	def tab(self,name):#tab command for toolBox
 		mc.setParent(self.tabs)
-		mc.scrollLayout(name,w=self.rowWidth+15,h=self.screensize[1]-360)	
-	def frame(self,name): mc.frameLayout(self.name+name,bgc=[.2,.2,.2],fn='smallBoldLabeFont',bs='in',l=name)
+		mc.scrollLayout(name,w=self.rowWidth+15,h=self.screensize[1]-150)	
+	def frame(self,name): mc.frameLayout(self.name+name,bgc=[0,0,0],fn='smallBoldLabeFont',bs='in',l=name)
 	def buttonRow(self,columns=8,**kwargs):
 		mc.rowColumnLayout(numberOfColumns=columns)
 		for each in range(columns):

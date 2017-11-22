@@ -27,10 +27,11 @@ def UI():
 	
 	#existMATUI()
 	#ui.tab('MATERIAL')
-	mel.eval("source \""+scriptsMEL+"dp_MaterialManager.mel\"")
-	mel.eval("dp_MaterialManager")
+	#mel.eval("source \""+scriptsMEL+"dp_MaterialManager.mel\"")
+	#mel.eval("dp_MaterialManager")
 	ui.tab('COMP')
 	AE.UI()
+	
 	ui.tab('SCRIPTS')
 	mc.rowColumnLayout(numberOfColumns=8)
 	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8)
@@ -42,7 +43,6 @@ def UI():
 	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8,ann="Export RenderLayers to Files",l= "L2F" ,i= (iconPath +"L2F.png"),c=partial(delay,'mel.eval','("rcLayers2Files")'))
 	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8,ann="Render Manager",l= "RenderManager" ,i= (iconPath +"renderMGR.png"),c=partial(delay,'mel.eval','("rcRenderMGR")'))
 	mc.setParent('..')
-
 	scriptsUI()
 	mc.showWindow()
 ###############
@@ -80,6 +80,7 @@ def scriptsUI():
 		if ext =='.mel':
 			mc.button(w=ui.rowWidth,l=file,c=partial(delay,'btnScript','("'+file+'")'))
 def assignUI():
+    #ui.frame('ASSIGN')
 	mc.frameLayout('ASSIGNFRAME',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='ASSIGN')
 	mc.rowColumnLayout('ASSIGNROW',numberOfColumns=2,columnWidth=[(1,ui.rowWidth/2),(2,ui.rowWidth/2)])
 	mc.columnLayout()

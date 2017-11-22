@@ -390,7 +390,7 @@ global proc rcSetPivot(string $opt){
         	break;
         case "ORIGIN":
            print "yea";
-           xform -ws 0;
+           xform -ws $each;
         
         case "CENTER":
         	for ($each in $sel) CenterPivot $each;
