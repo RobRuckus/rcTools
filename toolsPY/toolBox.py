@@ -23,6 +23,7 @@ def UI():
 	ui.toolBox()
 	ui.tab('MAIN')
 	assignUI()
+	rigUI()
 	materialsUI()
 	
 	#existMATUI()
@@ -46,6 +47,29 @@ def UI():
 	scriptsUI()
 	mc.showWindow()
 ###############
+def rigUI():
+    icon=ui.rowWidth/8
+    mc.frameLayout('Ctrls',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='RIG CONTROLERS')
+    
+    mc.rowColumnLayout(numberOfColumns=8)
+    mc.iconTextButton(w=icon,h=icon,en=1,l= "Square" ,i= (iconPath +"ctrl_square.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"Square\")\')'))
+    mc.iconTextButton(w=icon,h=icon,en=1,l= "Circle" ,i= (iconPath +"ctrl_circle.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"Circle\")\')'))
+    mc.iconTextButton(w=icon,h=icon,en=1,l= "Arrow" ,i= (iconPath +"ctrl_arrow.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"Arrow\")\')'))
+    mc.iconTextButton(w=icon,h=icon,en=1,l= "TwoDir" ,i= (iconPath +"ctrl_twoDir.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"TwoDir\")\')'))
+    mc.iconTextButton(w=icon,h=icon,en=1,l= "FourDir" ,i= (iconPath +"ctrl_fourDir.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir\")\')'))
+    mc.iconTextButton(w=icon,h=icon,en=1,l= "FourDir2" ,i= (iconPath +"ctrl_fourDir2.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
+    mc.iconTextButton(w=icon,h=icon,en=1,l= "Box" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"Box\")\')'))
+    mc.iconTextButton(w=icon,h=icon,en=1,l= "Tri" ,i= (iconPath +"ctrl_tri.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"Tri\")\')'))
+    mc.iconTextButton(w=icon,h=icon,en=1,l= "FourDir2" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
+    mc.iconTextButton(w=icon,h=icon,en=1,l= "FourDir2" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
+    mc.iconTextButton(w=icon,h=icon,en=1,l= "FourDir2" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
+    mc.iconTextButton(w=icon,h=icon,en=1,l= "FourDir2" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
+    mc.iconTextButton(w=icon,h=icon,en=1,l= "FourDir2" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
+    mc.iconTextButton(w=icon,h=icon,en=1,l= "FourDir2" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
+    
+    
+    mc.setParent('MAIN')
+    
 def digItUI():
     mc.frameLayout('DigIt',w=ui.rowWidth,h=330,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='DigIt')
     mc.setParent('MAIN')
@@ -84,11 +108,11 @@ def assignUI():
 	mc.frameLayout('ASSIGNFRAME',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='ASSIGN')
 	mc.rowColumnLayout('ASSIGNROW',numberOfColumns=2,columnWidth=[(1,ui.rowWidth/2),(2,ui.rowWidth/2)])
 	mc.columnLayout()
-	mc.frameLayout('PIVOTS',cll=1,bgc=[.0,.0,.0]);
+	mc.frameLayout('PIVOTS',cll=0,bgc=[.0,.0,.0]);
 	mc.columnLayout('SHAPECTRL',w=ui.rowWidth/2-5)
-	mc.gridLayout(numberOfColumns=5,cellWidthHeight=[25,25])
+	mc.gridLayout(numberOfColumns=5,cellWidthHeight=[28,28])
 	
-	mc.text(l='Piv'); mc.separator(style='in'); 
+	mc.text(l=''); mc.separator(style='in'); 
 	mc.button(l='Cntr',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcSetPivot CENTER")'))
 	mc.button(l='Orig',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcSetPivot ORIGIN")'))
 	mc.button(l='Sel',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcSetPivot SELECTED")'))
@@ -113,8 +137,8 @@ def assignUI():
 	mc.separator(style='in')
 	mc.frameLayout('TRANSFORMS',cll=1,bgc=[.0,.0,.0]);
 
-	mc.gridLayout(numberOfColumns=5,cellWidthHeight=[25,25])
-	mc.text(l='Obj')
+	mc.gridLayout(numberOfColumns=5,cellWidthHeight=[28,28])
+	mc.text(l='')
 	mc.button(l='fObj',ann='Freeze Object\'s Transform, Rotation, Scale',bgc=[.3,.7,1],c=partial(delay,'mc.makeIdentity','(mc.ls(sl=1),apply=True,t=1,r=1,s=1,n=0,pn=1)')) 
 	mc.button(l='DpI',ann='Duplicate Input Graph',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("duplicate -rr -un")'))
 	mc.button(l='Orig',ann='Move Object To World Origin',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcMoveSel ORIGIN")'))

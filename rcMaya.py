@@ -440,7 +440,12 @@ def rView():
     maxIndex= mc.renderWindowEditor('renderView',q=True,nbImages=True)
 
 #####
-
+def rigGrp():
+    mc.promptDialog(title='Ctrl_GRP',m='Name:',tx='Ctrl_')
+    sel=mc.ls(sl=1)
+    mc.group(n=mc.promptDialog(q=1,text=1))
+    mc.xform(os=1,piv=[0,0,0])
+    mc.select(add=1)
 def orderAtt():
 	for index, each in enumerate(mc.ls(sl=1)):
 		try:
@@ -451,7 +456,7 @@ def orderAtt():
 		finally:
 			mc.setAttr(str(each)+'.order',index)
 		
-def conform():
+def conform():#Furioso obj naming : *_mesh on mesh, *_material on material, auto link file nodes *_color and *_spec
     sel=mc.ls(sl=True)
     prompt=mc.promptDialog(t="Conform",m="Name:",tx="forest",button="Go")
     objName= mc.promptDialog(q=1,t=1)
