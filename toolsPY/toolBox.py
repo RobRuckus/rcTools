@@ -11,7 +11,7 @@ def delay(method,string,*args): exec(method+string) #Delay Function
 ################
 from rcTools.rcMaya import *
 from rcTools.toolsPY import toElement 
-from rcTools.toolsPY import rcFurioso as AE
+from rcTools.toolsPY import rcFurioso 
 ################source every mel in toolsMEL: toolsMEL
 for each in os.listdir(toolsMEL):
 	file,ext=os.path.splitext(each)
@@ -20,9 +20,13 @@ for each in os.listdir(toolsMEL):
 ###############
 ui=ui('rcTools')
 def UI():
+    
 	ui.toolBox()
 	ui.tab('MAIN')
 	assignUI()
+	rcFurioso.UI()
+	
+	
 	rigUI()
 	materialsUI()
 	
@@ -30,8 +34,8 @@ def UI():
 	#ui.tab('MATERIAL')
 	#mel.eval("source \""+scriptsMEL+"dp_MaterialManager.mel\"")
 	#mel.eval("dp_MaterialManager")
-	ui.tab('Furioso')
-	AE.UI()
+	#ui.tab('Furioso')
+	
 	
 	ui.tab('SCRIPTS')
 	mc.rowColumnLayout(numberOfColumns=8)
