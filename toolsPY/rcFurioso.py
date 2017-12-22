@@ -13,6 +13,7 @@ except:
 import subprocess
 import os
 import maya.cmds as mc
+import maya.mel as mel
 import rcTools.rcMaya as rc
 from rcTools.main import *
 ###########
@@ -26,7 +27,31 @@ def tagFuriosoFlag(sel):#AE COMP FLAG
 	if not mc.objExists(sel+'.FuriosoFlag') : mc.addAttr(sel,ln='FuriosoFlag',dt='string')		
 	mc.setAttr(sel+'.FuriosoFlag',sel.rstrip('_mesh'),type='string')
 def UI():
+	icon=ui.rowWidth/8
 	mc.columnLayout('furiosoObjectConform')
+	mc.rowColumnLayout(numberOfColumns=8)
+	'''
+	mc.button(h=ui.btn_large,w=icon,l='Tile',c= partial(runMethod,'set.shader','("RED")'))
+	mc.button(h=ui.btn_large,w=icon,bgc= [0 ,.5 ,0 ],l= "G" ,c=partial(runMethod,'set.shader','( "GREEN")'))
+	mc.button(h=ui.btn_large,w=icon,bgc= [0 ,0 ,.5] ,l= "B" ,c= partial(runMethod,'set.shader','( "BLUE")'))
+	mc.iconTextButton(h=ui.btn_large,w=icon,bgc= [0 ,0 ,0] ,l= "A" ,c=partial(runMethod,'set.shader','( "ALPHA")'),i='textureEditorDisplayAlpha.png')
+	mc.button(h=ui.btn_large,w=icon,bgc= [0 ,.5 ,.5],l= "C" ,c= partial(runMethod,'set.shader','( "CYAN")'))
+	mc.button(h=ui.btn_large,w=icon,bgc= [.5 ,0, .5],l= "M" ,c= partial(runMethod,'set.shader','( "MAGENTA")'))
+	mc.button(h=ui.btn_large,w=icon,bgc= [.5 ,.5 ,0],l= "Y" ,c= partial(runMethod,'set.shader','( "YELLOW")'))
+	mc.button(h=ui.btn_large,w=icon,bgc= [0 ,0 ,0],l= "K" ,c= partial(runMethod,'set.shader','( "BLACK")'))
+	'''
+	mc.iconTextButton(w=icon,h=icon,ann="Create 10x10 Tile",l= "Tile" ,i= "polyPlane.png",c=partial(runMethod,'mel.eval','("polyPlane -w 10 -h 10 -sx 10 -sy 10 -ax 0 1 0 -cuv 2 -ch 1")'))
+	mc.iconTextButton(w=icon,h=icon,ann="Create 10x10 Tile",l= "Tile" ,i= "polyPlane.png",c=partial(runMethod,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
+	mc.iconTextButton(w=icon,h=icon,ann="Snap",l= "Tile" ,i= "polyPlane.png",c=partial(runMethod,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
+	#mc.iconTextButton(w=icon,h=icon,en=0,ann="Assign/Create Lambert",l= "LAMBERT" ,i= "render_lambert",c=partial(runMethod,'mel.eval','("rcAssignShader DPTH")'))
+	#mc.iconTextButton(w=icon,ann= "Convert Selected Shader to MIA",i= iconPath +"MIA.png", c= partial(runMethod,'mel.eval','( "convert2MIA")'))
+	#mc.iconTextButton(w=icon,h=icon,ann="Assign/Create AODPTHINC",l= "AODPTHINC" ,i= (iconPath +"AODPTHINC_32.png"),c=partial(runMethod,'mel.eval','("rcAssignShader AODPTHINC")'))
+	#mc.iconTextButton(w=icon,h=icon,ann="Assign/Create AO",l= "AO" ,i= (iconPath +"OCC_32.png"),c=partial(runMethod,'mel.eval','("rcAssignShader AO")'))
+	#mc.iconTextButton(w=icon,h=icon,ann="Assign/Create DPTH",l= "DPTH" ,i= (iconPath +"DPTH_32.png"),en=0,c=partial(runMethod,'mel.eval','("rcAssignShader DPTH")'))
+	#mc.iconTextButton(w=icon,h=icon,ann="Assign/Create INC",l= "INC" ,i= (iconPath +'INC_32.png'),c=partial(runMethod,'set.shader','("INC")'))
+	#mc.iconTextButton(w=icon,h=icon,ann="Assign/Create ALPHA RAMP",l= "A" ,i= (iconPath +'RAMP_A_32.png'),c=partial(runMethod,'mel.eval','("rcAssignShader RAMP_A")'))
+	
+	mc.setParent('..')
 	#mc.rowColumnLayout(numberOfColumns=2,columnWidth=[(1, 120),(2, 215)])
 	#mc.checkBox('objRenameChk',l='Object Rename:',vis=1,v=0)
 	#mc.textField('compAnchor',font='tinyBoldLabelFont',h=20,text='',cc=partial(runMethod,'applyrlmAttrs','()'))#,en=mc.getAttr('renderLayerManager.EnableRenderFolder')
