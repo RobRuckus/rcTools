@@ -440,6 +440,9 @@ def rView():
     maxIndex= mc.renderWindowEditor('renderView',q=True,nbImages=True)
 
 #####
+def stepSnap():
+	manipMoveSetSnapMode 1;
+manipMoveContext -e -snapValue 5 Move;
 def rigGrp():
     mc.promptDialog(title='Ctrl_GRP',m='Name:',tx='Ctrl_')
     sel=mc.ls(sl=1)
