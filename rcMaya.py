@@ -20,10 +20,10 @@ class ui():#UI Class for Maya
 		self.textHeight=10
 		self.rowWidth=300
 		self.iconDim=15
-		self.iconSize=13
 		self.borders=2
 		self.tabWidth=765
 		self.rowWidth=300
+		self.iconSize=self.rowWidth/8
 		self.titleFont='boldLabelFont'
 		self.fieldFont='fixedWidthFont'
 		
@@ -358,8 +358,7 @@ class set():
         if not mc.getAttr('defaultRenderGlobals.currentRenderer') =='mentalRay':
             if not mc.confirmDialog(t='rc.Tools',button=['Yes','No'],m='Set Render to MR?',cb='No',ma='center',ds='No')=='No':
                 mc.setAttr('defaultRenderGlobalist.currentRenderer','mentalRay',type='string')
-    #rlmAttrs()
-    def xray(self):
+    def xray(self):#Selected Objects x-Rayed
     	for each in mc.ls(sl=1,s=1,dag=1): 
     		mc.displaySurface(each,xRay=not mc.displaySurface(each,q=1,xRay=1)[0])
     def imagePrefix(self,option='L__L'):
@@ -440,9 +439,9 @@ def rView():
     maxIndex= mc.renderWindowEditor('renderView',q=True,nbImages=True)
 
 #####
-def stepSnap():
-	manipMoveSetSnapMode 1;
-manipMoveContext -e -snapValue 5 Move;
+def stepSnap(amt,value):
+    mc.manipMoveContext('Move',e=1,snapValue= amt);
+    mc.manipMoveContext('Move',e=1,s=value);
 def rigGrp():
     mc.promptDialog(title='Ctrl_GRP',m='Name:',tx='Ctrl_')
     sel=mc.ls(sl=1)
@@ -459,51 +458,6 @@ def orderAtt():
 		finally:
 			mc.setAttr(str(each)+'.order',index)
 		
-def conform():#Furioso obj naming : *_mesh on mesh, *_material on material, auto link file nodes *_color and *_spec
-    sel=mc.ls(sl=True)
-    prompt=mc.promptDialog(t="Conform",m="Name:",tx="forest",button="Go")
-    objName= mc.promptDialog(q=1,t=1)
-    mesh= mc.rename(sel,objName+'_mesh')
-    material=(objName+'_material')
-    if not mesh==objName+'_mesh':
-        mc.rename(objName+'_mesh',objName+'_mesh'+'_old')
-        #print 'sel= ' +sel
-        mc.rename(mesh,objName+'_mesh')
-        mc.confirmDialog(b='Ok',m='Existing Objects Renamed '+objName+'_old')      
-    matNode(objName)
-    mc.select(objName+'_mesh')
-    mc.hyperShade(assign=material)
-
-def fileNode(name,outAttr):
-    if outAttr == 'spec' : connectedAttr = 'specularColor'
-    else: connectedAttr = outAttr
-    obj=name+'_file_' + outAttr   
-    if not mc.objExists(obj):
-        image=mc.shadingNode('file',asTexture=True,name=obj)
-        mc.setAttr(image+'.fileTextureName','sourceimages/'+name+'_'+outAttr+'.png',type='string')
-        mc.connectAttr(image+'.outColor',name+'_material.'+connectedAttr)
-        return image
-    else:
-        pass
-        #mc.confirmDialog(b='Ok',m=obj+' Already Exists')
-        try:
-            mc.connectAttr(obj+'.outColor',name+'_material.'+connectedAttr)
-        except:#catch already connected error
-            textureFile=mc.getAttr(obj+'.fileTextureName')
-            if not textureFile=='sourceimages/'+name+'_'+outAttr+'.png':#check for conformity 
-                mc.confirmDialog(b='Ok',m = 'Texture File Mismatch: '+ textureFile)      
-            else: print textureFile + ' Already Connected'
-       
-def matNode(name):
-        material= name+'_material'
-        if not mc.objExists(material): 
-            mc.shadingNode('blinn',name=material,asShader=1)
-        else:
-            print material + ' already exists'
-            #mc.confirmDialog(b='Ok',m= material + ' Already Exists')
-        fileNode(name,'color')
-        fileNode(name,'spec')        
-      
 ls=ls()
 create=create()
 set=set()

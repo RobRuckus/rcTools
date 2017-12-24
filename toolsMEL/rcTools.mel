@@ -949,13 +949,13 @@ global proc rccAssignDisplacementSwitch(string $shader, string $obj, string $dis
 	}
 
 ////SET
-global proc rcSetCameraClip() {
+global proc rcSetCameraClip(float $near, float $far) {
 	string $panelSet[] = {"modelPanel1", "modelPanel2", "modelPanel3", "modelPanel4"};
 	for($thisPanel in $panelSet){
 	string $camera = `modelEditor -q -camera $thisPanel`; 
 	eval select `getCameraNode view $camera` `getCameraNode up $camera` $camera;
-	setAttr ($camera + ".nearClipPlane") .5;
-	setAttr ($camera + ".farClipPlane") 100000;
+	setAttr ($camera + ".nearClipPlane") $near;
+	setAttr ($camera + ".farClipPlane") $far;
 	};
     };
 global proc rcSetImagePrefix(string $opt){//Image Prefix Flags

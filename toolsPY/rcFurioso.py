@@ -5,9 +5,9 @@ http://robocolabo.com/blog/
 Version: 0.1
 Function:
 try:
-	reload(rcMaya2AE)
+	reload(rcFurioso)
 except:
-	import rcMaya2AE
+	import rcFurioso
 """
 ###########
 import subprocess
@@ -18,98 +18,87 @@ import rcTools.rcMaya as rc
 from rcTools.main import *
 ###########
 from functools import partial
-def runMethod(method,string,*args): exec(method+string) #Button Delay Function
+def delay(method,string,*args): exec(method+string) #Button Delay Function
 ###########
 #UI VARIABLES FROM MAIN
 ui=rc.ui('Furioso')
+###
+class furiosoPrefs(iniFile):#aePrefs.ini 
+	def __init__(self):
+		iniFile.__init__(self,os.path.join(userDirectory(),'rcFurioso.ini').replace('\\','/'))
+		if not os.path.isfile(self.fileName):#Defaults 
+				file=open(self.fileName,'w')
+				file.close()
+				#mc.confirmDialog(m='Set Path to After Effects')
+				#self.path()
+				self.write('Flag','1')
+				self.write('Material','0')
+				self.write('Object','1')
+				#self.write('Behavior','Replace')
+				#self.write('ImageSource', 'images')
+				#self.write('ImageLabel', 'Label3')
 
-def tagFuriosoFlag(sel):#AE COMP FLAG
-	if not mc.objExists(sel+'.FuriosoFlag') : mc.addAttr(sel,ln='FuriosoFlag',dt='string')		
-	mc.setAttr(sel+'.FuriosoFlag',sel.rstrip('_mesh'),type='string')
+	def checkBox(self,name):#Write checkBox Value
+		self.write(name,int(mc.checkBox(name,q=1,v=1)))
+	def set(self,att,value):#Write Value
+    		self.write(att,value)
+    		buildUILists()
+furiosoPrefs=furiosoPrefs()
+#
 def UI():
-	icon=ui.rowWidth/8
-	mc.columnLayout('furiosoObjectConform')
-	mc.rowColumnLayout(numberOfColumns=8)
-	'''
-	mc.button(h=ui.btn_large,w=icon,l='Tile',c= partial(runMethod,'set.shader','("RED")'))
-	mc.button(h=ui.btn_large,w=icon,bgc= [0 ,.5 ,0 ],l= "G" ,c=partial(runMethod,'set.shader','( "GREEN")'))
-	mc.button(h=ui.btn_large,w=icon,bgc= [0 ,0 ,.5] ,l= "B" ,c= partial(runMethod,'set.shader','( "BLUE")'))
-	mc.iconTextButton(h=ui.btn_large,w=icon,bgc= [0 ,0 ,0] ,l= "A" ,c=partial(runMethod,'set.shader','( "ALPHA")'),i='textureEditorDisplayAlpha.png')
-	mc.button(h=ui.btn_large,w=icon,bgc= [0 ,.5 ,.5],l= "C" ,c= partial(runMethod,'set.shader','( "CYAN")'))
-	mc.button(h=ui.btn_large,w=icon,bgc= [.5 ,0, .5],l= "M" ,c= partial(runMethod,'set.shader','( "MAGENTA")'))
-	mc.button(h=ui.btn_large,w=icon,bgc= [.5 ,.5 ,0],l= "Y" ,c= partial(runMethod,'set.shader','( "YELLOW")'))
-	mc.button(h=ui.btn_large,w=icon,bgc= [0 ,0 ,0],l= "K" ,c= partial(runMethod,'set.shader','( "BLACK")'))
-	'''
-	mc.iconTextButton(w=icon,h=icon,ann="Create 10x10 Tile",l= "Tile" ,i= "polyPlane.png",c=partial(runMethod,'mel.eval','("polyPlane -w 10 -h 10 -sx 10 -sy 10 -ax 0 1 0 -cuv 2 -ch 1")'))
-	mc.iconTextButton(w=icon,h=icon,ann="Create 10x10 Tile",l= "Tile" ,i= "polyPlane.png",c=partial(runMethod,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
-	mc.iconTextButton(w=icon,h=icon,ann="Snap",l= "Tile" ,i= "polyPlane.png",c=partial(runMethod,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
-	#mc.iconTextButton(w=icon,h=icon,en=0,ann="Assign/Create Lambert",l= "LAMBERT" ,i= "render_lambert",c=partial(runMethod,'mel.eval','("rcAssignShader DPTH")'))
-	#mc.iconTextButton(w=icon,ann= "Convert Selected Shader to MIA",i= iconPath +"MIA.png", c= partial(runMethod,'mel.eval','( "convert2MIA")'))
-	#mc.iconTextButton(w=icon,h=icon,ann="Assign/Create AODPTHINC",l= "AODPTHINC" ,i= (iconPath +"AODPTHINC_32.png"),c=partial(runMethod,'mel.eval','("rcAssignShader AODPTHINC")'))
-	#mc.iconTextButton(w=icon,h=icon,ann="Assign/Create AO",l= "AO" ,i= (iconPath +"OCC_32.png"),c=partial(runMethod,'mel.eval','("rcAssignShader AO")'))
-	#mc.iconTextButton(w=icon,h=icon,ann="Assign/Create DPTH",l= "DPTH" ,i= (iconPath +"DPTH_32.png"),en=0,c=partial(runMethod,'mel.eval','("rcAssignShader DPTH")'))
-	#mc.iconTextButton(w=icon,h=icon,ann="Assign/Create INC",l= "INC" ,i= (iconPath +'INC_32.png'),c=partial(runMethod,'set.shader','("INC")'))
-	#mc.iconTextButton(w=icon,h=icon,ann="Assign/Create ALPHA RAMP",l= "A" ,i= (iconPath +'RAMP_A_32.png'),c=partial(runMethod,'mel.eval','("rcAssignShader RAMP_A")'))
-	
-	mc.setParent('..')
-	#mc.rowColumnLayout(numberOfColumns=2,columnWidth=[(1, 120),(2, 215)])
-	#mc.checkBox('objRenameChk',l='Object Rename:',vis=1,v=0)
-	#mc.textField('compAnchor',font='tinyBoldLabelFont',h=20,text='',cc=partial(runMethod,'applyrlmAttrs','()'))#,en=mc.getAttr('renderLayerManager.EnableRenderFolder')
-	#mc.setParent('..')
+    mc.frameLayout('Furioso',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='Furioso')
+    mc.columnLayout('furiosoObjectConform',cal='center',w=ui.rowWidth-10)
+    mc.rowColumnLayout(numberOfColumns=8)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 10x10 Tile",l= "Tile" ,i= "polyPlane.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 10 -sy 10 -ax 0 1 0 -cuv 2 -ch 1")'))	
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 1x1 Tile",l= "Tile" ,i= "plane.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0,c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0,c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "historyPulldownIcon.png",bgc=[.5,0,0],c=partial(delay,'mel.eval','("DeleteHistory")'))
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "polyQuad",c=partial(delay,'mel.eval','("TogglePolyCount")'))
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Set Camera to Meters",en=1,l= "Set Camera" ,i= "CameraAE.png",c=partial(delay,'mel.eval','("rcSetCameraClip .5 100000")'))
+    mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Snap",l= "Tile" ,i= "snapGrid.png",onc=partial(delay,'rc.stepSnap','(5,1)'),ofc=partial(delay,'rc.stepSnap','(5,0)'))
+    mc.setParent('..')
 
-	#mc.separator(h=15,style='in')
-	#mc.checkBox('chkImportRCam',l='Import render Cameras:',vis=0,v=0,en=0)
-	
-	mc.rowLayout(w=ui.rowWidth,numberOfColumns=3)
-	mc.button(w=ui.rowWidth/3,h=ui.btn_large,al='left',l=' + ',c=partial(runMethod,'btnPlus','(mc.ls(sl=1))'))  #
-	mc.button(h=ui.btn_large,w=ui.rowWidth/3,al='center',l=' - ',c=partial(runMethod,'btnDel','("sel")')) 
-	mc.button(h=ui.btn_large,w=ui.rowWidth/3,al='right',en=0,l='NUKE',c=partial(runMethod,'btnDel','("all")'))
-	mc.setParent('..')
-	mc.iconTextScrollList('FuriosoObjScroll',w=ui.rowWidth,h=500)
-	mc.setParent('furiosoObjectConform')
-	########
-	mc.checkBox('chkAbsFrames',l='Use Timeline Frame Numbers',vis=0,v=1)
-	mc.checkBox('chkOverrideTime',l='Override Timeline',vis=0,v=0,en=0)
-	#mc.button(l='EXPORT',w=ui.rowWidth,bgc=[.586,.473,.725],align='center',h=ui.btn_large,c=partial(runMethod,'btnExport','()'))
-	mc.setParent('..')
-	
-	buildUILists()
-	#mc.scriptJob('import rcMaya2AE',event=SceneOpened)
-
+    mc.rowLayout(w=ui.rowWidth,numberOfColumns=3)
+    mc.button(w=ui.rowWidth/3,h=ui.btn_large,al='left',l=' + ',c=partial(delay,'btnPlus','(mc.ls(sl=1))'))  #
+    mc.button(h=ui.btn_large,w=ui.rowWidth/3,al='center',l=' - ',c=partial(delay,'btnDel','("sel")')) 
+    mc.button(h=ui.btn_large,w=ui.rowWidth/3,al='right',l='NUKE',c=partial(delay,'btnDel','("all")'))
+    mc.setParent('..')
+    mc.checkBox('Object',vis=0,l='Object',v=int(furiosoPrefs.get('Object')),cc=partial(delay,'furiosoPrefs.checkBox',"('Object')"))
+    mc.checkBox('Material',l='Material',vis=1,v=int(furiosoPrefs.get('Material')),cc=partial(delay,'furiosoPrefs.checkBox',"('Material')"))
+    mc.checkBox('Flag',l='Flag',vis=0,v=int(furiosoPrefs.get('Flag')),cc=partial(delay,'furiosoPrefs.checkBox',"('Flag')"))
+    mc.iconTextScrollList('FuriosoObjScroll',w=ui.rowWidth,h=500)
+    mc.setParent('furiosoObjectConform')
+    mc.setParent('..')
+    buildUILists()
+	#mc.scriptJob('import rcFurioso',event=SceneOpened)
 def updateMenu():#UPDATE
 	
 	mc.menu('Path',e=True,dai=True)
 	mc.menuItem(d=True,dl='Maya Render Images')
 	for each in sceneData.outputImages():
-		mc.menuItem(each,l=each,itl=True,c=partial(runMethod,'spawnBrowser','("%s")'%os.path.dirname(each)))
-	mc.menuItem(l='Set Path Presets',c=partial(runMethod,'rc.set.globals','()'))
+		mc.menuItem(each,l=each,itl=True,c=partial(delay,'spawnBrowser','("%s")'%os.path.dirname(each)))
+	mc.menuItem(l='Set Path Presets',c=partial(delay,'rc.set.globals','()'))
 	mc.menuItem(d=True,dl='After Effects')
 	
 	mc.menuItem('Image Output',l=aePrefs.get('AELoc'),itl=True,en=0)
 	
-	mc.menuItem(l='Set Path',c=partial(runMethod,'aePrefs.path','()'))
+	mc.menuItem(l='Set Path',c=partial(delay,'aePrefs.path','()'))
 	mc.setParent('..')
 	
 def buildUILists():
 	mc.iconTextScrollList('FuriosoObjScroll',e=1,ams=1,ra=1)
+	mc.popupMenu('menuObj',p='FuriosoObjScroll')
+	mc.menuItem('Rename Material',l='Rename Material',c=partial(delay,'aePrefs.write',"('Behavior','New')"))
+	mc.menuItem('Pivot Conform',l='Pivot Conform',c=partial(delay,'aePrefs.write',"('Behavior','New')"))
 	index=0
 	for each in mc.ls():
-		fileColor=[index+1,0,1,0]#		fileColor=[index+1,.7,0.0,0.0]
-
 		if mc.objExists(each+'.FuriosoFlag'):
-			index=index+1
-			mc.iconTextScrollList('FuriosoObjScroll',e=1,a=each.rsplit('_mesh')[0],itc=fileColor,sc=tagListCallBack)
-	#for i, each in enumerate(sceneData.outputLayers()):
-		#fileColor=[i+1,.7,0,0]
-		#print 
-		#if os.path.exists(sceneData.outputImages()[i]):
-		#	fileColor=[i+1,0,.7,0]
-		#location=os.path.dirname(sceneData.outputImages()[i])
-		#if imageLabel=='Label2': 
-		#	mc.iconTextScrollList('OBJConformedScroll',e=1,itc=fileColor,a='%s.%s'%(rlm.get('shotName'),each))
-		#if imageLabel=='Label3':
-		#	mc.iconTextScrollList('OBJConformedScroll',e=1,itc=fileColor,dcc=partial(runMethod,'spawnBrowser','("%s")'%location),a='%s'%each)
-	#updateMenu()
+		    fileColor=[index+1,1,0,0]
+		    if checkConform(each) :
+		         fileColor=[index+1,0,1,0] 
+		    index=index+1
+		    mc.iconTextScrollList('FuriosoObjScroll',e=1,a=each.rsplit('_mesh')[0],itc=fileColor,sc=tagListCallBack)
 def tagListCallBack():
 	sel=[]
 	try:
@@ -121,25 +110,58 @@ def tagListCallBack():
 	        pass
 	    else:
 	        mc.select(sel)
-###	
 
 def btnPlus(sel):
 	for each in sel:
-	    #mc.select(each)
-		conform(each)
-		tagFuriosoFlag(each)
+	    obj=conformObj(each)
+	    if int(furiosoPrefs.get('Material'))==1:
+	        print 'yes'
+	        material=conformMat(each.rsplit('_mesh')[0]+'_material')
+	        mc.select(obj)
+	        mc.hyperShade(assign=material)
+
+	    mc.select(obj)
+	    tagFuriosoFlag(obj)
 	buildUILists()
 def btnDel(opt): #deletes all sets and locators
 	if opt=='all':
 		for each in mc.ls():
 			if mc.objExists(each+'.FuriosoFlag'): mc.deleteAttr(each+'.FuriosoFlag')
-			if mc.objExists(each.replace('|','_')+'_pos'):mc.delete(each.replace('|','_')+'_pos')
 	if opt=='sel':
 		for each in mc.ls(sl=1):
 			if mc.objExists(each+'.FuriosoFlag'): mc.deleteAttr(each+'.FuriosoFlag')
-			if mc.objExists(each+'_pos'):mc.delete(each+'_pos')
 	buildUILists()
 ################
+def conformObj(sel):
+    mc.select(sel)
+    prompt=mc.promptDialog(t="Conform",m="Name:                                     ",tx=sel.rsplit('_mesh')[0],button="Go")
+    if prompt=='dismiss': sys.exit()
+    objName= mc.promptDialog(q=1,t=1)
+    mesh= mc.rename(sel,objName+'_mesh')
+    if not mesh==objName+'_mesh':
+        mc.rename(objName+'_mesh',objName+'_mesh'+'_old')
+        mc.rename(mesh,objName+'_mesh')
+        mc.confirmDialog(b='Ok',m='Existing Objects Renamed '+objName+'_old') 
+    return objName+'_mesh'
+def conformMat(name):
+        if not mc.objExists(name): 
+            mc.shadingNode('blinn',name=name,asShader=1)
+            fileNode(name,'color')
+            fileNode(name,'spec')
+        else:
+            mc.confirmDialog(b='Ok',m=name+ ' Already Exists')
+        return name
+def tagFuriosoFlag(sel):
+	if not mc.objExists(sel+'.FuriosoFlag') : 
+	    mc.addAttr(sel,ln='FuriosoFlag',dt='string')		
+	mc.setAttr(sel+'.FuriosoFlag',sel.rstrip('_mesh'),type='string')
+def checkConform(sel):
+    conform=1
+    objWS=mc.xform(sel,q=1,sp=1)
+    for each in objWS:
+        if each :
+            conform=0
+    return conform  
 def conform(sel):#Furioso obj naming : *_mesh on mesh, *_material on material, auto link file nodes *_color and *_spec
     mc.select(sel)
     #sel=mc.ls(sl=True)
@@ -151,22 +173,23 @@ def conform(sel):#Furioso obj naming : *_mesh on mesh, *_material on material, a
     material=(objName+'_material')
     if not mesh==objName+'_mesh':
         mc.rename(objName+'_mesh',objName+'_mesh'+'_old')
-        #print 'sel= ' +sel
         mc.rename(mesh,objName+'_mesh')
         mc.confirmDialog(b='Ok',m='Existing Objects Renamed '+objName+'_old')      
-    matNode(objName)
-    mc.select(objName+'_mesh')
+    conformMat(objName+'_material')
+    selObj=objName+'_mesh'
+    mc.select(selObj)
     mc.hyperShade(assign=material)
+    return selObj
 
 def fileNode(name,outAttr):
     if outAttr == 'spec' : connectedAttr = 'specularColor'
     else: connectedAttr = outAttr
-    obj=name+'_file_' + outAttr   
+    obj=name.rsplit('_material')[0]+'_file_' + outAttr   
     if not mc.objExists(obj):
         print 'obj doesnt exist'
         image=mc.shadingNode('file',asTexture=True,name=obj)
-        mc.setAttr(image+'.fileTextureName','sourceimages/'+name+'_'+outAttr+'.png',type='string')
-        mc.connectAttr(image+'.outColor',name+'_material.'+connectedAttr)
+        mc.setAttr(image+'.fileTextureName','sourceimages/'+name.rsplit('_material')[0]+'_'+outAttr+'.png',type='string')
+        mc.connectAttr(image+'.outColor',name+'.'+connectedAttr)
         return image
     else:
         pass
@@ -179,20 +202,6 @@ def fileNode(name,outAttr):
                 mc.confirmDialog(b='Ok',m = 'Texture File Mismatch: '+ textureFile)      
             else: print textureFile + ' Already Connected'
        
-def matNode(name):
-        material= name+'_material'
-        if not mc.objExists(material): 
-            mc.shadingNode('blinn',name=material,asShader=1)
-            fileNode(name,'color')
-            fileNode(name,'spec')
-        else:
-            return 'exists'
-            #print material + ' already exists'
-            #mc.confirmDialog(b='Ok',m= material + ' Already Exists')
-                
-  
-
-
 #################
 if __name__== 'rcFurioso' :
 	ui.win()

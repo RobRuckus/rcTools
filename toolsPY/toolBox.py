@@ -189,9 +189,10 @@ def assignUI():
 	
 	mc.rowColumnLayout(numberOfColumns=3,rat=[1,'both',0])
 	mc.separator(style='in');
-	mc.button(h=25,ann='Set Camera Clips to Meters',l='CC',c=partial(delay,'mel.eval','("rcSetCameraClip")'));
-	mc.button(h=25,ann='Set Viewport to Green for PlayBlast',l='RE',bgc=[.0,.5,.0],c=partial(delay,'set.view','(opt=1)'))
-	
+	icon=ui.rowWidth/8
+	mc.iconTextButton(w=icon,h=icon,ann="Set Camera to Meters",en=1,l= "Set Camera" ,i= "CameraAE.png",c=partial(delay,'mel.eval','("rcSetCameraClip .5 100000")'))
+	#mc.button(h=25,ann='Set Camera Clips to Meters',l='CC',c=partial(delay,'mel.eval','("rcSetCameraClip .5 100000")'));
+	mc.button(h=25,ann='Set Viewport to Green for PlayBlast',l='RE',bgc=[.0,.5,.0],c=partial(delay,'set.view','(opt=1)'))	
 	mc.button(h=25,ann='Set Viewport to Green for PlayBlast',l='GREEN',bgc=[.0,1,.0],c=partial(delay,'mel.eval','("rcSetView GREEN")'))    
 	mc.button(h=25,ann='Set Viewport to Standard Grey',l='GREY',bgc=[.8,.8,.8],c=partial(delay,'mel.eval','("rcSetView GREY")'))    
 	mc.button(h=25,ann='Set Viewport to Gradient',l='GRAD',c=partial(delay,'mel.eval','("rcSetView GRAD")'))    
@@ -323,3 +324,6 @@ def btnSourcePy(file,command):
 		reload (file)
 		file.command
 
+if __name__== 'toolBox' :
+	ui.win()
+	UI()

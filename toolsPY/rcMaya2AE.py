@@ -29,7 +29,7 @@ import rcTools.rcMaya as rc
 from rcTools.main import *
 ###########
 from functools import partial
-def runMethod(method,string,*args): exec(method+string) #Button Delay Function
+def delay(method,string,*args): exec(method+string) #Button Delay Function
 ###########
 #UI VARIABLES FROM MAIN
 ui=rc.ui('Maya2AE')
@@ -239,31 +239,31 @@ def UI():
 	
 	mc.menuItem(d=True)
 	mc.radioMenuItemCollection()
-	mc.menuItem('New',en=0,l='New',rb=1,c=partial(runMethod,'aePrefs.write',"('Behavior','New')"))
-	mc.menuItem('Replace',en=0,l='Replace',rb=1,c=partial(runMethod,'aePrefs.write',"('Behavior','Replace')"))
+	mc.menuItem('New',en=0,l='New',rb=1,c=partial(delay,'aePrefs.write',"('Behavior','New')"))
+	mc.menuItem('Replace',en=0,l='Replace',rb=1,c=partial(delay,'aePrefs.write',"('Behavior','Replace')"))
 	mc.menuItem(aePrefs.get('Behavior'),e=1,rb=1)
 	mc.menuItem(d=True)
-	mc.menuItem(l='Export',c=partial(runMethod,'btnExport','()'))
+	mc.menuItem(l='Export',c=partial(delay,'btnExport','()'))
 	
 	mc.menu(l='Options',to=1)
-	mc.menuItem('Force1080',l='Force Comp 1080',cb=int(aePrefs.get('Force1080')),c=partial(runMethod,'aePrefs.menuItem',"('Force1080')"))
-	mc.menuItem('UseGlobalTime',l='Use Global Frame Range',cb=int(aePrefs.get('UseGlobalTime')),c=partial(runMethod,'aePrefs.menuItem',"('UseGlobalTime')"))
+	mc.menuItem('Force1080',l='Force Comp 1080',cb=int(aePrefs.get('Force1080')),c=partial(delay,'aePrefs.menuItem',"('Force1080')"))
+	mc.menuItem('UseGlobalTime',l='Use Global Frame Range',cb=int(aePrefs.get('UseGlobalTime')),c=partial(delay,'aePrefs.menuItem',"('UseGlobalTime')"))
 	mc.menuItem(d=True)
 	
 
 	mc.menu(l='Label')
 	mc.menuItem(d=True,l='After Effects Image Label')
 	mc.radioMenuItemCollection()
-	mc.menuItem('Label1',l='<CompName>.<RenderLayer>[000-000]',rb=1,c=partial(runMethod,'aePrefs.set',"('ImageLabel','Label1')"),en=0)
-	mc.menuItem('Label2',l='<CompName>.<RenderLayer>',rb=1,c=partial(runMethod,'aePrefs.set',"('ImageLabel','Label2')"))
-	mc.menuItem('Label3',l='<RenderLayer>',rb=1,c=partial(runMethod,'aePrefs.set',"('ImageLabel','Label3')"))
+	mc.menuItem('Label1',l='<CompName>.<RenderLayer>[000-000]',rb=1,c=partial(delay,'aePrefs.set',"('ImageLabel','Label1')"),en=0)
+	mc.menuItem('Label2',l='<CompName>.<RenderLayer>',rb=1,c=partial(delay,'aePrefs.set',"('ImageLabel','Label2')"))
+	mc.menuItem('Label3',l='<RenderLayer>',rb=1,c=partial(delay,'aePrefs.set',"('ImageLabel','Label3')"))
 	mc.menuItem(aePrefs.get('ImageLabel'),e=1,rb=1)
 	
 	mc.menu(l='Source')
 	mc.menuItem(d=True,l='workspace')
 	mc.radioMenuItemCollection()
-	mc.menuItem('tmp',l='tmp',rb=1,c=partial(runMethod,'aePrefs.set',"('ImageSource','tmp')"))
-	mc.menuItem('images',l='images',rb=1,c=partial(runMethod,'aePrefs.set',"('ImageSource','images')"))
+	mc.menuItem('tmp',l='tmp',rb=1,c=partial(delay,'aePrefs.set',"('ImageSource','tmp')"))
+	mc.menuItem('images',l='images',rb=1,c=partial(delay,'aePrefs.set',"('ImageSource','images')"))
 	mc.menuItem(aePrefs.get('ImageSource'),e=1,rb=1)
 	mc.menu('Path',l='Path')
 	updateMenu()
@@ -274,21 +274,21 @@ def UI():
 	mc.separator(h=5,style='in')
 	mc.rowColumnLayout(numberOfColumns=2,columnWidth=[(1, 70),(2, 215)])
 	mc.text(al='right',font='tinyBoldLabelFont',label='Comp Name: ',ann='The Name of the Comp that is Anchored to this Scene in After Effects')
-	mc.textField('compAnchor',font='tinyBoldLabelFont',h=20,text=rlm.get('shotName'),cc=partial(runMethod,'applyrlmAttrs','()'))#,en=mc.getAttr('renderLayerManager.EnableRenderFolder')
+	mc.textField('compAnchor',font='tinyBoldLabelFont',h=20,text=rlm.get('shotName'),cc=partial(delay,'applyrlmAttrs','()'))#,en=mc.getAttr('renderLayerManager.EnableRenderFolder')
 	mc.setParent('..')
-	mc.checkBox('Layers',l='Render Layers:',v=int(aePrefs.get('Layers')),cc=partial(runMethod,'aePrefs.checkBox',"('Layers')"))
+	mc.checkBox('Layers',l='Render Layers:',v=int(aePrefs.get('Layers')),cc=partial(delay,'aePrefs.checkBox',"('Layers')"))
 	mc.checkBox('chkImportRLSelected',l='Selected Only',vis=0,v=0,en=0)
 	mc.iconTextScrollList('AEXRenderLayerScroll',w=ui.rowWidth,h=240)
 	mc.setParent('renderLayers2AFX')
 	########
 	mc.separator(h=15,style='in')
-	mc.checkBox('Objects',l='Objects:',v=int(aePrefs.get('Objects')),cc=partial(runMethod,'aePrefs.checkBox',"('Objects')"))
+	mc.checkBox('Objects',l='Objects:',v=int(aePrefs.get('Objects')),cc=partial(delay,'aePrefs.checkBox',"('Objects')"))
 	mc.checkBox('chkImportRCam',l='Import render Cameras:',vis=0,v=0,en=0)
 	
 	mc.rowLayout(w=ui.rowWidth,numberOfColumns=3)
-	mc.button(w=ui.rowWidth/3,h=ui.btn_large,al='left',l=' + ',c=partial(runMethod,'btnPlus','(mc.ls(sl=1))')) 
-	mc.button(en=0,h=ui.btn_large,w=ui.rowWidth/3,al='center',l=' - ',c=partial(runMethod,'btnNuke','("sel")')) 
-	mc.button(h=ui.btn_large,w=ui.rowWidth/3,al='right',l='NUKE',c=partial(runMethod,'btnNuke','("all")'))
+	mc.button(w=ui.rowWidth/3,h=ui.btn_large,al='left',l=' + ',c=partial(delay,'btnPlus','(mc.ls(sl=1))')) 
+	mc.button(en=0,h=ui.btn_large,w=ui.rowWidth/3,al='center',l=' - ',c=partial(delay,'btnNuke','("sel")')) 
+	mc.button(h=ui.btn_large,w=ui.rowWidth/3,al='right',l='NUKE',c=partial(delay,'btnNuke','("all")'))
 	mc.setParent('..')
 	
 	mc.iconTextScrollList('AEXObjListScroll',w=ui.rowWidth,h=200)
@@ -296,7 +296,7 @@ def UI():
 	########
 	mc.checkBox('chkAbsFrames',l='Use Timeline Frame Numbers',vis=0,v=1)
 	mc.checkBox('chkOverrideTime',l='Override Timeline',vis=0,v=0,en=0)
-	mc.button(l='EXPORT',w=ui.rowWidth,bgc=[.586,.473,.725],align='center',h=ui.btn_large,c=partial(runMethod,'btnExport','()'))
+	mc.button(l='EXPORT',w=ui.rowWidth,bgc=[.586,.473,.725],align='center',h=ui.btn_large,c=partial(delay,'btnExport','()'))
 	mc.setParent('..')
 	
 	buildUILists()
@@ -310,13 +310,13 @@ def updateMenu():#UPDATE
 	mc.menu('Path',e=True,dai=True)
 	mc.menuItem(d=True,dl='Maya Render Images')
 	for each in sceneData.outputImages():
-		mc.menuItem(each,l=each,itl=True,c=partial(runMethod,'spawnBrowser','("%s")'%os.path.dirname(each)))
-	mc.menuItem(l='Set Path Presets',c=partial(runMethod,'rc.set.globals','()'))
+		mc.menuItem(each,l=each,itl=True,c=partial(delay,'spawnBrowser','("%s")'%os.path.dirname(each)))
+	mc.menuItem(l='Set Path Presets',c=partial(delay,'rc.set.globals','()'))
 	mc.menuItem(d=True,dl='After Effects')
 	
 	mc.menuItem('Image Output',l=aePrefs.get('AELoc'),itl=True,en=0)
 	
-	mc.menuItem(l='Set Path',c=partial(runMethod,'aePrefs.path','()'))
+	mc.menuItem(l='Set Path',c=partial(delay,'aePrefs.path','()'))
 	mc.setParent('..')
 	
 def buildUILists():
@@ -334,7 +334,7 @@ def buildUILists():
 		if imageLabel=='Label2': 
 			mc.iconTextScrollList('AEXRenderLayerScroll',e=1,itc=fileColor,a='%s.%s'%(rlm.get('shotName'),each))
 		if imageLabel=='Label3':
-			mc.iconTextScrollList('AEXRenderLayerScroll',e=1,itc=fileColor,dcc=partial(runMethod,'spawnBrowser','("%s")'%location),a='%s'%each)
+			mc.iconTextScrollList('AEXRenderLayerScroll',e=1,itc=fileColor,dcc=partial(delay,'spawnBrowser','("%s")'%location),a='%s'%each)
 	updateMenu()
 def tagListCallBack():
 	sel=[]
