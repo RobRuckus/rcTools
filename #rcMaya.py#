@@ -441,6 +441,8 @@ def rView():
     maxIndex= mc.renderWindowEditor('renderView',q=True,nbImages=True)
 
 #####
+def combineMesh():
+    if size(mc.listRelatives(listRelatives('transform',f=1,type=1),type='mesh'
 def stepSnap(amt,value):
     mc.manipMoveContext('Move',e=1,snapValue= amt);
     mc.manipMoveContext('Move',e=1,s=value);

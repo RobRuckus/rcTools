@@ -47,16 +47,17 @@ furiosoPrefs=furiosoPrefs()
 #
 def UI():
     mc.frameLayout('Furioso',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='Furioso')
+    
     mc.columnLayout('furiosoObjectConform',cal='center',w=ui.rowWidth-10)
     mc.rowColumnLayout(numberOfColumns=8)
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 10x10 Tile",l= "Tile" ,i= "polyPlane.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 10 -sy 10 -ax 0 1 0 -cuv 2 -ch 1")'))	
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 1x1 Tile",l= "Tile" ,i= "plane.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0,c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0,c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "cube.png",c=partial(delay,'mel.eval','("polyCube -w 10 -h 10 -d 10 -sx 1 -sy 1 -sz 1 -ax 0 1 0 -cuv 4 -ch 1;")'))
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "historyPulldownIcon.png",bgc=[.5,0,0],c=partial(delay,'mel.eval','("DeleteHistory")'))
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "polyQuad",c=partial(delay,'mel.eval','("TogglePolyCount")'))
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0,c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))  
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Set Camera to Meters",en=1,l= "Set Camera" ,i= "CameraAE.png",c=partial(delay,'mel.eval','("rcSetCameraClip .5 100000")'))
-    mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Snap",l= "Tile" ,i= "snapGrid.png",onc=partial(delay,'rc.stepSnap','(5,1)'),ofc=partial(delay,'rc.stepSnap','(5,0)'))
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "polyQuad",c=partial(delay,'mel.eval','("TogglePolyCount")'))
+    mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Snap",l= "Tile" ,i= "snapGrid.png",onc=partial(delay,'rc.stepSnap','(5,1)'),ofc=partial(delay,'rc.stepSnap','(5,0)'),v=mc.manipMoveContext('Move',q=1,s=1))    
     mc.setParent('..')
 
     mc.rowLayout(w=ui.rowWidth,numberOfColumns=3)
@@ -64,33 +65,21 @@ def UI():
     mc.button(h=ui.btn_large,w=ui.rowWidth/3,al='center',l=' - ',c=partial(delay,'btnDel','("sel")')) 
     mc.button(h=ui.btn_large,w=ui.rowWidth/3,al='right',l='NUKE',c=partial(delay,'btnDel','("all")'))
     mc.setParent('..')
+    
     mc.checkBox('Object',vis=0,l='Object',v=int(furiosoPrefs.get('Object')),cc=partial(delay,'furiosoPrefs.checkBox',"('Object')"))
     mc.checkBox('Material',l='Material',vis=1,v=int(furiosoPrefs.get('Material')),cc=partial(delay,'furiosoPrefs.checkBox',"('Material')"))
     mc.checkBox('Flag',l='Flag',vis=0,v=int(furiosoPrefs.get('Flag')),cc=partial(delay,'furiosoPrefs.checkBox',"('Flag')"))
     mc.iconTextScrollList('FuriosoObjScroll',w=ui.rowWidth,h=500)
     mc.setParent('furiosoObjectConform')
     mc.setParent('..')
+    
     buildUILists()
 	#mc.scriptJob('import rcFurioso',event=SceneOpened)
-def updateMenu():#UPDATE
-	
-	mc.menu('Path',e=True,dai=True)
-	mc.menuItem(d=True,dl='Maya Render Images')
-	for each in sceneData.outputImages():
-		mc.menuItem(each,l=each,itl=True,c=partial(delay,'spawnBrowser','("%s")'%os.path.dirname(each)))
-	mc.menuItem(l='Set Path Presets',c=partial(delay,'rc.set.globals','()'))
-	mc.menuItem(d=True,dl='After Effects')
-	
-	mc.menuItem('Image Output',l=aePrefs.get('AELoc'),itl=True,en=0)
-	
-	mc.menuItem(l='Set Path',c=partial(delay,'aePrefs.path','()'))
-	mc.setParent('..')
-	
 def buildUILists():
 	mc.iconTextScrollList('FuriosoObjScroll',e=1,ams=1,ra=1)
 	mc.popupMenu('menuObj',p='FuriosoObjScroll')
 	mc.menuItem('Rename Material',l='Rename Material',c=partial(delay,'aePrefs.write',"('Behavior','New')"))
-	mc.menuItem('Pivot Conform',l='Pivot Conform',c=partial(delay,'aePrefs.write',"('Behavior','New')"))
+	mc.menuItem('Pivot Conform',l='Pivot Conform',c=partial(delay,'refreeze',"('Behavior','New')"))
 	index=0
 	for each in mc.ls():
 		if mc.objExists(each+'.FuriosoFlag'):
@@ -107,10 +96,11 @@ def tagListCallBack():
 		pass
 	if sel: 
 	    if sel=='_mesh':
-	        pass
+	        mc.select(cl=1)
 	    else:
 	        mc.select(sel)
-
+	else:
+	    mc.select(cl=1)
 def btnPlus(sel):
 	for each in sel:
 	    obj=conformObj(each)
@@ -120,8 +110,8 @@ def btnPlus(sel):
 	        mc.select(obj)
 	        mc.hyperShade(assign=material)
 
-	    mc.select(obj)
-	    tagFuriosoFlag(obj)
+	    #mc.select(obj)
+	    conformFlag(obj)
 	buildUILists()
 def btnDel(opt): #deletes all sets and locators
 	if opt=='all':
@@ -146,12 +136,12 @@ def conformObj(sel):
 def conformMat(name):
         if not mc.objExists(name): 
             mc.shadingNode('blinn',name=name,asShader=1)
-            fileNode(name,'color')
-            fileNode(name,'spec')
+            conformFile(name,'color')
+            conformFile(name,'spec')
         else:
             mc.confirmDialog(b='Ok',m=name+ ' Already Exists')
         return name
-def tagFuriosoFlag(sel):
+def conformFlag(sel):
 	if not mc.objExists(sel+'.FuriosoFlag') : 
 	    mc.addAttr(sel,ln='FuriosoFlag',dt='string')		
 	mc.setAttr(sel+'.FuriosoFlag',sel.rstrip('_mesh'),type='string')
@@ -162,33 +152,17 @@ def checkConform(sel):
         if each :
             conform=0
     return conform  
-def conform(sel):#Furioso obj naming : *_mesh on mesh, *_material on material, auto link file nodes *_color and *_spec
-    mc.select(sel)
-    #sel=mc.ls(sl=True)
-    prompt=mc.promptDialog(t="Conform",m="Name:                                     ",tx=sel.rsplit('_mesh')[0],button="Go")
-    if prompt=='dismiss':
-        sys.exit()
-    objName= mc.promptDialog(q=1,t=1)
-    mesh= mc.rename(sel,objName+'_mesh')
-    material=(objName+'_material')
-    if not mesh==objName+'_mesh':
-        mc.rename(objName+'_mesh',objName+'_mesh'+'_old')
-        mc.rename(mesh,objName+'_mesh')
-        mc.confirmDialog(b='Ok',m='Existing Objects Renamed '+objName+'_old')      
-    conformMat(objName+'_material')
-    selObj=objName+'_mesh'
-    mc.select(selObj)
-    mc.hyperShade(assign=material)
-    return selObj
 
-def fileNode(name,outAttr):
+def conformFile(name,outAttr):
+    imageFile='sourceimages/'+name.rsplit('material')[0]+outAttr+'.png'
     if outAttr == 'spec' : connectedAttr = 'specularColor'
     else: connectedAttr = outAttr
     obj=name.rsplit('_material')[0]+'_file_' + outAttr   
     if not mc.objExists(obj):
-        print 'obj doesnt exist'
+        #print rc.sceneData.wsSourceFolder()
+        print 'creating fileNode '+obj
         image=mc.shadingNode('file',asTexture=True,name=obj)
-        mc.setAttr(image+'.fileTextureName','sourceimages/'+name.rsplit('_material')[0]+'_'+outAttr+'.png',type='string')
+        mc.setAttr(image+'.fileTextureName',imageFile,type='string')
         mc.connectAttr(image+'.outColor',name+'.'+connectedAttr)
         return image
     else:

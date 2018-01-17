@@ -20,17 +20,14 @@ for each in os.listdir(toolsMEL):
 ###############
 ui=ui('rcTools')
 def UI():
-    
 	ui.toolBox()
 	ui.tab('MAIN')
 	assignUI()
 	rcFurioso.UI()
+	#rigUI()
+	#materialsUI()
 	
-	
-	rigUI()
-	materialsUI()
-	
-	#existMATUI()
+	existMATUI()
 	#ui.tab('MATERIAL')
 	#mel.eval("source \""+scriptsMEL+"dp_MaterialManager.mel\"")
 	#mel.eval("dp_MaterialManager")
@@ -271,11 +268,11 @@ def materialsUI():
 	
 	mc.setParent('..')
 	mc.separator(style='in')
-	mc.frameLayout('frame_MATERIAL',w=ui.rowWidth,l='Existing Materials List',ec=partial(delay,'existMATUI','()'),cll=1)
 	existMATUI()
 	mc.setParent('..')
 	mc.setParent('MAIN')
 def existMATUI():
+	mc.frameLayout('frame_MATERIAL',w=ui.rowWidth,l='Existing Materials List',ec=partial(delay,'existMATUI','()'),cll=1)
 	if mc.scrollLayout('materiallist',q=1,ex=1)==True: mc.deleteUI('materiallist')
 	mc.setParent('frame_MATERIAL')
 	
