@@ -273,14 +273,14 @@ def materialsUI():
 	
 	mc.setParent('..')
 	mc.separator(style='in')
-	mc.frameLayout('frame_MATERIAL',w=ui.rowWidth,l='Existing Materials List',ec=partial(delay,'existMATUI','()'),cll=1)
-	existMATUI()
+	#mc.frameLayout('frame_MATERIAL',w=ui.rowWidth,l='Existing Materials List',ec=partial(delay,'existMATUI','()'),cll=1)
+	#existMATUI('frame_MATERIAL')
 	mc.setParent('..')
 	mc.setParent('MAIN')
-def existMATUI():
-	if mc.scrollLayout('materiallist',q=1,ex=1)==True: mc.deleteUI('materiallist')
-	mc.setParent('frame_MATERIAL')
+def existMATUI(parentFrame):#in FURIOSO
 	
+	if mc.scrollLayout('materiallist',q=1,ex=1)==True: mc.deleteUI('materiallist')
+	mc.setParent(parentFrame)
 	mc.scrollLayout('materiallist',w=ui.rowWidth,h=390)#h=len(ls.shaders())*25)
 	mc.rowColumnLayout(w=ui.rowWidth-10,numberOfColumns=2)
 	for each in sorted(ls.shaders()):
