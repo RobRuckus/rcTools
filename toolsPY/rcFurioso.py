@@ -52,33 +52,48 @@ def UI():
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 10x10 Tile",l= "Tile" ,i= "polyPlane.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 10 -sy 10 -ax 0 1 0 -cuv 2 -ch 1")'))	
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 1x1 Tile",l= "Tile" ,i= iconPath+"polyPlanenDiv.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "cube.png",c=partial(delay,'mel.eval','("polyCube -w 10 -h 10 -d 10 -sx 1 -sy 1 -sz 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0,c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "historyPulldownIcon.png",bgc=[.5,0,0],c=partial(delay,'mel.eval','("DeleteHistory")'))
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "polyQuad",c=partial(delay,'mel.eval','("TogglePolyCount")'))
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Set Camera to Meters",en=1,l= "Set Camera" ,i= "CameraAE.png",c=partial(delay,'mel.eval','("rcSetCameraClip .5 100000")'))
     mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Snap",l= "Tile" ,i= "snapGrid.png",onc=partial(delay,'rc.stepSnap','(5,1)'),ofc=partial(delay,'rc.stepSnap','(5,0)'))
+  
     mc.setParent('..')
-
     mc.rowLayout(w=ui.rowWidth,numberOfColumns=3)
     mc.button(w=ui.rowWidth/3,h=ui.btn_large,al='left',l=' + ',c=partial(delay,'btnPlus','(mc.ls(sl=1))'))  #
     mc.button(h=ui.btn_large,w=ui.rowWidth/3,al='center',l=' - ',c=partial(delay,'btnDel','("sel")')) 
     mc.button(h=ui.btn_large,w=ui.rowWidth/3,al='right',l='NUKE',c=partial(delay,'btnDel','("all")'))
     mc.setParent('..')
+    mc.rowColumnLayout(numberOfColumns=8)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "historyPulldownIcon.png",bgc=[.5,0,0],c=partial(delay,'mel.eval','("DeleteHistory")'))
+
+
+    mc.setParent('..')
+
+    
+    
     mc.checkBox('Object',vis=0,l='Object',v=int(furiosoPrefs.get('Object')),cc=partial(delay,'furiosoPrefs.checkBox',"('Object')"))
     mc.checkBox('Material',l='Material',vis=1,v=int(furiosoPrefs.get('Material')),cc=partial(delay,'furiosoPrefs.checkBox',"('Material')"))
     mc.checkBox('Flag',l='Flag',vis=0,v=int(furiosoPrefs.get('Flag')),cc=partial(delay,'furiosoPrefs.checkBox',"('Flag')"))
     mc.iconTextScrollList('FuriosoObjScroll',w=ui.rowWidth)
     mc.setParent('furiosoObjectConform')
     mc.setParent('..')
-    mc.frameLayout('frame_furiMAT',w=ui.rowWidth,l='Existing Materials List',ec=partial(delay,'existMATUI','("frame_furiMAT")'),cll=1)
-    existMATUI('frame_furiMAT')
+    mc.frameLayout('frame_furiMAT',w=ui.rowWidth,l='Existing Materials List',ec=partial(delay,'buildUIMats','("frame_furiMAT")'),cll=1)
+    buildUIMats('frame_furiMAT')
     mc.setParent('..')
     buildUILists()
 	#mc.scriptJob('import rcFurioso',event=SceneOpened)
-def existMATUI(parentFrame):
+def buildUIMats(parentFrame):
 	if mc.scrollLayout('materiallist',q=1,ex=1)==True: mc.deleteUI('materiallist')
 	mc.setParent(parentFrame)
-	mc.scrollLayout('materiallist',w=ui.rowWidth,h=len(rc.ls.shaders())*10)#h=len(ls.shaders())*25)
+	mc.scrollLayout('materiallist',w=ui.rowWidth,h=int((len(rc.ls.shaders())*10)+1))#h=len(ls.shaders())*25)
 	mc.rowColumnLayout(w=ui.rowWidth-20,numberOfColumns=2)
 	for each in sorted(rc.ls.shaders()):
 		mc.button(w=ui.rowWidth-55,l=each,c=partial(delay,'mc.hyperShade','(assign=\''+ str(each)+'\')'))
