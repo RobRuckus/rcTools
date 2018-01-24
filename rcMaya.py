@@ -154,10 +154,9 @@ class ls():
         renderFlags.append('miFinalGatherCast')
         renderFlags.append('miFinalGatherReceive')
         return renderFlags
-    def shaders(self): return [shader for shader in mc.ls(mat=1) if not 'particleCloud1' in shader and not 'lambert1' in shader and not 'displace' in shader and not ':' in shader] #WIP if not NOT WORKING
-    def shaderColor(self,shader):
-        Attr=mc.listAttr(shader)
-        for each in Attr:
+    def shaders(self): return [shader for shader in mc.ls(mat=1) if not 'particleCloud1' in shader and not 'lambert1' in shader and not 'displace' in shader and not ':' in shader] #Lists Shaders in Scene
+    def shaderColor(self,shader):#Return Color for UI WIP
+        for each in mc.listAttr(shader):
             if 'outColor' in each : return mc.getAttr(shader+'.outcolor')
             if 'color' in each : return mc.getAttr(shader+'.color')
             if 'diffuse_color' in each : return mc.getAttr(shader+'.diffuse_color')
@@ -180,8 +179,6 @@ class ls():
         conMayaProj=os.path.normpath(mc.workspace(q=1,rd=1))
         conProjName=mc.textField('ProjectName',q=1,text=1)
         conShotName=mc.getAttr('renderLayerManager.shotName')
-        
-        
         if not mc.textScrollList(scrollSel,q=1,si=1)== None:
         	if mc.textScrollList(scrollSel,q=1,si=1)[0] == conShotName: conSelected=ls.dir(l2fOutputFolder(),folder=0)#set Output for selection ALL or selected
         	else: conSelected= mc.textScrollList(scrollSel,q=1,si=1)
@@ -431,6 +428,7 @@ class set():
         else:
             for each in ls.renderAtts(): mc.checkBoxGrp(each,e=1,v1=value)
 ########
+  
 def rView():
     panels=mc.getPanel(scriptType='renderWindowPanel')
     form=mc.renderWindowEditor(panels[0],q=True,parent=True)
@@ -442,6 +440,9 @@ def rView():
 def stepSnap(amt,value):
     mc.manipMoveContext('Move',e=1,snapValue= amt);
     mc.manipMoveContext('Move',e=1,s=value);
+def rotSnap(amt,value):
+    mel.eval('manipRotateSetSnapMode '+str(value))
+    mc.manipRotateContext('Rotate',e=1,snapValue= amt);
 def rigGrp():
     mc.promptDialog(title='Ctrl_GRP',m='Name:',tx='Ctrl_')
     sel=mc.ls(sl=1)

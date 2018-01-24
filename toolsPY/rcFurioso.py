@@ -45,6 +45,17 @@ class furiosoPrefs(iniFile):#aePrefs.ini
     		buildUILists()
 furiosoPrefs=furiosoPrefs()
 #
+def browseFile():
+  selfile=mc.fileDialog2(fm=1,okc='OK')[0]
+  print 'selfile= '+ selfile
+  split=(selfile.split('/')[-1:])[0][:-len("_color.png")]
+  plane=mel.eval("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")
+  meshName=mc.rename(plane[0],split+'_mesh')
+  conformObj(meshName)
+  material=conformMat(meshName.rsplit('_mesh')[0]+'_material')
+  mc.select(meshName)
+  mc.hyperShade(assign=material)
+  #print 'selfie='+ selfile
 def UI():
     mc.frameLayout('Furioso',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='Furioso')
     mc.columnLayout('furiosoObjectConform',cal='center',w=ui.rowWidth-10)
@@ -52,11 +63,11 @@ def UI():
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 10x10 Tile",l= "Tile" ,i= "polyPlane.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 10 -sy 10 -ax 0 1 0 -cuv 2 -ch 1")'))	
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 1x1 Tile",l= "Tile" ,i= iconPath+"polyPlanenDiv.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "cube.png",c=partial(delay,'mel.eval','("polyCube -w 10 -h 10 -d 10 -sx 1 -sy 1 -sz 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "cube.png",c=partial(delay,'mel.eval','("$cube=`polyCube -w 10 -h 10 -d 10 -sx 1 -sy 1 -sz 1 -ax 0 1 0 -cuv 2 -ch 1`;polyBevel3 -fraction 0.5 -offsetAsFraction 1 -autoFit 1 -depth 1 -mitering 0 -miterAlong 0 -chamfer 1 -segments 4 -worldSpace 1 -smoothingAngle 30 -subdivideNgons 1 -mergeVertices 1 -mergeVertexTolerance 0.0001 -miteringAngle 180 -angleTolerance 180 -ch 1 ($cube[0]+/".e[1]/");")'))
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "polyQuad",c=partial(delay,'mel.eval','("TogglePolyCount")'))
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Set Camera to Meters",en=1,l= "Set Camera" ,i= "CameraAE.png",c=partial(delay,'mel.eval','("rcSetCameraClip .5 100000")'))
     mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Snap",l= "Tile" ,i= "snapGrid.png",onc=partial(delay,'rc.stepSnap','(5,1)'),ofc=partial(delay,'rc.stepSnap','(5,0)'))
+    mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Rotate",l= "Tile" ,i= "rotate_M.png",onc=partial(delay,'rc.rotSnap','(45,1)'),ofc=partial(delay,'rc.rotSnap','(45,0)'))
   
     mc.setParent('..')
     mc.rowLayout(w=ui.rowWidth,numberOfColumns=3)
@@ -65,13 +76,14 @@ def UI():
     mc.button(h=ui.btn_large,w=ui.rowWidth/3,al='right',l='NUKE',c=partial(delay,'btnDel','("all")'))
     mc.setParent('..')
     mc.rowColumnLayout(numberOfColumns=8)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "fileNew.png",c=partial(delay,'browseFile','()'))
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
+    
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "historyPulldownIcon.png",bgc=[.5,0,0],c=partial(delay,'mel.eval','("DeleteHistory")'))
 
 
@@ -144,7 +156,7 @@ def btnPlus(sel):
 	    obj=conformObj(each)
 	    if int(furiosoPrefs.get('Material'))==1:
 	        print 'yes'
-	        material=conformMat(each.rsplit('_mesh')[0]+'_material')
+	        material=conformMat(obj.rsplit('_mesh')[0]+'_material')
 	        mc.select(obj)
 	        mc.hyperShade(assign=material)
 
@@ -160,11 +172,13 @@ def btnDel(opt): #deletes all sets and locators
 			if mc.objExists(each+'.FuriosoFlag'): mc.deleteAttr(each+'.FuriosoFlag')
 	buildUILists()
 ################
+#def prompt(sel): return mc.promptDialog(t="Conform",m="Name:                                     ",tx=sel,button="Go") if not =='dismiss'
 def conformObj(sel):
     mc.select(sel)
     prompt=mc.promptDialog(t="Conform",m="Name:                                     ",tx=sel.rsplit('_mesh')[0],button="Go")
     if prompt=='dismiss': sys.exit()
     objName= mc.promptDialog(q=1,t=1)
+    
     mesh= mc.rename(sel,objName+'_mesh')
     if not mesh==objName+'_mesh':
         mc.rename(objName+'_mesh',objName+'_mesh'+'_old')
