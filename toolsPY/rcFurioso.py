@@ -60,10 +60,14 @@ def UI():
     mc.frameLayout('Furioso',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='Furioso')
     mc.columnLayout('furiosoObjectConform',cal='center',w=ui.rowWidth-10)
     mc.rowColumnLayout(numberOfColumns=8)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "fileNew.png",c=partial(delay,'browseFile','()'))
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 10x10 Tile",l= "Tile" ,i= "polyPlane.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 10 -sy 10 -ax 0 1 0 -cuv 2 -ch 1")'))	
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 1x1 Tile",l= "Tile" ,i= iconPath+"polyPlanenDiv.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "cube.png",c=partial(delay,'mel.eval','("polyCube -w 10 -h 10 -d 10 -sx 1 -sy 1 -sz 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "cube.png",c=partial(delay,'mel.eval','("$cube=`polyCube -w 10 -h 10 -d 10 -sx 1 -sy 1 -sz 1 -ax 0 1 0 -cuv 2 -ch 1`;polyBevel3 -fraction 0.5 -offsetAsFraction 1 -autoFit 1 -depth 1 -mitering 0 -miterAlong 0 -chamfer 1 -segments 4 -worldSpace 1 -smoothingAngle 30 -subdivideNgons 1 -mergeVertices 1 -mergeVertexTolerance 0.0001 -miteringAngle 180 -angleTolerance 180 -ch 1 ($cube[0]+/".e[1]/");")'))
+    
+
+
+#mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "cube.png",c=partial(delay,'mel.eval','("$cube=`polyCube -w 10 -h 10 -d 10 -sx 1 -sy 1 -sz 1 -ax 0 1 0 -cuv 2 -ch 1`;polyBevel3 -fraction 0.5 -offsetAsFraction 1 -autoFit 1 -depth 1 -mitering 0 -miterAlong 0 -chamfer 1 -segments 4 -worldSpace 1 -smoothingAngle 30 -subdivideNgons 1 -mergeVertices 1 -mergeVertexTolerance 0.0001 -miteringAngle 180 -angleTolerance 180 -ch 1 ($cube[0]+/".e[1]/");")'))
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "polyQuad",c=partial(delay,'mel.eval','("TogglePolyCount")'))
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Set Camera to Meters",en=1,l= "Set Camera" ,i= "CameraAE.png",c=partial(delay,'mel.eval','("rcSetCameraClip .5 100000")'))
     mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Snap",l= "Tile" ,i= "snapGrid.png",onc=partial(delay,'rc.stepSnap','(5,1)'),ofc=partial(delay,'rc.stepSnap','(5,0)'))
@@ -71,19 +75,13 @@ def UI():
   
     mc.setParent('..')
     mc.rowLayout(w=ui.rowWidth,numberOfColumns=3)
-    mc.button(w=ui.rowWidth/3,h=ui.btn_large,al='left',l=' + ',c=partial(delay,'btnPlus','(mc.ls(sl=1))'))  #
-    mc.button(h=ui.btn_large,w=ui.rowWidth/3,al='center',l=' - ',c=partial(delay,'btnDel','("sel")')) 
-    mc.button(h=ui.btn_large,w=ui.rowWidth/3,al='right',l='NUKE',c=partial(delay,'btnDel','("all")'))
+    
     mc.setParent('..')
     mc.rowColumnLayout(numberOfColumns=8)
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "fileNew.png",c=partial(delay,'browseFile','()'))
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "",en=0)
-    
+    mc.button(w=ui.rowWidth/4,h=ui.btn_large,al='left',l=' + ',c=partial(delay,'btnPlus','(mc.ls(sl=1))'))  #
+    mc.button(h=ui.btn_large,w=ui.rowWidth/4,al='center',l=' - ',c=partial(delay,'btnDel','("sel")')) 
+    mc.button(h=ui.btn_large,w=ui.rowWidth/4,al='right',l='NUKE',c=partial(delay,'btnDel','("all")'))
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "rotateUVcw.png",c=partial(delay,'mel.eval','("polyRotateUVs 90 1")'))
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "historyPulldownIcon.png",bgc=[.5,0,0],c=partial(delay,'mel.eval','("DeleteHistory")'))
 
 
@@ -97,7 +95,7 @@ def UI():
     mc.iconTextScrollList('FuriosoObjScroll',w=ui.rowWidth)
     mc.setParent('furiosoObjectConform')
     mc.setParent('..')
-    mc.frameLayout('frame_furiMAT',w=ui.rowWidth,l='Existing Materials List',ec=partial(delay,'buildUIMats','("frame_furiMAT")'),cll=1)
+    mc.frameLayout('frame_furiMAT',w=ui.rowWidth,l='Existing Materials List',cc=partial(delay,'buildUIMats','("frame_furiMAT")'),cll=0)
     buildUIMats('frame_furiMAT')
     mc.setParent('..')
     buildUILists()
@@ -105,11 +103,14 @@ def UI():
 def buildUIMats(parentFrame):
 	if mc.scrollLayout('materiallist',q=1,ex=1)==True: mc.deleteUI('materiallist')
 	mc.setParent(parentFrame)
-	mc.scrollLayout('materiallist',w=ui.rowWidth,h=int((len(rc.ls.shaders())*10)+1))#h=len(ls.shaders())*25)
+	mc.scrollLayout('materiallist',bgc=[0.1,0.1,0.1],w=ui.rowWidth,h=int((len(rc.ls.shaders())*10)+1))#h=len(ls.shaders())*25)
 	mc.rowColumnLayout(w=ui.rowWidth-20,numberOfColumns=2)
 	for each in sorted(rc.ls.shaders()):
-		mc.button(w=ui.rowWidth-55,l=each,c=partial(delay,'mc.hyperShade','(assign=\''+ str(each)+'\')'))
-		mc.button(w=35,l='SEL',c=partial(delay,'mc.select','(\''+ str(each)+'\')'))
+	    sName=each
+	    if each.endswith('_material'): 
+	        sName=each[:-8] 
+		mc.button(w=ui.rowWidth-65,al='right',bgc=[0.1,0.1,0.1],l=each,c=partial(delay,'mc.select','(\''+ str(each)+'\')'))
+		mc.button(w=45,l='ASSIGN',bgc=[0.1,0.1,0.1],c=partial(delay,'mc.hyperShade','(assign=\''+ str(each)+'\')'))#rc.ls.shaderColor(each)[0],
 		#mc.button(w=40,l='GRAPH')   
 	mc.setParent('..');mc.setParent('..') 
 def updateMenu():#UPDATE

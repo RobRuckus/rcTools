@@ -158,7 +158,7 @@ class ls():
     def shaderColor(self,shader):#Return Color for UI WIP
         for each in mc.listAttr(shader):
             if 'outColor' in each : return mc.getAttr(shader+'.outcolor')
-            if 'color' in each : return mc.getAttr(shader+'.color')
+            if 'color' in each : return float(mc.getAttr(shader+'.color'))
             if 'diffuse_color' in each : return mc.getAttr(shader+'.diffuse_color')
     def dir(self,src,folder=1):
     	try: return [name for name in os.listdir(src) if not os.path.isfile(os.path.join(src,name))== folder and not name.startswith('.')  ] #Folders and files , folder=0 returns files 
