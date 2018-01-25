@@ -227,7 +227,8 @@ global proc Ctrl_Joints(){
     select -cl;
     $i=`currentTime -q`;
     
-    for ($i=1; $i<1000; $i=$i+$divFacter) //--------- Loop to make joint chain
+    for ($i=1; $i<1000; $i=$i+$divFacter)
+        //--------- Loop to make joint chain
     {
         currentTime $i;
         float $lcPos []=`xform -q  -ws -t locator1`;

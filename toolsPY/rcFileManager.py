@@ -148,7 +148,14 @@ def bldBrowseList():#only on init
 	mc.menuItem(l='Scenes')
 	mc.menuItem(l='Images')
 	mc.menuItem(l='Layers2Files Output')
+	mc.menuItem(l='sourceImages')
 	mc.optionMenu('browseOpt',e=1,sl=2)#Default
+	mc.setParent('..')
+	mc.rowColumnLayout(numberOfColumns=4,w=browselistWidth)
+	mc.text('Prefix: ',align='left')
+	mc.textField('prefix')
+	mc.text('Suffix: ',align='left')
+	mc.textField('suffix')
 	
 	mc.setParent('..')
 	bldBrowseList_scroll(os.path.join(sceneData.ws(),'scenes/'))#Default
@@ -230,7 +237,7 @@ def bldTargetList_column(source):#init and proc change
 	else:
 		bldTargetList_scroll(source)
 
-def bldTargetList_scroll(source):#init and refresh 
+def bldTargetList_scroll(source):#init and refresh backup Archive Restore Use this
 	opt=mc.optionMenu('targetOpt',q=1,sl=1)
 	#Delete
 	if mc.iconTextScrollList('targetlist',q=1,ex=1):mc.deleteUI('target'+'list')
@@ -270,6 +277,8 @@ def bldBrowseList_opt():#refresh Browse list only on
 		bldBrowseList_scroll(sceneData.ws())
 	if opt==4:
 		bldBrowseList_scroll(l2fOutputFolder())
+	if opt==5:
+	    bldBrowseList_scroll(os.path.join(sceneData.ws(),'sourceimages/'))
 	bldTargetList_column('browser')	
 def bldBrowseList_dcc():
 	print 'YES'

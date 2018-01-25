@@ -1,4 +1,6 @@
 """
+shutil copyfile
+
 Author: Rob Coakley (robcoakley@gmail.com)
 Copyright (C) 2017 Robert Coakley
 http://robocolabo.com/blog/
@@ -22,7 +24,7 @@ def delay(method,string,*args): exec(method+string) #Button Delay Function
 ###########
 #UI VARIABLES FROM MAIN
 ui=rc.ui('Furioso')
-###
+#
 class furiosoPrefs(iniFile):#aePrefs.ini 
 	def __init__(self):
 		iniFile.__init__(self,os.path.join(userDirectory(),'rcFurioso.ini').replace('\\','/'))
@@ -44,56 +46,46 @@ class furiosoPrefs(iniFile):#aePrefs.ini
     		self.write(att,value)
     		buildUILists()
 furiosoPrefs=furiosoPrefs()
-#
-def browseFile():
-  selfile=mc.fileDialog2(fm=1,okc='OK')[0]
-  print 'selfile= '+ selfile
-  split=(selfile.split('/')[-1:])[0][:-len("_color.png")]
-  plane=mel.eval("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")
-  meshName=mc.rename(plane[0],split+'_mesh')
-  conformObj(meshName)
-  material=conformMat(meshName.rsplit('_mesh')[0]+'_material')
-  mc.select(meshName)
-  mc.hyperShade(assign=material)
-  #print 'selfie='+ selfile
+
 def UI():
     mc.frameLayout('Furioso',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='Furioso')
+    mc.rowColumnLayout('ASSIGNROW',numberOfColumns=2,columnWidth=[(1,ui.rowWidth/2),(2,ui.rowWidth/2)])
     mc.columnLayout('furiosoObjectConform',cal='center',w=ui.rowWidth-10)
-    mc.rowColumnLayout(numberOfColumns=8)
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "fileNew.png",c=partial(delay,'browseFile','()'))
+    mc.frameLayout('CREATE',cll=0,bgc=[.0,.0,.0]);
+    mc.rowColumnLayout(numberOfColumns=4)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "fileNew.png",c=partial(delay,'planeFromTexture','()'))
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 10x10 Tile",l= "Tile" ,i= "polyPlane.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 10 -sy 10 -ax 0 1 0 -cuv 2 -ch 1")'))	
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 1x1 Tile",l= "Tile" ,i= iconPath+"polyPlanenDiv.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "cube.png",c=partial(delay,'mel.eval','("polyCube -w 10 -h 10 -d 10 -sx 1 -sy 1 -sz 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
-    
-
-
-#mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "cube.png",c=partial(delay,'mel.eval','("$cube=`polyCube -w 10 -h 10 -d 10 -sx 1 -sy 1 -sz 1 -ax 0 1 0 -cuv 2 -ch 1`;polyBevel3 -fraction 0.5 -offsetAsFraction 1 -autoFit 1 -depth 1 -mitering 0 -miterAlong 0 -chamfer 1 -segments 4 -worldSpace 1 -smoothingAngle 30 -subdivideNgons 1 -mergeVertices 1 -mergeVertexTolerance 0.0001 -miteringAngle 180 -angleTolerance 180 -ch 1 ($cube[0]+/".e[1]/");")'))
+    mc.setParent('..')
+    mc.setParent('..')
+    mc.frameLayout('SCENE- J to snap',cll=0,bgc=[.0,.0,.0]);
+    mc.rowColumnLayout(numberOfColumns=4)
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "polyQuad",c=partial(delay,'mel.eval','("TogglePolyCount")'))
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Set Camera to Meters",en=1,l= "Set Camera" ,i= "CameraAE.png",c=partial(delay,'mel.eval','("rcSetCameraClip .5 100000")'))
     mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Snap",l= "Tile" ,i= "snapGrid.png",onc=partial(delay,'rc.stepSnap','(5,1)'),ofc=partial(delay,'rc.stepSnap','(5,0)'))
     mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Rotate",l= "Tile" ,i= "rotate_M.png",onc=partial(delay,'rc.rotSnap','(45,1)'),ofc=partial(delay,'rc.rotSnap','(45,0)'))
-  
     mc.setParent('..')
-    mc.rowLayout(w=ui.rowWidth,numberOfColumns=3)
-    
     mc.setParent('..')
-    mc.rowColumnLayout(numberOfColumns=8)
-    mc.button(w=ui.rowWidth/4,h=ui.btn_large,al='left',l=' + ',c=partial(delay,'btnPlus','(mc.ls(sl=1))'))  #
-    mc.button(h=ui.btn_large,w=ui.rowWidth/4,al='center',l=' - ',c=partial(delay,'btnDel','("sel")')) 
-    mc.button(h=ui.btn_large,w=ui.rowWidth/4,al='right',l='NUKE',c=partial(delay,'btnDel','("all")'))
+    mc.setParent('..')
+    mc.frameLayout('CONFORM',cll=0,bgc=[.0,.0,.0]);
+    mc.rowColumnLayout(numberOfColumns=4)
+    mc.button(w=ui.rowWidth/6,h=ui.btn_large,al='left',l=' + ',c=partial(delay,'btnPlus','(mc.ls(sl=1))'))  #
+    mc.button(h=ui.btn_large,w=ui.rowWidth/6,al='center',l=' - ',c=partial(delay,'btnDel','("sel")')) 
+    mc.button(h=ui.btn_large,w=ui.rowWidth/6,al='right',l='NUKE',c=partial(delay,'btnDel','("all")'))
+    mc.setParent('..')
+    mc.setParent('..')
+    mc.frameLayout('MODIFY',cll=0,bgc=[.0,.0,.0]);
+    mc.rowColumnLayout(numberOfColumns=4)
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "rotateUVcw.png",c=partial(delay,'mel.eval','("polyRotateUVs 90 1")'))
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "historyPulldownIcon.png",bgc=[.5,0,0],c=partial(delay,'mel.eval','("DeleteHistory")'))
-
-
     mc.setParent('..')
-
-    
-    
     mc.checkBox('Object',vis=0,l='Object',v=int(furiosoPrefs.get('Object')),cc=partial(delay,'furiosoPrefs.checkBox',"('Object')"))
     mc.checkBox('Material',l='Material',vis=1,v=int(furiosoPrefs.get('Material')),cc=partial(delay,'furiosoPrefs.checkBox',"('Material')"))
     mc.checkBox('Flag',l='Flag',vis=0,v=int(furiosoPrefs.get('Flag')),cc=partial(delay,'furiosoPrefs.checkBox',"('Flag')"))
-    mc.iconTextScrollList('FuriosoObjScroll',w=ui.rowWidth)
+    mc.iconTextScrollList('FuriosoObjScroll',w=ui.rowWidth,h=150)
     mc.setParent('furiosoObjectConform')
+    mc.setParent('..')
     mc.setParent('..')
     mc.frameLayout('frame_furiMAT',w=ui.rowWidth,l='Existing Materials List',cc=partial(delay,'buildUIMats','("frame_furiMAT")'),cll=0)
     buildUIMats('frame_furiMAT')
@@ -103,7 +95,7 @@ def UI():
 def buildUIMats(parentFrame):
 	if mc.scrollLayout('materiallist',q=1,ex=1)==True: mc.deleteUI('materiallist')
 	mc.setParent(parentFrame)
-	mc.scrollLayout('materiallist',bgc=[0.1,0.1,0.1],w=ui.rowWidth,h=int((len(rc.ls.shaders())*10)+1))#h=len(ls.shaders())*25)
+	mc.scrollLayout('materiallist',bgc=[0.1,0.1,0.1],w=ui.rowWidth,h=min(int(len(rc.ls.shaders()*30))+15,630))#h=len(ls.shaders())*25)
 	mc.rowColumnLayout(w=ui.rowWidth-20,numberOfColumns=2)
 	for each in sorted(rc.ls.shaders()):
 	    sName=each
@@ -173,13 +165,43 @@ def btnDel(opt): #deletes all sets and locators
 			if mc.objExists(each+'.FuriosoFlag'): mc.deleteAttr(each+'.FuriosoFlag')
 	buildUILists()
 ################
-#def prompt(sel): return mc.promptDialog(t="Conform",m="Name:                                     ",tx=sel,button="Go") if not =='dismiss'
-def conformObj(sel):
-    mc.select(sel)
-    prompt=mc.promptDialog(t="Conform",m="Name:                                     ",tx=sel.rsplit('_mesh')[0],button="Go")
+def prompt(initial):
+    prompt=mc.promptDialog(t="Conform",m="Name:                                     ",tx=initial,button="Go")
     if prompt=='dismiss': sys.exit()
     objName= mc.promptDialog(q=1,t=1)
+    return objName
     
+def planeFromTexture():
+  selfile=browse()
+  split=(selfile.split('/')[-1:])[0][:-len("_color.png")]
+  plane=mel.eval("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")
+  meshName=mc.rename(plane[0],split+'_mesh')
+  if not meshName==split+'_mesh':
+        mc.rename(split+'_mesh',split+'_mesh'+'_old')
+        mc.rename(plane,split+'_mesh')
+        mc.confirmDialog(b='Ok',m='Existing Objects Renamed '+split+'_old')
+  #conformObj(meshName)
+  material=conformMat(meshName.rsplit('_mesh')[0]+'_material')
+  mc.select(meshName)
+  mc.hyperShade(assign=material)
+  #print 'selfie='+ selfile
+def browse(location=None):#location default sourceimages
+    if not location: location=mc.workspace(q=1,dir=1)
+    try:
+        dialogReturn=mc.fileDialog2(fm=1,okc='OK',fileFilter='*_color.png',dir=location)[0]
+        if dialogReturn:
+            return dialogReturn   
+        else:
+            sys.exit()
+    except:
+        sys.exit()
+def prefabName(fileName,suffix):
+    return (filename.split('/')[-1:])[0][:-len("_color.png")]
+def conformObj(sel):
+    mc.select(sel)
+    #prompt=mc.promptDialog(t="Conform",m="Name:                                     ",tx=sel.rsplit('_mesh')[0],button="Go")
+    #if prompt=='dismiss': sys.exit()
+    objName= prompt(sel.rsplit('_mesh')[0])
     mesh= mc.rename(sel,objName+'_mesh')
     if not mesh==objName+'_mesh':
         mc.rename(objName+'_mesh',objName+'_mesh'+'_old')

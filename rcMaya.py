@@ -26,7 +26,6 @@ class ui():#UI Class for Maya
 		self.iconSize=self.rowWidth/8
 		self.titleFont='boldLabelFont'
 		self.fieldFont='fixedWidthFont'
-		
 		self.name=name
 		self.window=self.name+'Window'
 		self.dock=self.name+'Dock'
@@ -52,6 +51,7 @@ class ui():#UI Class for Maya
 		for each in range(columns):
 			pass
 			#mc.iconTextButton(w=self.rowWidth/columns,h=self.rowWidth/columns,args)#pass each arg of each button 
+	def variableScroll(self,
 class sceneData():#Custom Scene Data Returns
 	def ws(self): return mc.workspace(q=True,rd=True)
 	def wsImagesName(self): return mc.workspace('images',q=True,fileRuleEntry=True)

@@ -314,6 +314,16 @@ def globalsUI():
 	mc.setParent('..')
 
 ############### 
+def browse(location=None):#location default sourceimages
+    if not location: location=mc.workspace(q=1,dir=1)
+    try:
+        dialogReturn=mc.fileDialog2(fm=1,okc='OK',fileFilter='*_color.png',dir=location)[0]
+        if dialogReturn:
+            return dialogReturn   
+        else:
+            sys.exit()
+    except:
+        sys.exit()
 def lambertset():#transparancy slider for toolbox
 	num=mc.floatSliderGrp('lambertslider',q=1,value=1)
 	mc.setAttr('lambert1.transparency',num,num,num,type='double3')
