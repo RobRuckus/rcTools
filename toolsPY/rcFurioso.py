@@ -47,7 +47,7 @@ class furiosoPrefs(iniFile):#aePrefs.ini
 furiosoPrefs=furiosoPrefs()
 
 def UI():
-    ui.frame('furioso')
+    ui.frame('Furioso')
     #mc.frameLayout('Furioso',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='Furioso')
     mc.rowColumnLayout('FURIROW',numberOfColumns=2,columnWidth=[(1,ui.rowWidth/2),(2,ui.rowWidth/2)])
     mc.columnLayout('furiosoObjectConform',cal='center',w=ui.rowWidth-10)
@@ -90,6 +90,7 @@ def UI():
     mc.frameLayout('frame_furiMAT',w=ui.rowWidth,l='Existing Materials List',cc=partial(delay,'buildUIMats','("frame_furiMAT")'),cll=0)
     buildUIMats('frame_furiMAT')
     mc.setParent('..')
+    filesUI()
     
    
     buildUILists()

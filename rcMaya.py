@@ -22,7 +22,6 @@ class ui():#UI Class for Maya
 		self.iconDim=15
 		self.borders=2
 		self.tabWidth=765
-		self.rowWidth=300
 		self.iconSize=self.rowWidth/8
 		self.titleFont='boldLabelFont'
 		self.fieldFont='fixedWidthFont'
@@ -36,12 +35,12 @@ class ui():#UI Class for Maya
 		if mc.dockControl(self.dock,ex=True):mc.deleteUI(self.dock)
 		#if mc.workspaceControl(self.dock,ex=True): mc.deleteUI(self.dock)
 		#mc.workspaceControl(self.dock,dockToPanel=['rcTools','left',1],label=self.name,floating=False)
-		mc.window(self.window,t=self.name,dc=['topLeft','bottomLeft'],w=350)#,nde=True
+		mc.window(self.window,t=self.name,dc=['topLeft','bottomLeft'],w=self.rowWidth+50)#,nde=True
 		mc.formLayout(w=self.rowWidth)
 		mc.dockControl(self.dock,area='left',content=self.window,label=self.name,floating=False,**kwargs)
 	def toolBox(self):
 		self.win()
-		mc.tabLayout(self.tabs,w=self.rowWidth+35,imw=15)
+		mc.tabLayout(self.tabs,w=self.rowWidth+20,imw=15)
 	def tab(self,name):#tab command for toolBox
 		mc.setParent(self.tabs)
 		mc.scrollLayout(name,w=self.rowWidth+15,h=self.screensize[1]-150)	

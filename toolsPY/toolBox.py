@@ -23,11 +23,11 @@ def UI():
 	ui.toolBox()
 	ui.tab('MAIN')
 	assignUI()
-	rcFurioso.UI()
+	
 	rigUI()
 	materialsUI()
 	ui.tab('FURIOSO')
-	rcFurioso.filesUI()
+	rcFurioso.UI()
 	#existMATUI()
 	#ui.tab('MATERIAL')
 	#mel.eval("source \""+scriptsMEL+"dp_MaterialManager.mel\"")
