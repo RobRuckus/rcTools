@@ -45,13 +45,14 @@ class ui():#UI Class for Maya
 	def tab(self,name):#tab command for toolBox
 		mc.setParent(self.tabs)
 		mc.scrollLayout(name,w=self.rowWidth+15,h=self.screensize[1]-150)	
-	def frame(self,name): mc.frameLayout(self.name+name,bgc=[0,0,0],fn='smallBoldLabeFont',bs='in',l=name)
+	def frame(self,name): 
+		mc.frameLayout(self.name+name,w=self.rowWidth,fn='smallBoldLabelFont',bs='in',cll=1,l=name)
 	def buttonRow(self,columns=8,**kwargs):
 		mc.rowColumnLayout(numberOfColumns=columns)
 		for each in range(columns):
 			pass
 			#mc.iconTextButton(w=self.rowWidth/columns,h=self.rowWidth/columns,args)#pass each arg of each button 
-	def variableScroll(self,
+	#def variableScroll(self,
 class sceneData():#Custom Scene Data Returns
 	def ws(self): return mc.workspace(q=True,rd=True)
 	def wsImagesName(self): return mc.workspace('images',q=True,fileRuleEntry=True)
