@@ -24,7 +24,6 @@ def delay(method,string,*args): exec(method+string) #Button Delay Function
 ###########
 #UI VARIABLES FROM MAIN
 ui=rc.ui('Furioso')
-#
 class furiosoPrefs(iniFile):#aePrefs.ini 
 	def __init__(self):
 		iniFile.__init__(self,os.path.join(userDirectory(),'rcFurioso.ini').replace('\\','/'))
@@ -48,8 +47,9 @@ class furiosoPrefs(iniFile):#aePrefs.ini
 furiosoPrefs=furiosoPrefs()
 
 def UI():
-    mc.frameLayout('Furioso',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='Furioso')
-    mc.rowColumnLayout('ASSIGNROW',numberOfColumns=2,columnWidth=[(1,ui.rowWidth/2),(2,ui.rowWidth/2)])
+    ui.frame('furioso')
+    #mc.frameLayout('Furioso',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='Furioso')
+    mc.rowColumnLayout('FURIROW',numberOfColumns=2,columnWidth=[(1,ui.rowWidth/2),(2,ui.rowWidth/2)])
     mc.columnLayout('furiosoObjectConform',cal='center',w=ui.rowWidth-10)
     mc.frameLayout('CREATE',cll=0,bgc=[.0,.0,.0]);
     mc.rowColumnLayout(numberOfColumns=4)
@@ -83,15 +83,32 @@ def UI():
     mc.checkBox('Object',vis=0,l='Object',v=int(furiosoPrefs.get('Object')),cc=partial(delay,'furiosoPrefs.checkBox',"('Object')"))
     mc.checkBox('Material',l='Material',vis=1,v=int(furiosoPrefs.get('Material')),cc=partial(delay,'furiosoPrefs.checkBox',"('Material')"))
     mc.checkBox('Flag',l='Flag',vis=0,v=int(furiosoPrefs.get('Flag')),cc=partial(delay,'furiosoPrefs.checkBox',"('Flag')"))
-    mc.iconTextScrollList('FuriosoObjScroll',w=ui.rowWidth,h=150)
+    mc.iconTextScrollList('FuriosoObjScroll',vis=0,w=ui.rowWidth,h=150)
     mc.setParent('furiosoObjectConform')
     mc.setParent('..')
     mc.setParent('..')
     mc.frameLayout('frame_furiMAT',w=ui.rowWidth,l='Existing Materials List',cc=partial(delay,'buildUIMats','("frame_furiMAT")'),cll=0)
     buildUIMats('frame_furiMAT')
     mc.setParent('..')
+    
+   
     buildUILists()
 	#mc.scriptJob('import rcFurioso',event=SceneOpened)
+def filesUI(location='//dig_nas/Projects/Furioso/00_git/WorldSpinner/Assets/Models'):
+    for folder in rc.ls.dir(location):
+		mc.frameLayout(l=folder,w=ui.rowWidth,cll=1,cl=0)#mc.text(l=folder+':',align='left')
+		mc.rowColumnLayout(w=ui.rowWidth,numberOfColumns=1)
+		for item in sorted(rc.ls.dir(os.path.join(location,folder),folder=0)):
+			file,ext=os.path.splitext(item)#split file and Extension 
+			path= os.path.join(location,folder,item).replace('\\','/')
+			if ext =='.fbx': 
+				mc.button(w=ui.rowWidth,l=file,c=partial(delay,'btnScript','("'+path+'","'+folder+'")'))
+		mc.setParent('..')
+		mc.setParent('..')
+def btnScript(fileLocation,folder=''):
+	if folder is not None: mel.eval ('file -r -ignoreVersion -gl -mergeNamespacesOnClash false -namespace "" "'+fileLocation+'"')
+	else: print ('source "'+scriptsMEL+str(script)+'"')
+	#mel.eval(str(script))
 def buildUIMats(parentFrame):
 	if mc.scrollLayout('materiallist',q=1,ex=1)==True: mc.deleteUI('materiallist')
 	mc.setParent(parentFrame)

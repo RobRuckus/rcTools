@@ -20,23 +20,19 @@ for each in os.listdir(toolsMEL):
 ###############
 ui=ui('rcTools')
 def UI():
-    
 	ui.toolBox()
 	ui.tab('MAIN')
 	assignUI()
 	rcFurioso.UI()
-	
-	
 	rigUI()
 	materialsUI()
-	
+	ui.tab('FURIOSO')
+	rcFurioso.filesUI()
 	#existMATUI()
 	#ui.tab('MATERIAL')
 	#mel.eval("source \""+scriptsMEL+"dp_MaterialManager.mel\"")
 	#mel.eval("dp_MaterialManager")
 	#ui.tab('Furioso')
-	
-	
 	ui.tab('SCRIPTS')
 	mc.rowColumnLayout(numberOfColumns=8)
 	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8)
@@ -78,7 +74,7 @@ def digItUI():
     mc.frameLayout('DigIt',w=ui.rowWidth,h=330,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='DigIt')
     mc.setParent('MAIN')
     
-def scriptsUI():
+def scriptsUI(): 
 	mc.frameLayout(l='TOADSTORM',w=ui.rowWidth,cll=1,cl=1)
 	mc.rowColumnLayout(w=ui.rowWidth,numberOfColumns=1)
 	mc.button(w=ui.rowWidth,l='Highlight Component Shading',c=partial(delay,'btnSourcePy','(hfShading,hfHighlightBadShaded)'))
@@ -314,6 +310,7 @@ def globalsUI():
 	mc.setParent('..')
 
 ############### 
+
 def browse(location=None):#location default sourceimages
     if not location: location=mc.workspace(q=1,dir=1)
     try:
@@ -327,7 +324,9 @@ def browse(location=None):#location default sourceimages
 def lambertset():#transparancy slider for toolbox
 	num=mc.floatSliderGrp('lambertslider',q=1,value=1)
 	mc.setAttr('lambert1.transparency',num,num,num,type='double3')
-def btnScript(script,folder=''):
+
+
+def btnScript(script,folder=''):#passing and sourcing for mel script lists 
 	if folder is not None: mel.eval('source "'+scriptsMEL.replace('\\','/')+folder+'/'+str(script)+'"')
 	else: mel.eval('source "'+scriptsMEL+str(script)+'"')
 	mel.eval(str(script))
