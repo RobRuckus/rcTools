@@ -428,14 +428,15 @@ class set():
         else:
             for each in ls.renderAtts(): mc.checkBoxGrp(each,e=1,v1=value)
 ########
-  
+def fixRenderGlobalsBUG():#Reinitialize Render Setting Window (BUG FIX)
+	mel.eval('deleteUI unifiedRenderGlobalsWindow;')
+	mel.eval('buildNewSceneUI;')
 def rView():
     panels=mc.getPanel(scriptType='renderWindowPanel')
     form=mc.renderWindowEditor(panels[0],q=True,parent=True)
     scroll= 'pass' #form - editorform +'scrollBarForm|scrollBar'
     curIndex= mc.intScrollBar(scroll,q=True)
     maxIndex= mc.renderWindowEditor('renderView',q=True,nbImages=True)
-
 #####
 def stepSnap(amt,value):
     mc.manipMoveContext('Move',e=1,snapValue= amt);

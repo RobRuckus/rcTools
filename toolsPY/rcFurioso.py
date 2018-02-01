@@ -87,7 +87,7 @@ def UI():
     mc.setParent('furiosoObjectConform')
     mc.setParent('..')
     mc.setParent('..')
-    mc.frameLayout('frame_furiMAT',w=ui.rowWidth,l='Existing Materials List',cc=partial(delay,'buildUIMats','("frame_furiMAT")'),cll=0)
+    mc.frameLayout('frame_furiMAT',w=ui.rowWidth,l='Existing Materials List',cc=partial(delay,'buildUIMats','("frame_furiMAT")'),cll=1)
     buildUIMats('frame_furiMAT')
     mc.setParent('..')
     filesUI()

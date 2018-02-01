@@ -21,11 +21,12 @@ for each in os.listdir(toolsMEL):
 ui=ui('rcTools')
 def UI():
 	ui.toolBox()
+	
 	ui.tab('MAIN')
 	assignUI()
-	
 	rigUI()
 	materialsUI()
+	
 	ui.tab('FURIOSO')
 	rcFurioso.UI()
 	#existMATUI()
@@ -33,7 +34,9 @@ def UI():
 	#mel.eval("source \""+scriptsMEL+"dp_MaterialManager.mel\"")
 	#mel.eval("dp_MaterialManager")
 	#ui.tab('Furioso')
+	
 	ui.tab('SCRIPTS')
+		
 	mc.rowColumnLayout(numberOfColumns=8)
 	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8)
 	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8)
@@ -44,7 +47,10 @@ def UI():
 	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8,ann="Export RenderLayers to Files",l= "L2F" ,i= (iconPath +"L2F.png"),c=partial(delay,'mel.eval','("rcLayers2Files")'))
 	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8,ann="Render Manager",l= "RenderManager" ,i= (iconPath +"renderMGR.png"),c=partial(delay,'mel.eval','("rcRenderMGR")'))
 	mc.setParent('..')
+	
 	scriptsUI()
+	
+	
 	mc.showWindow()
 ###############
 def rigUI():
@@ -103,6 +109,11 @@ def scriptsUI():
 		path= scriptsMEL +'\\'+each
 		if ext =='.mel':
 			mc.button(w=ui.rowWidth,l=file,c=partial(delay,'btnScript','("'+file+'")'))
+def callWhiteBox():
+	try:
+		reload(whiteBox)
+	except:
+		from rcTools.scriptsPY import WhiteBoxTool as whiteBox 
 def assignUI():
     #ui.frame('ASSIGN')
 	mc.frameLayout('ASSIGNFRAME',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='ASSIGN')
@@ -147,7 +158,9 @@ def assignUI():
 	mc.button(l='Tx',ann='Freeze Transforms',bgc=[.3,.7,1],c=partial(delay,'mc.makeIdentity','(mc.ls(sl=1),apply=True,t=1,r=0,s=0,n=0,pn=1)')) 
 	mc.button(l='Rx',ann='Freeze Rotations',bgc=[.3,.7,1],c=partial(delay,'mc.makeIdentity','(mc.ls(sl=1),apply=True,t=0,r=1,s=0,n=0,pn=1)')) 
 	mc.button(l='Sx',ann='Freeze Scales',bgc=[.3,.7,1],c=partial(delay,'mc.makeIdentity','(mc.ls(sl=1),apply=True,t=0,r=0,s=1,n=0,pn=1)'))
-	mc.text(l='')
+	mc.button(l='Sx',ann='WhiteBox',bgc=[.3,.7,1],c=partial(delay,'callWhiteBox','()'))
+	
+	#mc.text(l='')
 	mc.button(l='Crv',ann='Create Curve from Selected Joint Group',c=partial(delay,'mel.eval','("Ctrl_Curve")')) 
 	mc.button(l='Grp',ann='Custom Naming Grouping Procedure',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcCtGrp")'))
 	mc.setParent('..')
@@ -182,15 +195,13 @@ def assignUI():
 	#mc.gridLayout(numberOfColumns=5,cellWidthHeight=[25,25])
 	#mc.text(l='Disp');
 	#mc.separator(style='in');
-	
-	mc.setParent('..')
-	
-	mc.rowColumnLayout(numberOfColumns=3,rat=[1,'both',0])
-	mc.separator(style='in');
+	#mc.setParent('..')
 	icon=ui.rowWidth/8
+	mc.rowColumnLayout(numberOfColumns=3,rat=[1,'both',0])
+	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8,ann="Fix Render Globals",l= "FIX" ,i="overrideSettings.png",c=partial(delay,'fixRenderGlobalsBUG','()'))
 	mc.iconTextButton(w=icon,h=icon,ann="Set Camera to Meters",en=1,l= "Set Camera" ,i= "CameraAE.png",c=partial(delay,'mel.eval','("rcSetCameraClip .5 100000")'))
-	#mc.button(h=25,ann='Set Camera Clips to Meters',l='CC',c=partial(delay,'mel.eval','("rcSetCameraClip .5 100000")'));
-	mc.button(h=25,ann='Set Viewport to Green for PlayBlast',l='RE',bgc=[.0,.5,.0],c=partial(delay,'set.view','(opt=1)'))	
+	
+	mc.button(h=25,ann='Reset Viewport Show Options',l='RE',bgc=[.0,.5,.0],c=partial(delay,'set.view','(opt=1)'))	
 	mc.button(h=25,ann='Set Viewport to Green for PlayBlast',l='GREEN',bgc=[.0,1,.0],c=partial(delay,'mel.eval','("rcSetView GREEN")'))    
 	mc.button(h=25,ann='Set Viewport to Standard Grey',l='GREY',bgc=[.8,.8,.8],c=partial(delay,'mel.eval','("rcSetView GREY")'))    
 	mc.button(h=25,ann='Set Viewport to Gradient',l='GRAD',c=partial(delay,'mel.eval','("rcSetView GRAD")'))    
@@ -310,7 +321,6 @@ def globalsUI():
 	mc.setParent('..')
 
 ############### 
-
 def browse(location=None):#location default sourceimages
     if not location: location=mc.workspace(q=1,dir=1)
     try:
