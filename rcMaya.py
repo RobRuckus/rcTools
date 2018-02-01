@@ -45,8 +45,8 @@ class ui():#UI Class for Maya
 	def tab(self,name):#tab command for toolBox
 		mc.setParent(self.tabs)
 		mc.scrollLayout(name,w=self.rowWidth+15,h=self.screensize[1]-150)	
-	def frame(self,name): 
-		mc.frameLayout(self.name+name,w=self.rowWidth,fn='smallBoldLabelFont',bs='in',cll=1,l=name)
+	def frame(self,name,**kwargs): 
+		mc.frameLayout(self.name+name,w=self.rowWidth,fn='smallBoldLabelFont',bs='in',cll=1,l=name,**kwargs)
 	def buttonRow(self,columns=8,**kwargs):
 		mc.rowColumnLayout(numberOfColumns=columns)
 		for each in range(columns):
