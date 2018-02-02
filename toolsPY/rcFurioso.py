@@ -30,15 +30,17 @@ class furiosoPrefs(iniFile):#aePrefs.ini
 		if not os.path.isfile(self.fileName):#Defaults 
 				file=open(self.fileName,'w')
 				file.close()
-				#mc.confirmDialog(m='Set Path to After Effects')
-				#self.path()
+				mc.confirmDialog(m='Set Path to Model Folder')
+				self.path()
 				self.write('Flag','1')
 				self.write('Material','0')
 				self.write('Object','1')
 				#self.write('Behavior','Replace')
 				#self.write('ImageSource', 'images')
 				#self.write('ImageLabel', 'Label3')
-
+	def path(self):#Write Ae Location to pref File and Update UI
+		self.importPath=mc.fileDialog2(fm=3,ds=1,okc='Set',cc='Cancel')[0]
+		self.write('importPath',self.importPath)
 	def checkBox(self,name):#Write checkBox Value
 		self.write(name,int(mc.checkBox(name,q=1,v=1)))
 	def set(self,att,value):#Write Value
@@ -47,12 +49,13 @@ class furiosoPrefs(iniFile):#aePrefs.ini
 furiosoPrefs=furiosoPrefs()
 
 def UI():
-<<<<<<< HEAD
-    ui.frame('FURIOSO',bgc=(.2,.2,.2))
-=======
-    ui.frame('Furioso')
-    #mc.frameLayout('Furioso',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='Furioso')
->>>>>>> origin/work
+    mc.menuBarLayout(w=ui.rowWidth)
+    mc.separator(h=5,style='in')
+    mc.menu(l='Options')
+    mc.menuItem(d=True)
+    mc.menuItem(l='Set Path',c=partial(delay,'furiosoPrefs.path','()'))
+    ui.frame('FURIOSO')
+	#mc.frameLayout('Furioso',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='Furioso')
     mc.rowColumnLayout('FURIROW',numberOfColumns=2,columnWidth=[(1,ui.rowWidth/2),(2,ui.rowWidth/2)])
     mc.columnLayout('furiosoObjectConform',cal='center',w=ui.rowWidth-10)
     mc.frameLayout('CREATE',cll=0,bgc=[.0,.0,.0]);
@@ -95,20 +98,19 @@ def UI():
     buildUIMats('frame_furiMAT')
     mc.setParent('..')
     filesUI()
-    
-   
     buildUILists()
 	#mc.scriptJob('import rcFurioso',event=SceneOpened)
-def filesUI(location='//dig_nas/Projects/Furioso/00_git/WorldSpinner/Assets/Models'):
+def filesUI(location=furiosoPrefs.get('importPath')):
+    #mc.frameLayout(cl=1)
+    mc.scrollLayout(w=ui.rowWidth-30,h=500)
     for folder in rc.ls.dir(location):
 		mc.frameLayout(l=folder,w=ui.rowWidth,cll=1,cl=0)#mc.text(l=folder+':',align='left')
-		mc.rowColumnLayout(w=ui.rowWidth,numberOfColumns=1)
 		for item in sorted(rc.ls.dir(os.path.join(location,folder),folder=0)):
 			file,ext=os.path.splitext(item)#split file and Extension 
 			path= os.path.join(location,folder,item).replace('\\','/')
 			if ext =='.fbx': 
 				mc.button(w=ui.rowWidth,l=file,c=partial(delay,'btnScript','("'+path+'","'+folder+'")'))
-		mc.setParent('..')
+		#mc.setParent('..')
 		mc.setParent('..')
 def btnScript(fileLocation,folder=''):
 	if folder is not None: mel.eval ('file -r -ignoreVersion -gl -mergeNamespacesOnClash false -namespace "" "'+fileLocation+'"')
