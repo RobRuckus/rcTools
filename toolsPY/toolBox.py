@@ -29,12 +29,7 @@ def UI():
 	
 	ui.tab('FURIOSO')
 	rcFurioso.UI()
-	#existMATUI()
-	#ui.tab('MATERIAL')
-	#mel.eval("source \""+scriptsMEL+"dp_MaterialManager.mel\"")
-	#mel.eval("dp_MaterialManager")
-	#ui.tab('Furioso')
-	
+
 	ui.tab('SCRIPTS')
 		
 	mc.rowColumnLayout(numberOfColumns=8)
@@ -47,10 +42,9 @@ def UI():
 	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8,ann="Export RenderLayers to Files",l= "L2F" ,i= (iconPath +"L2F.png"),c=partial(delay,'mel.eval','("rcLayers2Files")'))
 	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8,ann="Render Manager",l= "RenderManager" ,i= (iconPath +"renderMGR.png"),c=partial(delay,'mel.eval','("rcRenderMGR")'))
 	mc.setParent('..')
-	
+
 	scriptsUI()
-	
-	
+
 	mc.showWindow()
 ###############
 def rigUI():
@@ -340,7 +334,7 @@ def btnScript(script,folder=''):#passing and sourcing for mel script lists
 	if folder is not None: mel.eval('source "'+scriptsMEL.replace('\\','/')+folder+'/'+str(script)+'"')
 	else: mel.eval('source "'+scriptsMEL+str(script)+'"')
 	mel.eval(str(script))
-def btnSourcePy(file,command):
+def btnSourcePy(file,command):#wip py scripts
 		import file
 		reload (file)
 		file.command

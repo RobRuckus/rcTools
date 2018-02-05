@@ -47,12 +47,9 @@ class furiosoPrefs(iniFile):#aePrefs.ini
 furiosoPrefs=furiosoPrefs()
 
 def UI():
-<<<<<<< HEAD
     ui.frame('FURIOSO',bgc=(.2,.2,.2))
-=======
-    ui.frame('Furioso')
+
     #mc.frameLayout('Furioso',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='Furioso')
->>>>>>> origin/work
     mc.rowColumnLayout('FURIROW',numberOfColumns=2,columnWidth=[(1,ui.rowWidth/2),(2,ui.rowWidth/2)])
     mc.columnLayout('furiosoObjectConform',cal='center',w=ui.rowWidth-10)
     mc.frameLayout('CREATE',cll=0,bgc=[.0,.0,.0]);
