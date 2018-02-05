@@ -36,7 +36,7 @@ class furiosoPrefs(iniFile):#aePrefs.ini
 				self.write('Material','0')
 				self.write('Object','1')
 				#self.write('Behavior','Replace')
-				#self.write('ImageSource', 'images')
+				self.write('importBehavior', 'reference')
 				#self.write('ImageLabel', 'Label3')
 	def path(self):#Write Ae Location to pref File and Update UI
 		self.importPath=mc.fileDialog2(fm=3,ds=1,okc='Set',cc='Cancel')[0]
@@ -49,19 +49,18 @@ class furiosoPrefs(iniFile):#aePrefs.ini
 furiosoPrefs=furiosoPrefs()
 
 def UI():
-<<<<<<< HEAD
-    ui.frame('FURIOSO',bgc=(.2,.2,.2))
-
-    #mc.frameLayout('Furioso',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='Furioso')
-=======
+    #ui.frame('FURIOSO',bgc=(.2,.2,.2))
     mc.menuBarLayout(w=ui.rowWidth)
-    mc.separator(h=5,style='in')
+    mc.separator(h=5,style='in') 
     mc.menu(l='Options')
-    mc.menuItem(d=True)
-    mc.menuItem(l='Set Path',c=partial(delay,'furiosoPrefs.path','()'))
-    ui.frame('FURIOSO')
+    mc.menuItem(d=True,l='Behavior')
+    mc.radioMenuItemCollection()
+    mc.menuItem('Import',l='Import',rb=1,c=partial(delay,'furiosoPrefs.set',"('importBehavior','import')"))
+    mc.menuItem('Reference',l='Reference',rb=1,c=partial(delay,'furiosoPrefs.set',"('importBehavior','reference')"))
+    mc.menu('Path',l='Path')
+    mc.menuItem(d=True,l=furiosoPrefs.get('importPath'))
+	#mc.menuItem(aePrefs.get('ImageSource'),e=1,rb=1)
 	#mc.frameLayout('Furioso',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='Furioso')
->>>>>>> origin/work
     mc.rowColumnLayout('FURIROW',numberOfColumns=2,columnWidth=[(1,ui.rowWidth/2),(2,ui.rowWidth/2)])
     mc.columnLayout('furiosoObjectConform',cal='center',w=ui.rowWidth-10)
     mc.frameLayout('CREATE',cll=0,bgc=[.0,.0,.0]);
@@ -100,23 +99,25 @@ def UI():
     mc.setParent('furiosoObjectConform')
     mc.setParent('..')
     mc.setParent('..')
-    mc.frameLayout('frame_furiMAT',w=ui.rowWidth,l='Existing Materials List',cc=partial(delay,'buildUIMats','("frame_furiMAT")'),cll=1)
+    mc.frameLayout('frame_furiMAT',w=ui.rowWidth,l='Materials',bgc=[0.2,.2,.2],cc=partial(delay,'buildUIMats','("frame_furiMAT")'),cll=1)
     buildUIMats('frame_furiMAT')
     mc.setParent('..')
     filesUI()
     buildUILists()
+    updateMenu()
 	#mc.scriptJob('import rcFurioso',event=SceneOpened)
-def filesUI(location=furiosoPrefs.get('importPath')):
-    #mc.frameLayout(cl=1)
-    mc.scrollLayout(w=ui.rowWidth-30,h=500)
+def filesUI(location=furiosoPrefs.get('importPath')):#furiImportList
+    mc.frameLayout('frame_furiOBj',w=ui.rowWidth,l='Objects',bgc=[0.2,.2,.2],cc=partial(delay,'buildUIMats','("frame_furiMAT")'),cll=1)
+    mc.scrollLayout(w=ui.rowWidth,h=600)
     for folder in rc.ls.dir(location):
-		mc.frameLayout(l=folder,w=ui.rowWidth,cll=1,cl=0)#mc.text(l=folder+':',align='left')
+		mc.frameLayout(l=folder,w=ui.rowWidth-10,cll=1,cl=1)#mc.text(l=folder+':',align='left')
+		mc.columnLayout(w=ui.rowWidth)
 		for item in sorted(rc.ls.dir(os.path.join(location,folder),folder=0)):
 			file,ext=os.path.splitext(item)#split file and Extension 
 			path= os.path.join(location,folder,item).replace('\\','/')
 			if ext =='.fbx': 
 				mc.button(w=ui.rowWidth,l=file,c=partial(delay,'btnScript','("'+path+'","'+folder+'")'))
-		#mc.setParent('..')
+		mc.setParent('..')
 		mc.setParent('..')
 def btnScript(fileLocation,folder=''):
 	if folder is not None: mel.eval ('file -r -ignoreVersion -gl -mergeNamespacesOnClash false -namespace "" "'+fileLocation+'"')
@@ -138,18 +139,16 @@ def buildUIMats(parentFrame):
 def updateMenu():#UPDATE
 	
 	mc.menu('Path',e=True,dai=True)
-	mc.menuItem(d=True,dl='Maya Render Images')
-	for each in sceneData.outputImages():
-		mc.menuItem(each,l=each,itl=True,c=partial(delay,'spawnBrowser','("%s")'%os.path.dirname(each)))
-	mc.menuItem(l='Set Path Presets',c=partial(delay,'rc.set.globals','()'))
-	mc.menuItem(d=True,dl='After Effects')
-	
-	mc.menuItem('Image Output',l=aePrefs.get('AELoc'),itl=True,en=0)
-	
-	mc.menuItem(l='Set Path',c=partial(delay,'aePrefs.path','()'))
+	#mc.menuItem(d=True,dl='Maya Render Images')
+	#for each in sceneData.outputImages():
+		#mc.menuItem(each,l=each,itl=True,c=partial(delay,'spawnBrowser','("%s")'%os.path.dirname(each)))
+	#mc.menuItem(l='Set Path Presets',c=partial(delay,'rc.set.globals','()'))
+	#mc.menuItem(d=True,dl='Path')
+	#mc.menuItem('Image Output',l=furiosoPrefs.get('importPath'),itl=True,en=0)
+	mc.menuItem(l='Set Path',c=partial(delay,'furiosoPrefs.path','()'))
 	mc.setParent('..')
 	
-def buildUILists():
+def buildUILists():#furiItemList
 	mc.iconTextScrollList('FuriosoObjScroll',e=1,ams=1,ra=1)
 	mc.popupMenu('menuObj',p='FuriosoObjScroll')
 	mc.menuItem('Rename Material',l='Rename Material',c=partial(delay,'aePrefs.write',"('Behavior','New')"))

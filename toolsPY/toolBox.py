@@ -49,7 +49,7 @@ def UI():
 ###############
 def rigUI():
     icon=ui.rowWidth/8
-    mc.frameLayout('Ctrls',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='RIG CONTROLERS')
+    mc.frameLayout('Ctrls',w=ui.rowWidth,cll=1,cl=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='RIG CONTROLERS')
     
     mc.rowColumnLayout(numberOfColumns=8)
     mc.iconTextButton(w=icon,h=icon,en=1,l= "Square" ,i= (iconPath +"ctrl_square.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"Square\")\')'))
@@ -152,7 +152,7 @@ def assignUI():
 	mc.button(l='Tx',ann='Freeze Transforms',bgc=[.3,.7,1],c=partial(delay,'mc.makeIdentity','(mc.ls(sl=1),apply=True,t=1,r=0,s=0,n=0,pn=1)')) 
 	mc.button(l='Rx',ann='Freeze Rotations',bgc=[.3,.7,1],c=partial(delay,'mc.makeIdentity','(mc.ls(sl=1),apply=True,t=0,r=1,s=0,n=0,pn=1)')) 
 	mc.button(l='Sx',ann='Freeze Scales',bgc=[.3,.7,1],c=partial(delay,'mc.makeIdentity','(mc.ls(sl=1),apply=True,t=0,r=0,s=1,n=0,pn=1)'))
-	mc.button(l='Sx',ann='WhiteBox',bgc=[.3,.7,1],c=partial(delay,'callWhiteBox','()'))
+	mc.button(l='Mov',ann='WhiteBox',bgc=[0,0,0],c=partial(delay,'callWhiteBox','()'))
 	
 	#mc.text(l='')
 	mc.button(l='Crv',ann='Create Curve from Selected Joint Group',c=partial(delay,'mel.eval','("Ctrl_Curve")')) 
