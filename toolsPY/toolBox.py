@@ -10,9 +10,12 @@ from functools import partial
 def delay(method,string,*args): exec(method+string) #Delay Function
 ################
 from rcTools.rcMaya import *
+###########subMODULES 
+#from rcTools.toolsPY import rcMaya2AE 
 from rcTools.toolsPY import toElement 
 from rcTools.toolsPY import rcFurioso 
 ################source every mel in toolsMEL: toolsMEL
+
 for each in os.listdir(toolsMEL):
 	file,ext=os.path.splitext(each)
 	path= os.path.join(toolsMEL.replace('\\','/'),each)
@@ -44,7 +47,7 @@ def UI():
 	mc.setParent('..')
 
 	scriptsUI()
-
+ 
 	mc.showWindow()
 ###############
 def rigUI():
@@ -68,12 +71,7 @@ def rigUI():
     mc.iconTextButton(w=icon,h=icon,en=1,l= "FourDir2" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
     
     
-    mc.setParent('MAIN')
-    
-def digItUI():
-    mc.frameLayout('DigIt',w=ui.rowWidth,h=330,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='DigIt')
-    mc.setParent('MAIN')
-    
+    mc.setParent('MAIN')   
 def scriptsUI(): 
 	mc.frameLayout(l='TOADSTORM',w=ui.rowWidth,cll=1,cl=1)
 	mc.rowColumnLayout(w=ui.rowWidth,numberOfColumns=1)
@@ -123,7 +121,6 @@ def assignUI():
 	mc.button(l='Sel',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcSetPivot SELECTED")'))
 	mc.button(l='',c=partial(delay,'mel.eval','(toMiddle(\"max\" ,\"max\", \"max\")'))
 	mc.button(l='')
-	
 	mc.button(l='Y+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mel.eval','("rcSetPivot YMax")'))
 	mc.button(l='')
 	mc.button(l='')
@@ -192,7 +189,7 @@ def assignUI():
 	#mc.setParent('..')
 	icon=ui.rowWidth/8
 	mc.rowColumnLayout(numberOfColumns=3,rat=[1,'both',0])
-	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8,ann="Fix Render Globals",l= "FIX" ,i="overrideSettings.png",c=partial(delay,'fixRenderGlobalsBUG','()'))
+	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8,ann="Fix Render Globals",l= "FIX" ,i="overrideSettings.png",c=partial(delay,'set.globals','(opt="fix")'))
 	mc.iconTextButton(w=icon,h=icon,ann="Set Camera to Meters",en=1,l= "Set Camera" ,i= "CameraAE.png",c=partial(delay,'mel.eval','("rcSetCameraClip .5 100000")'))
 	
 	mc.button(h=25,ann='Reset Viewport Show Options',l='RE',bgc=[.0,.5,.0],c=partial(delay,'set.view','(opt=1)'))	
@@ -229,7 +226,7 @@ def assignUI():
 
 def materialsUI():
 	icon=ui.rowWidth/8
-	mc.frameLayout('rcMATERIALS',bgc=[.4,.2,.4],w=ui.rowWidth,bs='in',fn='smallBoldLabelFont',cll=1)
+	mc.frameLayout('rcMATERIALS',l='MATERIALS',bgc=[.4,.2,.4],w=ui.rowWidth,bs='in',fn='smallBoldLabelFont',cll=1,cl=1)
 	if mc.frameLayout('GLOBAL',q=1,ex=1)==1: mc.frameLayout('GLOBAL',e=1,cl=1)#CLOSE GLOBALS WIN
 	mc.floatSliderGrp('lambertslider',label='Lambert1 Transparent',minValue=0,maxValue=1,cc=partial(delay,'lambertset','()'))
 	mc.separator(style='in')
@@ -279,7 +276,6 @@ def materialsUI():
 	mc.setParent('..')
 	mc.setParent('MAIN')
 def existMATUI(parentFrame):#in FURIOSO
-	
 	if mc.scrollLayout('materiallist',q=1,ex=1)==True: mc.deleteUI('materiallist')
 	mc.setParent(parentFrame)
 	mc.scrollLayout('materiallist',w=ui.rowWidth,h=390)#h=len(ls.shaders())*25)

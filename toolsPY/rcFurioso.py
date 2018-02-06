@@ -24,9 +24,9 @@ def delay(method,string,*args): exec(method+string) #Button Delay Function
 ###########
 #UI VARIABLES FROM MAIN
 ui=rc.ui('Furioso')
-class furiosoPrefs(iniFile):#aePrefs.ini 
+class furiosoPrefs(iniFile):#furiosoPrefs
 	def __init__(self):
-		iniFile.__init__(self,os.path.join(userDirectory(),'rcFurioso.ini').replace('\\','/'))
+		iniFile.__init__(self,os.path.join(userDirectory(),'rcFuri.ini').replace('\\','/'))
 		if not os.path.isfile(self.fileName):#Defaults 
 				file=open(self.fileName,'w')
 				file.close()
@@ -35,22 +35,74 @@ class furiosoPrefs(iniFile):#aePrefs.ini
 				self.write('Flag','1')
 				self.write('Material','0')
 				self.write('Object','1')
-				#self.write('Behavior','Replace')
 				self.write('importBehavior', 'reference')
 				#self.write('ImageLabel', 'Label3')
-	def path(self):#Write Ae Location to pref File and Update UI
+	def path(self):#Write Obj List Location to pref File and Update UI
 		self.importPath=mc.fileDialog2(fm=3,ds=1,okc='Set',cc='Cancel')[0]
 		self.write('importPath',self.importPath)
 	def checkBox(self,name):#Write checkBox Value
 		self.write(name,int(mc.checkBox(name,q=1,v=1)))
 	def set(self,att,value):#Write Value
     		self.write(att,value)
-    		buildUILists()
+    		importListUI()
+    		conformedListUI()
 furiosoPrefs=furiosoPrefs()
-
 def UI():
-    #ui.frame('FURIOSO',bgc=(.2,.2,.2))
-    mc.menuBarLayout(w=ui.rowWidth)
+    #mc.frameLayout('Tools',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],bs='in',l='Tools')
+    mc.rowColumnLayout('FURIROW',numberOfColumns=2,columnWidth=[(1,ui.rowWidth/2),(2,ui.rowWidth/2)])
+    mc.frameLayout('CREATE',cll=0,bgc=[.0,.0,.0]);
+    mc.rowColumnLayout(numberOfColumns=4)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "fileNew.png",c=partial(delay,'planeFromTexture','()'))
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 10x10 Tile",l= "Tile" ,i= "polyPlane.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 10 -sy 10 -ax 0 1 0 -cuv 2 -ch 1")'))	
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 1x1 Tile",l= "Tile" ,i= iconPath+"polyPlanenDiv.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "cube.png",c=partial(delay,'mel.eval','("polyCube -w 10 -h 10 -d 10 -sx 1 -sy 1 -sz 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
+    mc.setParent('FURIROW')
+    mc.frameLayout('SCENE- J to snap',cll=0,bgc=[.0,.0,.0]);
+    mc.rowColumnLayout(numberOfColumns=4)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "polyQuad",c=partial(delay,'mel.eval','("TogglePolyCount")'))
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Set Camera to Meters",en=1,l= "Set Camera" ,i= "CameraAE.png",c=partial(delay,'mel.eval','("rcSetCameraClip .5 100000")'))
+    mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Snap",l= "Tile" ,i= "snapGrid.png",onc=partial(delay,'rc.stepSnap','(5,1)'),ofc=partial(delay,'rc.stepSnap','(5,0)'))
+    mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Rotate",l= "Tile" ,i= "rotate_M.png",onc=partial(delay,'rc.rotSnap','(45,1)'),ofc=partial(delay,'rc.rotSnap','(45,0)'))
+    mc.setParent('FURIROW')
+    mc.frameLayout('CONFORM',cll=0,bgc=[.0,.0,.0]);
+    mc.rowColumnLayout(numberOfColumns=4)
+    mc.button(w=ui.rowWidth/6,h=ui.btn_large,al='left',l=' + ',c=partial(delay,'addObj','(mc.ls(sl=1))'))  #
+    mc.button(h=ui.btn_large,w=ui.rowWidth/6,al='center',l=' - ',c=partial(delay,'removeObj','("sel")')) 
+    mc.button(h=ui.btn_large,w=ui.rowWidth/6,al='right',l='NUKE',c=partial(delay,'removeObj','("all")'))
+    mc.setParent('FURIROW')
+    mc.frameLayout('MODIFY',cll=0,bgc=[.0,.0,.0]);
+    mc.rowColumnLayout(numberOfColumns=4)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "rotateUVcw.png",c=partial(delay,'mel.eval','("polyRotateUVs 90 1")'))
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "historyPulldownIcon.png",bgc=[.5,0,0],c=partial(delay,'mel.eval','("DeleteHistory")'))
+    mc.setParent('FURIROW')
+    mc.setParent('..')
+    #mc.menuBarLayout('conformMenu',w=ui.rowWidth+25)
+    #mc.separator(h=5,style='in') 
+    #mc.menu(l='Options')
+    #mc.menuItem(d=True,l='Behavior')
+    #mc.setParent('..')
+    mc.checkBox('Object',vis=1,l='Object',v=int(furiosoPrefs.get('Object')),cc=partial(delay,'furiosoPrefs.checkBox',"('Object')"))
+    mc.checkBox('Material',vis=1,l='Material',v=int(furiosoPrefs.get('Material')),cc=partial(delay,'furiosoPrefs.checkBox',"('Material')"))
+    mc.checkBox('Flag',l='Flag',vis=1,v=int(furiosoPrefs.get('Flag')),cc=partial(delay,'furiosoPrefs.checkBox',"('Flag')"))  
+    mc.iconTextScrollList('FuriosoObjScroll',vis=1,w=ui.rowWidth,h=150)
+    mc.frameLayout('materialsFrame',w=ui.rowWidth,l='Materials',bgc=[0.2,.2,.2],cc=partial(delay,'materialListUI','("materialsFrame")'),cll=1)
+    materialListUI('materialsFrame')
+    mc.setParent('..')
+    mc.setParent('..')
+    mc.frameLayout('frame_furiOBj',w=ui.rowWidth,l='Objects',bgc=[0.2,.2,.2],cc=partial(delay,'materialListUI','("materialsFrame")'),cll=1)
+    importListUI('frame_furiOBj')
+    mc.setParent('..')
+    #conformedListUI()
+    updateMenu()
+	#mc.scriptJob('import rcFurioso',event=SceneOpened)
+def importListUI(parentFrame,location=furiosoPrefs.get('importPath')):#furiImportList
+    if mc.scrollLayout('conformedObjScroll',q=1,ex=1)==True: mc.deleteUI('conformedObjScroll')
+    mc.setParent(parentFrame)
+    mc.scrollLayout('conformedObjScroll',w=ui.rowWidth,h=600)
+    if mc.menuBarLayout('objmenu',q=1,ex=1)==True: mc.deleteUI('objmenu')
+    mc.menuBarLayout('objmenu')
     mc.separator(h=5,style='in') 
     mc.menu(l='Options')
     mc.menuItem(d=True,l='Behavior')
@@ -58,57 +110,7 @@ def UI():
     mc.menuItem('Import',l='Import',rb=1,c=partial(delay,'furiosoPrefs.set',"('importBehavior','import')"))
     mc.menuItem('Reference',l='Reference',rb=1,c=partial(delay,'furiosoPrefs.set',"('importBehavior','reference')"))
     mc.menu('Path',l='Path')
-    mc.menuItem(d=True,l=furiosoPrefs.get('importPath'))
-	#mc.menuItem(aePrefs.get('ImageSource'),e=1,rb=1)
-	#mc.frameLayout('Furioso',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='Furioso')
-    mc.rowColumnLayout('FURIROW',numberOfColumns=2,columnWidth=[(1,ui.rowWidth/2),(2,ui.rowWidth/2)])
-    mc.columnLayout('furiosoObjectConform',cal='center',w=ui.rowWidth-10)
-    mc.frameLayout('CREATE',cll=0,bgc=[.0,.0,.0]);
-    mc.rowColumnLayout(numberOfColumns=4)
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "fileNew.png",c=partial(delay,'planeFromTexture','()'))
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 10x10 Tile",l= "Tile" ,i= "polyPlane.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 10 -sy 10 -ax 0 1 0 -cuv 2 -ch 1")'))	
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 1x1 Tile",l= "Tile" ,i= iconPath+"polyPlanenDiv.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "cube.png",c=partial(delay,'mel.eval','("polyCube -w 10 -h 10 -d 10 -sx 1 -sy 1 -sz 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
-    mc.setParent('..')
-    mc.setParent('..')
-    mc.frameLayout('SCENE- J to snap',cll=0,bgc=[.0,.0,.0]);
-    mc.rowColumnLayout(numberOfColumns=4)
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "polyQuad",c=partial(delay,'mel.eval','("TogglePolyCount")'))
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Set Camera to Meters",en=1,l= "Set Camera" ,i= "CameraAE.png",c=partial(delay,'mel.eval','("rcSetCameraClip .5 100000")'))
-    mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Snap",l= "Tile" ,i= "snapGrid.png",onc=partial(delay,'rc.stepSnap','(5,1)'),ofc=partial(delay,'rc.stepSnap','(5,0)'))
-    mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Rotate",l= "Tile" ,i= "rotate_M.png",onc=partial(delay,'rc.rotSnap','(45,1)'),ofc=partial(delay,'rc.rotSnap','(45,0)'))
-    mc.setParent('..')
-    mc.setParent('..')
-    mc.setParent('..')
-    mc.frameLayout('CONFORM',cll=0,bgc=[.0,.0,.0]);
-    mc.rowColumnLayout(numberOfColumns=4)
-    mc.button(w=ui.rowWidth/6,h=ui.btn_large,al='left',l=' + ',c=partial(delay,'btnPlus','(mc.ls(sl=1))'))  #
-    mc.button(h=ui.btn_large,w=ui.rowWidth/6,al='center',l=' - ',c=partial(delay,'btnDel','("sel")')) 
-    mc.button(h=ui.btn_large,w=ui.rowWidth/6,al='right',l='NUKE',c=partial(delay,'btnDel','("all")'))
-    mc.setParent('..')
-    mc.setParent('..')
-    mc.frameLayout('MODIFY',cll=0,bgc=[.0,.0,.0]);
-    mc.rowColumnLayout(numberOfColumns=4)
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "rotateUVcw.png",c=partial(delay,'mel.eval','("polyRotateUVs 90 1")'))
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "historyPulldownIcon.png",bgc=[.5,0,0],c=partial(delay,'mel.eval','("DeleteHistory")'))
-    mc.setParent('..')
-    mc.checkBox('Object',vis=0,l='Object',v=int(furiosoPrefs.get('Object')),cc=partial(delay,'furiosoPrefs.checkBox',"('Object')"))
-    mc.checkBox('Material',l='Material',vis=1,v=int(furiosoPrefs.get('Material')),cc=partial(delay,'furiosoPrefs.checkBox',"('Material')"))
-    mc.checkBox('Flag',l='Flag',vis=0,v=int(furiosoPrefs.get('Flag')),cc=partial(delay,'furiosoPrefs.checkBox',"('Flag')"))
-    mc.iconTextScrollList('FuriosoObjScroll',vis=0,w=ui.rowWidth,h=150)
-    mc.setParent('furiosoObjectConform')
-    mc.setParent('..')
-    mc.setParent('..')
-    mc.frameLayout('frame_furiMAT',w=ui.rowWidth,l='Materials',bgc=[0.2,.2,.2],cc=partial(delay,'buildUIMats','("frame_furiMAT")'),cll=1)
-    buildUIMats('frame_furiMAT')
-    mc.setParent('..')
-    filesUI()
-    buildUILists()
-    updateMenu()
-	#mc.scriptJob('import rcFurioso',event=SceneOpened)
-def filesUI(location=furiosoPrefs.get('importPath')):#furiImportList
-    mc.frameLayout('frame_furiOBj',w=ui.rowWidth,l='Objects',bgc=[0.2,.2,.2],cc=partial(delay,'buildUIMats','("frame_furiMAT")'),cll=1)
-    mc.scrollLayout(w=ui.rowWidth,h=600)
+    #ui.fileList(location=location)
     for folder in rc.ls.dir(location):
 		mc.frameLayout(l=folder,w=ui.rowWidth-10,cll=1,cl=1)#mc.text(l=folder+':',align='left')
 		mc.columnLayout(w=ui.rowWidth)
@@ -116,17 +118,22 @@ def filesUI(location=furiosoPrefs.get('importPath')):#furiImportList
 			file,ext=os.path.splitext(item)#split file and Extension 
 			path= os.path.join(location,folder,item).replace('\\','/')
 			if ext =='.fbx': 
-				mc.button(w=ui.rowWidth,l=file,c=partial(delay,'btnScript','("'+path+'","'+folder+'")'))
+				mc.button(w=ui.rowWidth,l=file,c=partial(delay,'inScene','("'+path+'","'+folder+'")'))
 		mc.setParent('..')
 		mc.setParent('..')
-def btnScript(fileLocation,folder=''):
-	if folder is not None: mel.eval ('file -r -ignoreVersion -gl -mergeNamespacesOnClash false -namespace "" "'+fileLocation+'"')
-	else: print ('source "'+scriptsMEL+str(script)+'"')
-	#mel.eval(str(script))
-def buildUIMats(parentFrame):
+def materialListUI(parentFrame):
 	if mc.scrollLayout('materiallist',q=1,ex=1)==True: mc.deleteUI('materiallist')
+	if mc.menuBarLayout('materialmenu',q=1,ex=1)==True: mc.deleteUI('materialmenu')
 	mc.setParent(parentFrame)
-	mc.scrollLayout('materiallist',bgc=[0.1,0.1,0.1],w=ui.rowWidth,h=min(int(len(rc.ls.shaders()*30))+15,630))#h=len(ls.shaders())*25)
+	mc.scrollLayout('materiallist',bgc=[0.1,0.1,0.1],w=ui.rowWidth-20,h=min(int(len(rc.ls.shaders()*30))+15,630))#h=len(ls.shaders())*25)
+	mc.menuBarLayout('materialmenu')
+	mc.separator(h=5,style='in') 
+	mc.menu(l='Options')
+	mc.menuItem(d=True,l='Behavior')
+	mc.radioMenuItemCollection()
+	mc.menuItem('Import',l='Import',rb=1,c=partial(delay,'furiosoPrefs.set',"('importBehavior','import')"))
+	mc.menuItem('Reference',l='Reference',rb=1,c=partial(delay,'furiosoPrefs.set',"('importBehavior','reference')"))
+	mc.menu('Path',l='Path')
 	mc.rowColumnLayout(w=ui.rowWidth-20,numberOfColumns=2)
 	for each in sorted(rc.ls.shaders()):
 	    sName=each
@@ -148,7 +155,10 @@ def updateMenu():#UPDATE
 	mc.menuItem(l='Set Path',c=partial(delay,'furiosoPrefs.path','()'))
 	mc.setParent('..')
 	
-def buildUILists():#furiItemList
+def inScene(fileLocation,folder=''):
+	if folder is not None: mel.eval ('file -r -ignoreVersion -gl -mergeNamespacesOnClash false -namespace "" "'+fileLocation+'"')
+	else: print ('source "'+scriptsMEL+str(script)+'"')
+def conformedListUI():#furiItemList
 	mc.iconTextScrollList('FuriosoObjScroll',e=1,ams=1,ra=1)
 	mc.popupMenu('menuObj',p='FuriosoObjScroll')
 	mc.menuItem('Rename Material',l='Rename Material',c=partial(delay,'aePrefs.write',"('Behavior','New')"))
@@ -173,7 +183,7 @@ def tagListCallBack():
 	    else:
 	        mc.select(sel)
 
-def btnPlus(sel):
+def addObj(sel):
 	for each in sel:
 	    obj=conformObj(each)
 	    if int(furiosoPrefs.get('Material'))==1:
@@ -184,15 +194,15 @@ def btnPlus(sel):
 
 	    mc.select(obj)
 	    tagFuriosoFlag(obj)
-	buildUILists()
-def btnDel(opt): #deletes all sets and locators
+	conformedListUI()
+def removeObj(opt): #deletes all sets and locators
 	if opt=='all':
 		for each in mc.ls():
 			if mc.objExists(each+'.FuriosoFlag'): mc.deleteAttr(each+'.FuriosoFlag')
 	if opt=='sel':
 		for each in mc.ls(sl=1):
 			if mc.objExists(each+'.FuriosoFlag'): mc.deleteAttr(each+'.FuriosoFlag')
-	buildUILists()
+	conformedListUI()
 ################
 def prompt(initial):
     prompt=mc.promptDialog(t="Conform",m="Name:                                     ",tx=initial,button="Go")
@@ -299,4 +309,6 @@ def fileNode(name,outAttr):
 #################
 if __name__== 'rcFurioso' :
 	ui.win()
+	ui.toolBox()
+	ui.tab('FURIOSO')
 	UI()

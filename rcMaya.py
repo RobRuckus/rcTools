@@ -5,6 +5,8 @@ import maya.cmds as mc
 import maya.mel as mel 
 import ctypes
 from main import *
+from functools import partial
+def delay(method,string,*args): exec(method+string) #Button Delay Function
 ##########
 class ui():#UI Class for Maya
 	def __init__(self,name):
@@ -43,7 +45,7 @@ class ui():#UI Class for Maya
 		mc.tabLayout(self.tabs,w=self.rowWidth+20,imw=15)
 	def tab(self,name):#tab command for toolBox
 		mc.setParent(self.tabs)
-		mc.scrollLayout(name,w=self.rowWidth+15,h=self.screensize[1]-150)	
+		mc.scrollLayout(name,w=self.rowWidth+30,h=self.screensize[1]-150)	
 	def frame(self,name,**kwargs): 
 		mc.frameLayout(self.name+name,w=self.rowWidth,fn='smallBoldLabelFont',bs='in',cll=1,l=name,**kwargs)
 	def buttonRow(self,columns=8,**kwargs):
@@ -51,7 +53,18 @@ class ui():#UI Class for Maya
 		for each in range(columns):
 			pass
 			#mc.iconTextButton(w=self.rowWidth/columns,h=self.rowWidth/columns,args)#pass each arg of each button 
-	#def variableScroll(self,
+	def fileList(self,filetype='.fbx',location=mc.workspace(q=True,rd=True)):
+	    for folder in ls.dir(location):
+	        mc.frameLayout(l=folder,w=self.rowWidth-10,cll=1,cl=1)
+	        mc.columnLayout(w=ui.rowWidth)
+	        for item in sorted(rc.ls.dir(os.path.join(location,folder),folder=0)):
+	            file,ext=os.path.splitext(item)#split file and Extension 
+	            path= os.path.join(location,folder,item).replace('\\','/')
+	            if ext ==filetype: 
+	                mc.button(w=self.rowWidth,l=file,c=partial(delay,'inScene','("'+path+'","'+folder+'")'))
+		mc.setParent('..')
+		mc.setParent('..')
+#def variableScroll(self,
 class sceneData():#Custom Scene Data Returns
 	def ws(self): return mc.workspace(q=True,rd=True)
 	def wsImagesName(self): return mc.workspace('images',q=True,fileRuleEntry=True)
@@ -370,17 +383,19 @@ class set():
     	#commitUI()
     	
     def globals(self,opt=None):
+        if opt=='fix':#fix Globals Glitch by Blowing Out UI
+            mel.eval('deleteUI unifiedRenderGlobalsWindow;')      
+            mel.eval('buildNewSceneUI;')
 	    #DEFAULTS
 	    mc.setAttr('defaultRenderGlobals.extensionPadding',4)#FRAME PADDING
 	    mc.setAttr('defaultRenderGlobals.outFormatControl',0)#
 	    mc.setAttr('defaultRenderGlobals.animation',1)
 	    mc.setAttr('defaultRenderGlobals.putFrameBeforeExt',1)
 	    if not mc.getAttr('defaultRenderGlobals.imageFormat')==51:#FORCE PNG IF NOT EXR
-		mc.setAttr('mentalrayGlobals.imageCompression',1)
-		mc.setAttr('defaultRenderGlobals.imageFormat',32)
-		mc.setAttr('defaultRenderGlobals.outFormatControl',0)
+	        mc.setAttr('defaultRenderGlobals.imageFormat',32)
+	        mc.setAttr('defaultRenderGlobals.outFormatControl',0)
 		#mc.setAttr('miDefaultFrameBuffer.datatype',16)
-            mel.eval('unifiedRenderGlobalsWindow')
+		mel.eval('unifiedRenderGlobalsWindow')
     def viewport(self,value):
         if value==0:
          layout=mc.panelConfiguration(l='tempLayout',sc=0)
@@ -428,9 +443,6 @@ class set():
         else:
             for each in ls.renderAtts(): mc.checkBoxGrp(each,e=1,v1=value)
 ########
-def fixRenderGlobalsBUG():#Reinitialize Render Setting Window (BUG FIX)
-	mel.eval('deleteUI unifiedRenderGlobalsWindow;')
-	mel.eval('buildNewSceneUI;')
 def rView():
     panels=mc.getPanel(scriptType='renderWindowPanel')
     form=mc.renderWindowEditor(panels[0],q=True,parent=True)
