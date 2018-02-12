@@ -138,8 +138,8 @@ def materialListUI(parentFrame):
 	for each in sorted(rc.ls.shaders()):
 	    sName=each
 	    if each.endswith('_material'): 
-	        sName=each[:-8] 
-		mc.button(w=ui.rowWidth-65,al='right',bgc=[0.1,0.1,0.1],l=each,c=partial(delay,'mc.select','(\''+ str(each)+'\')'))
+	        sName=each[:-9]
+		mc.button(w=ui.rowWidth-65,al='right',bgc=[0.1,0.1,0.1],l=sName.split(':')[-1],c=partial(delay,'mc.select','(\''+ str(each)+'\')'))
 		mc.button(w=45,l='ASSIGN',bgc=[0.1,0.1,0.1],c=partial(delay,'mc.hyperShade','(assign=\''+ str(each)+'\')'))#rc.ls.shaderColor(each)[0],
 		#mc.button(w=40,l='GRAPH')   
 	mc.setParent('..');mc.setParent('..') 

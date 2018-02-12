@@ -167,7 +167,7 @@ class ls():
         renderFlags.append('miFinalGatherCast')
         renderFlags.append('miFinalGatherReceive')
         return renderFlags
-    def shaders(self): return [shader for shader in mc.ls(mat=1) if not 'particleCloud1' in shader and not 'lambert1' in shader and not 'displace' in shader and not ':' in shader] #Lists Shaders in Scene
+    def shaders(self): return [shader for shader in mc.ls(mat=1) if not 'particleCloud1' in shader and not 'lambert1' in shader and not 'displace' in shader] #and not ':' in shader
     def shaderColor(self,shader):#Return Color for UI WIP
         for each in mc.listAttr(shader):
             if 'outColor' in each : return mc.getAttr(shader+'.outcolor')
