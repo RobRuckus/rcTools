@@ -35,20 +35,25 @@ class furiosoPrefs(iniFile):#furiosoPrefs
 				self.write('Flag','1')
 				self.write('Material','0')
 				self.write('Object','1')
+				self.write('IncludeNamespace','1')
+				self.write('prefix','forest')
+				self.write('suffix','_material')
 				self.write('importBehavior', 'reference')
-				#self.write('ImageLabel', 'Label3')
+				self.write('include',1)
+				#self.write('ImageLabel', 'Label3')	
 	def path(self):#Write Obj List Location to pref File and Update UI
 		self.importPath=mc.fileDialog2(fm=3,ds=1,okc='Set',cc='Cancel')[0]
 		self.write('importPath',self.importPath)
 	def checkBox(self,name):#Write checkBox Value
 		self.write(name,int(mc.checkBox(name,q=1,v=1)))
+	def menuItem(self,name):#Write menuItem Value
+	    self.write(name,int(mc.menuItem(name,q=1,cb=1)))
 	def set(self,att,value):#Write Value
     		self.write(att,value)
-    		importListUI()
-    		conformedListUI()
+    		#importListUI()
+    		#conformedListUI()
 furiosoPrefs=furiosoPrefs()
 def UI():
-    #mc.frameLayout('Tools',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],bs='in',l='Tools')
     mc.rowColumnLayout('FURIROW',numberOfColumns=2,columnWidth=[(1,ui.rowWidth/2),(2,ui.rowWidth/2)])
     mc.frameLayout('CREATE',cll=0,bgc=[.0,.0,.0]);
     mc.rowColumnLayout(numberOfColumns=4)
@@ -56,6 +61,7 @@ def UI():
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 10x10 Tile",l= "Tile" ,i= "polyPlane.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 10 -sy 10 -ax 0 1 0 -cuv 2 -ch 1")'))	
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 1x1 Tile",l= "Tile" ,i= iconPath+"polyPlanenDiv.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "cube.png",c=partial(delay,'mel.eval','("polyCube -w 10 -h 10 -d 10 -sx 1 -sy 1 -sz 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
+    
     mc.setParent('FURIROW')
     mc.frameLayout('SCENE- J to snap',cll=0,bgc=[.0,.0,.0]);
     mc.rowColumnLayout(numberOfColumns=4)
@@ -63,12 +69,14 @@ def UI():
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Set Camera to Meters",en=1,l= "Set Camera" ,i= "CameraAE.png",c=partial(delay,'mel.eval','("rcSetCameraClip .5 100000")'))
     mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Snap",l= "Tile" ,i= "snapGrid.png",onc=partial(delay,'rc.stepSnap','(5,1)'),ofc=partial(delay,'rc.stepSnap','(5,0)'))
     mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Rotate",l= "Tile" ,i= "rotate_M.png",onc=partial(delay,'rc.rotSnap','(45,1)'),ofc=partial(delay,'rc.rotSnap','(45,0)'))
+    
     mc.setParent('FURIROW')
     mc.frameLayout('CONFORM',cll=0,bgc=[.0,.0,.0]);
     mc.rowColumnLayout(numberOfColumns=4)
     mc.button(w=ui.rowWidth/6,h=ui.btn_large,al='left',l=' + ',c=partial(delay,'addObj','(mc.ls(sl=1))'))  #
     mc.button(h=ui.btn_large,w=ui.rowWidth/6,al='center',l=' - ',c=partial(delay,'removeObj','("sel")')) 
     mc.button(h=ui.btn_large,w=ui.rowWidth/6,al='right',l='NUKE',c=partial(delay,'removeObj','("all")'))
+    
     mc.setParent('FURIROW')
     mc.frameLayout('MODIFY',cll=0,bgc=[.0,.0,.0]);
     mc.rowColumnLayout(numberOfColumns=4)
@@ -76,40 +84,48 @@ def UI():
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize)
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "rotateUVcw.png",c=partial(delay,'mel.eval','("polyRotateUVs 90 1")'))
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "historyPulldownIcon.png",bgc=[.5,0,0],c=partial(delay,'mel.eval','("DeleteHistory")'))
-    mc.setParent('FURIROW')
+    
+    mc.setParent('FURIROW') 
     mc.setParent('..')
-    #mc.menuBarLayout('conformMenu',w=ui.rowWidth+25)
-    #mc.separator(h=5,style='in') 
-    #mc.menu(l='Options')
-    #mc.menuItem(d=True,l='Behavior')
-    #mc.setParent('..')
-    mc.checkBox('Object',vis=1,l='Object',v=int(furiosoPrefs.get('Object')),cc=partial(delay,'furiosoPrefs.checkBox',"('Object')"))
-    mc.checkBox('Material',vis=1,l='Material',v=int(furiosoPrefs.get('Material')),cc=partial(delay,'furiosoPrefs.checkBox',"('Material')"))
-    mc.checkBox('Flag',l='Flag',vis=1,v=int(furiosoPrefs.get('Flag')),cc=partial(delay,'furiosoPrefs.checkBox',"('Flag')"))  
+    mc.menuBarLayout('materialmenu')
+    mc.separator(h=5,style='in') 
+    mc.menu(l='Options')
+    
+    #mc.checkBox('Object',vis=1,l='Object',v=int(furiosoPrefs.get('Object')),cc=partial(delay,'furiosoPrefs.checkBox',"('Object')"))
+    #mc.checkBox('Material',vis=1,l='Material',v=int(furiosoPrefs.get('Material')),cc=partial(delay,'furiosoPrefs.checkBox',"('Material')"))
+    #mc.checkBox('Flag',l='Flag',vis=1,v=int(furiosoPrefs.get('Flag')),cc=partial(delay,'furiosoPrefs.checkBox',"('Flag')"))  
+    
     mc.iconTextScrollList('FuriosoObjScroll',vis=1,w=ui.rowWidth,h=150)
+    
     mc.frameLayout('materialsFrame',w=ui.rowWidth,l='Materials',bgc=[0.2,.2,.2],cc=partial(delay,'materialListUI','("materialsFrame")'),cll=1)
+    mc.menuBarLayout('materialmenu')
+    mc.separator(h=5,style='in') 
+    mc.menu(l='Options')
+    mc.menuItem(d=True,l='Behavior')
+    mc.menuItem('IncludeNamespace',l='Include Namespaced Materials',cb=int(furiosoPrefs.get('IncludeNamespace')),c=partial(delay,'furiosoPrefs.menuItem',"('IncludeNamespace')"))
     materialListUI('materialsFrame')
     mc.setParent('..')
-    mc.setParent('..')
     mc.frameLayout('frame_furiOBj',w=ui.rowWidth,l='Objects',bgc=[0.2,.2,.2],cc=partial(delay,'materialListUI','("materialsFrame")'),cll=1)
-    importListUI('frame_furiOBj')
-    mc.setParent('..')
-    #conformedListUI()
-    updateMenu()
-	#mc.scriptJob('import rcFurioso',event=SceneOpened)
-def importListUI(parentFrame,location=furiosoPrefs.get('importPath')):#furiImportList
-    if mc.scrollLayout('conformedObjScroll',q=1,ex=1)==True: mc.deleteUI('conformedObjScroll')
-    mc.setParent(parentFrame)
-    mc.scrollLayout('conformedObjScroll',w=ui.rowWidth,h=600)
-    if mc.menuBarLayout('objmenu',q=1,ex=1)==True: mc.deleteUI('objmenu')
     mc.menuBarLayout('objmenu')
     mc.separator(h=5,style='in') 
     mc.menu(l='Options')
     mc.menuItem(d=True,l='Behavior')
     mc.radioMenuItemCollection()
-    mc.menuItem('Import',l='Import',rb=1,c=partial(delay,'furiosoPrefs.set',"('importBehavior','import')"))
-    mc.menuItem('Reference',l='Reference',rb=1,c=partial(delay,'furiosoPrefs.set',"('importBehavior','reference')"))
+    mc.menuItem('import',l='Import',rb=1,c=partial(delay,'furiosoPrefs.set',"('importBehavior','import')"))
+    mc.menuItem('reference',l='Reference',rb=1,c=partial(delay,'furiosoPrefs.set',"('importBehavior','reference')"))
+    mc.menuItem(furiosoPrefs.get('importBehavior'),e=1,rb=1)
     mc.menu('Path',l='Path')
+    mc.menuItem(l='Set Path',c=partial(delay,'furiosoPrefs.path',"('')"))
+    importListUI('frame_furiOBj')
+    mc.setParent('..')
+    #conformedListUI()
+    updateMenu()
+	#mc.scriptJob('import rcFurioso',event=SceneOpened)
+def importListUI(parentFrame='frame_furiOBj',location=furiosoPrefs.get('importPath')):#furiImportList
+    if mc.scrollLayout('importObjScroll',q=1,ex=1)==True: mc.deleteUI('importObjScroll')
+    mc.setParent(parentFrame)
+    mc.scrollLayout('importObjScroll',w=ui.rowWidth,h=600)
+    #if mc.menuBarLayout('objmenu',q=1,ex=1)==True: mc.deleteUI('objmenu')
     #ui.fileList(location=location)
     for folder in rc.ls.dir(location):
 		mc.frameLayout(l=folder,w=ui.rowWidth-10,cll=1,cl=1)#mc.text(l=folder+':',align='left')
@@ -123,17 +139,9 @@ def importListUI(parentFrame,location=furiosoPrefs.get('importPath')):#furiImpor
 		mc.setParent('..')
 def materialListUI(parentFrame):
 	if mc.scrollLayout('materiallist',q=1,ex=1)==True: mc.deleteUI('materiallist')
-	if mc.menuBarLayout('materialmenu',q=1,ex=1)==True: mc.deleteUI('materialmenu')
+	#if mc.menuBarLayout('materialmenu',q=1,ex=1)==True: mc.deleteUI('materialmenu')
 	mc.setParent(parentFrame)
 	mc.scrollLayout('materiallist',bgc=[0.1,0.1,0.1],w=ui.rowWidth-20,h=min(int(len(rc.ls.shaders()*30))+15,630))#h=len(ls.shaders())*25)
-	mc.menuBarLayout('materialmenu')
-	mc.separator(h=5,style='in') 
-	mc.menu(l='Options')
-	mc.menuItem(d=True,l='Behavior')
-	mc.radioMenuItemCollection()
-	mc.menuItem('Import',l='Import',rb=1,c=partial(delay,'furiosoPrefs.set',"('importBehavior','import')"))
-	mc.menuItem('Reference',l='Reference',rb=1,c=partial(delay,'furiosoPrefs.set',"('importBehavior','reference')"))
-	mc.menu('Path',l='Path')
 	mc.rowColumnLayout(w=ui.rowWidth-20,numberOfColumns=2)
 	for each in sorted(rc.ls.shaders()):
 	    sName=each

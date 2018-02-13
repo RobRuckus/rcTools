@@ -7,7 +7,24 @@ import ctypes
 from main import *
 from functools import partial
 def delay(method,string,*args): exec(method+string) #Button Delay Function
-##########
+########
+class settingsFile(iniFile):
+    def __init__(self):
+        iniFile.__init__(self,os.path.join(userDirectory(),'settings.ini').replace('\\','/'))
+        if not os.path.isfile(self.fileName):#Defaults 
+				file=open(self.fileName,'w')
+				file.close()
+				#DEFAULTS
+	def path(self,opt):
+	    if opt=='folder':
+	        self.path=mc.fileDialog2(fm=1,da=1,okc='SEt',cc='Cancel')[0]
+	    if opt=='file':
+	        self.path=mc.fileDialog2(fm=3,ds=1,okc='Ok',cc='Cancel')[0]
+	    self.write('path'.self.path)
+	def menuItem(self,name):#Write menuItem Value
+	    self.write(name,int(mc.menuItem(name,q=1,cb=1)))
+	def checkBox(self,name):#Write checkBox Value
+		self.write(name,int(mc.checkBox(name,q=1,v=1)))
 class ui():#UI Class for Maya
 	def __init__(self,name):
 		if 'dar' not in sys.platform: 

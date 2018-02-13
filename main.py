@@ -20,7 +20,6 @@ def nameConvert(string):#Convert Node Names with | to _
 	if string.startswith('_'): return string[1:]
 	else: return string
 def backupFolder(): return str(datetime.now()).replace('-','.').replace(' ','-').replace(':','.')
-   
 def userDirectory():#IN usersetup.py for Maya RETURN USERDIRECTORY FOR MAC/WIN
 	if 'darwin' in sys.platform:
 		userDirectory=os.environ['HOME']
