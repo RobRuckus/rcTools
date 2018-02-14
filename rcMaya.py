@@ -73,8 +73,8 @@ class ui():#UI Class for Maya
 	def fileList(self,filetype='.fbx',location=mc.workspace(q=True,rd=True)):
 	    for folder in ls.dir(location):
 	        mc.frameLayout(l=folder,w=self.rowWidth-10,cll=1,cl=1)
-	        mc.columnLayout(w=ui.rowWidth)
-	        for item in sorted(rc.ls.dir(os.path.join(location,folder),folder=0)):
+	        mc.columnLayout(w=self.rowWidth)
+	        for item in sorted(ls.dir(os.path.join(location,folder),folder=0)):
 	            file,ext=os.path.splitext(item)#split file and Extension 
 	            path= os.path.join(location,folder,item).replace('\\','/')
 	            if ext ==filetype: 

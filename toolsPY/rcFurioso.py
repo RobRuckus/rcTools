@@ -125,8 +125,7 @@ def importListUI(parentFrame='frame_furiOBj',location=furiosoPrefs.get('importPa
     if mc.scrollLayout('importObjScroll',q=1,ex=1)==True: mc.deleteUI('importObjScroll')
     mc.setParent(parentFrame)
     mc.scrollLayout('importObjScroll',w=ui.rowWidth,h=600)
-    #if mc.menuBarLayout('objmenu',q=1,ex=1)==True: mc.deleteUI('objmenu')
-    #ui.fileList(location=location)
+    ui.fileList(location=furiosoPrefs.get('path'))
     for folder in rc.ls.dir(location):
 		mc.frameLayout(l=folder,w=ui.rowWidth-10,cll=1,cl=1)#mc.text(l=folder+':',align='left')
 		mc.columnLayout(w=ui.rowWidth)
@@ -164,7 +163,11 @@ def updateMenu():#UPDATE
 	mc.setParent('..')
 	
 def inScene(fileLocation,folder=''):
-	if folder is not None: mel.eval ('file -r -ignoreVersion -gl -mergeNamespacesOnClash false -namespace "" "'+fileLocation+'"')
+	if furiosoPrefs.get('importBehavior')=='import':
+		behavior='-i'
+	else:
+		behavior='-r'
+	if folder is not None: mel.eval ('file '+behavior+' -ignoreVersion -gl -mergeNamespacesOnClash false -namespace "" "'+fileLocation+'"')
 	else: print ('source "'+scriptsMEL+str(script)+'"')
 def conformedListUI():#furiItemList
 	mc.iconTextScrollList('FuriosoObjScroll',e=1,ams=1,ra=1)
