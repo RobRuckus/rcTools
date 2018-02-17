@@ -7,9 +7,9 @@ http://robocolabo.com/blog/
 Version: 0.1
 Function:
 try:
-	reload(rcFurioso)
+	reload(rcRoterra)
 except:
-	import rcFurioso
+	import rcRoterra
 """
 ###########
 import subprocess
@@ -23,8 +23,8 @@ from functools import partial
 def delay(method,string,*args): exec(method+string) #Button Delay Function
 ###########
 #UI VARIABLES FROM MAIN
-ui=rc.ui('Furioso')
-class furiosoPrefs(iniFile):#furiosoPrefs
+ui=rc.ui('Roterra')
+class RoterraPrefs(iniFile):#RoterraPrefs
 	def __init__(self):
 		iniFile.__init__(self,os.path.join(userDirectory(),'rcFuri.ini').replace('\\','/'))
 		if not os.path.isfile(self.fileName):#Defaults 
@@ -52,47 +52,43 @@ class furiosoPrefs(iniFile):#furiosoPrefs
     		self.write(att,value)
     		#importListUI()
     		#conformedListUI()
-furiosoPrefs=furiosoPrefs()
+RoterraPrefs=RoterraPrefs()
 def UI():
     mc.rowColumnLayout('FURIROW',numberOfColumns=2,columnWidth=[(1,ui.rowWidth/2),(2,ui.rowWidth/2)])
-    mc.frameLayout('CREATE',cll=0,bgc=[.0,.0,.0]);
+    ui.frame('CREATE',cll=0,bgc=[.0,.0,.0]);
     mc.rowColumnLayout(numberOfColumns=4)
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "fileNew.png",c=partial(delay,'planeFromTexture','()'))
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 10x10 Tile",l= "Tile" ,i= "polyPlane.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 10 -sy 10 -ax 0 1 0 -cuv 2 -ch 1")'))	
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Create 1x1 Tile",l= "Tile" ,i= iconPath+"polyPlanenDiv.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "cube.png",c=partial(delay,'mel.eval','("polyCube -w 10 -h 10 -d 10 -sx 1 -sy 1 -sz 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
+    ui.iconButton(i= "fileNew.png",c=partial(delay,'planeFromTexture','()'))
+    ui.iconButton(ann="Create 10x10 Tile",l= "Tile" ,i= "polyPlane.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 10 -sy 10 -ax 0 1 0 -cuv 2 -ch 1")'))	
+    ui.iconButton(ann="Create 1x1 Tile",l= "Tile" ,i= iconPath+"polyPlanenDiv.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
+    ui.iconButton(i= "cube.png",c=partial(delay,'mel.eval','("polyCube -w 10 -h 10 -d 10 -sx 1 -sy 1 -sz 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
     
     mc.setParent('FURIROW')
-    mc.frameLayout('SCENE- J to snap',cll=0,bgc=[.0,.0,.0]);
+    ui.frame('SCENE- J to snap',cll=0,bgc=[.0,.0,.0]);
     mc.rowColumnLayout(numberOfColumns=4)
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "polyQuad",c=partial(delay,'mel.eval','("TogglePolyCount")'))
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,ann="Set Camera to Meters",en=1,l= "Set Camera" ,i= "CameraAE.png",c=partial(delay,'mel.eval','("rcSetCameraClip .5 100000")'))
+    ui.iconButton(i= "polyQuad",c=partial(delay,'mel.eval','("TogglePolyCount")'))
+    ui.iconButton(ann="Set Camera to Meters",en=1,l= "Set Camera" ,i= "CameraAE.png",c=partial(delay,'mel.eval','("rcSetCameraClip .5 100000")'))
     mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Snap",l= "Tile" ,i= "snapGrid.png",onc=partial(delay,'rc.stepSnap','(5,1)'),ofc=partial(delay,'rc.stepSnap','(5,0)'))
     mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Rotate",l= "Tile" ,i= "rotate_M.png",onc=partial(delay,'rc.rotSnap','(45,1)'),ofc=partial(delay,'rc.rotSnap','(45,0)'))
     
     mc.setParent('FURIROW')
-    mc.separator(h=5,style='in')
-    mc.separator(h=5,style='in')
-    mc.frameLayout('CONFORM',cll=0,bgc=[.0,.0,.0]);
+    ui.frame('CONFORM',cll=0,bgc=[.0,.0,.0]);
     mc.rowColumnLayout(numberOfColumns=4)
     mc.button(w=ui.rowWidth/6,h=ui.btn_large,al='left',l=' + ',c=partial(delay,'addObj','(mc.ls(sl=1))'))  #
     mc.button(h=ui.btn_large,w=ui.rowWidth/6,al='center',l=' - ',c=partial(delay,'removeObj','("sel")')) 
     mc.button(h=ui.btn_large,w=ui.rowWidth/6,al='right',l='NUKE',c=partial(delay,'removeObj','("all")'))
     
     mc.setParent('..')
-    mc.frameLayout('MODIFY',cll=0,bgc=[.0,.0,.0]);
+    ui.frame('MODIFY',cll=0,bgc=[.0,.0,.0]);
     mc.rowColumnLayout(numberOfColumns=4)
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize)
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize)
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "rotateUVcw.png",c=partial(delay,'mel.eval','("polyRotateUVs 90 1")'))
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize,i= "historyPulldownIcon.png",bgc=[.5,0,0],c=partial(delay,'mel.eval','("DeleteHistory")'))
+    ui.iconButton(i= "rotateUVcw.png",c=partial(delay,'mel.eval','("polyRotateUVs 90 1")'))
+    ui.iconButton(i= "historyPulldownIcon.png",bgc=[.5,0,0],c=partial(delay,'mel.eval','("DeleteHistory")'))
     
     mc.setParent('FURIROW')
-    #mc.separator(h=5,style='in')
-    mc.frameLayout('COPY',cll=0,bgc=[.0,.0,.0]);
+    ui.frame('COPY',cll=0,bgc=[.0,.0,.0]);
     mc.rowColumnLayout(numberOfColumns=1)  
-    mc.gridLayout(numberOfColumns=5,cellWidthHeight=[28,28])
-    
+    mc.gridLayout(numberOfColumns=5,cellWidthHeight=[28,28])  
     mc.button(l='',c=partial(delay,'mel.eval','(toMiddle(\"max\" ,\"max\", \"max\")'))
     mc.button(l='')
     mc.button(l='Y+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','("0","10","0")'))
@@ -108,48 +104,57 @@ def UI():
     mc.button(l='Y-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','("0","-10","0")'))
     mc.button(l='')
     mc.button(l='')
+    mc.setParent('FURIROW')
     mc.setParent('..')
-    mc.setParent('..')
-    mc.setParent('..')
-    mc.setParent('..')
+    ui.frame('Scene',bgc=[0.2,.2,.2],cll=1,cl=1);
+    mc.rowColumnLayout(numberOfColumns=1)
     mc.menuBarLayout('conformmenu')
     mc.separator(h=5,style='in') 
     mc.menu(l='Options')
     
-    #mc.checkBox('Object',vis=1,l='Object',v=int(furiosoPrefs.get('Object')),cc=partial(delay,'furiosoPrefs.checkBox',"('Object')"))
-    #mc.checkBox('Material',vis=1,l='Material',v=int(furiosoPrefs.get('Material')),cc=partial(delay,'furiosoPrefs.checkBox',"('Material')"))
-    #mc.checkBox('Flag',l='Flag',vis=1,v=int(furiosoPrefs.get('Flag')),cc=partial(delay,'furiosoPrefs.checkBox',"('Flag')"))  
+    #mc.checkBox('Object',vis=1,l='Object',v=int(RoterraPrefs.get('Object')),cc=partial(delay,'RoterraPrefs.checkBox',"('Object')"))
+    #mc.checkBox('Material',vis=1,l='Material',v=int(RoterraPrefs.get('Material')),cc=partial(delay,'RoterraPrefs.checkBox',"('Material')"))
+    #mc.checkBox('Flag',l='Flag',vis=1,v=int(RoterraPrefs.get('Flag')),cc=partial(delay,'RoterraPrefs.checkBox',"('Flag')"))  
     
-    mc.iconTextScrollList('FuriosoObjScroll',vis=1,w=ui.rowWidth,h=150)
+    mc.iconTextScrollList('RoterraObjScroll',vis=1,w=ui.rowWidth,h=150)
+    mc.setParent('FURIROW')
+    mc.setParent('..')
+
     
-    mc.frameLayout('materialsFrame',w=ui.rowWidth,l='Materials',bgc=[0.2,.2,.2],cc=partial(delay,'materialListUI','("materialsFrame")'),cll=1)
+    ui.frame('Materials',bgc=[0.2,.2,.2],pec=partial(delay,'materialListUI','("RoterraMaterials")'),cll=1)
     mc.menuBarLayout('materialmenu')
     mc.separator(h=5,style='in') 
     mc.menu(l='Options')
     mc.menuItem(d=True,l='Behavior')
-    mc.menuItem('IncludeNamespace',l='Include Namespaced Materials',cb=int(furiosoPrefs.get('IncludeNamespace')),c=partial(delay,'furiosoPrefs.menuItem',"('IncludeNamespace')"))
-    materialListUI('materialsFrame')
+    mc.menuItem('IncludeNamespace',l='Include Namespaced Materials',cb=int(RoterraPrefs.get('IncludeNamespace')),c=partial(delay,'RoterraPrefs.menuItem',"('IncludeNamespace')"))
+    #mc.rowColumnLayout(numberOfColumns=2,w=ui.rowWidth)
+    mc.rowColumnLayout(numberOfColumns=4)
+    mc.text('Prefix: ',align='left')
+    mc.textField('prefix',tx='forest_',cc=partial(delay,'updateMaterials','()'))
+    mc.text('Suffix: ',align='left')
+    mc.textField('suffix',tx='_material',cc=partial(delay,'updateMaterials','()'))
+    materialListUI('RoterraMaterials')
     mc.setParent('..')
-    mc.frameLayout('frame_furiOBj',w=ui.rowWidth,l='Objects',bgc=[0.2,.2,.2],cc=partial(delay,'materialListUI','("materialsFrame")'),cll=1)
+    ui.frame('Objects',bgc=[0.2,.2,.2],pec=partial(delay,'importListUI','("RoterraObjects")'),cll=1)
     mc.menuBarLayout('objmenu')
     mc.separator(h=5,style='in') 
     mc.menu(l='Options')
     mc.menuItem(d=True,l='Behavior')
     mc.radioMenuItemCollection()
-    mc.menuItem('import',l='Import',rb=1,c=partial(delay,'furiosoPrefs.set',"('importBehavior','import')"))
-    mc.menuItem('reference',l='Reference',rb=1,c=partial(delay,'furiosoPrefs.set',"('importBehavior','reference')"))
-    mc.menuItem(furiosoPrefs.get('importBehavior'),e=1,rb=1)
+    mc.menuItem('import',l='Import',rb=1,c=partial(delay,'RoterraPrefs.set',"('importBehavior','import')"))
+    mc.menuItem('reference',l='Reference',rb=1,c=partial(delay,'RoterraPrefs.set',"('importBehavior','reference')"))
+    mc.menuItem(RoterraPrefs.get('importBehavior'),e=1,rb=1)
     mc.menu('Path',l='Path')
-    mc.menuItem(l='Set Path',c=partial(delay,'furiosoPrefs.path',"('')"))
-    importListUI('frame_furiOBj')
-    #conformedListUI()
+    mc.menuItem(l='Set Path',c=partial(delay,'RoterraPrefs.path',"('')"))
+    importListUI('RoterraObjects')
     updateMenu()
-	#mc.scriptJob('import rcFurioso',event=SceneOpened)
-def importListUI(parentFrame='frame_furiOBj',location=furiosoPrefs.get('importPath')):#furiImportList
+	#mc.scriptJob('import rcRoterra',event=SceneOpened)
+def importListUI(parentFrame):#furiImportList
+    location=RoterraPrefs.get('importPath')
     if mc.scrollLayout('importObjScroll',q=1,ex=1)==True: mc.deleteUI('importObjScroll')
     mc.setParent(parentFrame)
     mc.scrollLayout('importObjScroll',w=ui.rowWidth,h=600)
-    ui.fileList(location=furiosoPrefs.get('path'))
+    # ui.fileList(location=RoterraPrefs.get('path'))
     for folder in rc.ls.dir(location):
 		mc.frameLayout(l=folder,w=ui.rowWidth-10,cll=1,cl=1)#mc.text(l=folder+':',align='left')
 		mc.columnLayout(w=ui.rowWidth)
@@ -157,59 +162,72 @@ def importListUI(parentFrame='frame_furiOBj',location=furiosoPrefs.get('importPa
 			file,ext=os.path.splitext(item)#split file and Extension 
 			path= os.path.join(location,folder,item).replace('\\','/')
 			if ext =='.fbx': 
-				mc.button(w=ui.rowWidth,l=file,c=partial(delay,'inScene','("'+path+'","'+folder+'")'))
+				mc.button(w=ui.rowWidth,l=file,c=partial(delay,'inScene','("'+path+'","'+file+'")'))
 		mc.setParent('..')
 		mc.setParent('..')
 def materialListUI(parentFrame):
-	if mc.scrollLayout('materiallist',q=1,ex=1)==True: mc.deleteUI('materiallist')
-	#if mc.menuBarLayout('materialmenu',q=1,ex=1)==True: mc.deleteUI('materialmenu')
-	mc.setParent(parentFrame)
-	mc.scrollLayout('materiallist',bgc=[0.1,0.1,0.1],w=ui.rowWidth-20,h=min(int(len(rc.ls.shaders()*30))+15,630))#h=len(ls.shaders())*25)
-	mc.rowColumnLayout(w=ui.rowWidth-20,numberOfColumns=2)
-	for each in sorted(rc.ls.shaders()):
-	    sName=each
-	    if each.endswith('_material'): 
-	        sName=each[:-9]
-		mc.button(w=ui.rowWidth-65,al='right',bgc=[0.1,0.1,0.1],l=sName.split(':')[-1],c=partial(delay,'mc.select','(\''+ str(each)+'\')'))
-		mc.button(w=45,l='ASSIGN',bgc=[0.1,0.1,0.1],c=partial(delay,'mc.hyperShade','(assign=\''+ str(each)+'\')'))#rc.ls.shaderColor(each)[0],
+    if mc.scrollLayout('materiallist',q=1,ex=1)==True: mc.deleteUI('materiallist')
+    mc.setParent(parentFrame)
+    mc.scrollLayout('materiallist',bgc=[0.1,0.1,0.1],w=ui.rowWidth-20,h=min(int(len(rc.ls.shaders()*30))+30,630))#h=len(ls.shaders())*25)
+
+    prefix=RoterraPrefs.get('prefix')#mc.textField('prefix',q=1,tx=1)
+    suffix=mc.textField('suffix',q=1,tx=1)
+    mc.rowColumnLayout(w=ui.rowWidth-20,numberOfColumns=2)
+    for each in sorted(rc.ls.shaders()):
+        sName=each
+        if each.endswith(suffix): 
+            sName=each[:-len(suffix)]
+        if each.startswith(prefix):
+            sName=sName[len(prefix):]
+        
+        #mc.iconTextButton(w=ui.rowWidth-30,al='left',l=str(sName.split(':')))
+        mc.button(w=ui.rowWidth-65,al='right',bgc=[0.1,0.1,0.1],l=sName.split(':')[-1],c=partial(delay,'mc.select','(\''+ str(each)+'\')'))
+        mc.button(w=45,l='ASSIGN',bgc=[0.1,0.3,0.1],c=partial(delay,'mc.hyperShade','(assign=\''+ str(each)+'\')'))#rc.ls.shaderColor(each)[0],
+        #mc.text(sName.split(':'),al='left')
 		#mc.button(w=40,l='GRAPH')   
-	mc.setParent('..');mc.setParent('..') 
+    mc.setParent('..');mc.setParent('..') 
+def updateMaterials():
+    RoterraPrefs.write('prefix',mc.textField('prefix',q=1,tx=1))
+    RoterraPrefs.write('suffix',mc.textField('suffix',q=1,tx=1))
+    materialListUI('RoterraMaterials')
 def updateMenu():#UPDATE
 	
 	mc.menu('Path',e=True,dai=True)
-	#mc.menuItem(d=True,dl='Maya Render Images')
+	mc.menuItem(d=True,dl='Folder')
 	#for each in sceneData.outputImages():
 		#mc.menuItem(each,l=each,itl=True,c=partial(delay,'spawnBrowser','("%s")'%os.path.dirname(each)))
 	#mc.menuItem(l='Set Path Presets',c=partial(delay,'rc.set.globals','()'))
 	#mc.menuItem(d=True,dl='Path')
-	#mc.menuItem('Image Output',l=furiosoPrefs.get('importPath'),itl=True,en=0)
-	mc.menuItem(l='Set Path',c=partial(delay,'furiosoPrefs.path','()'))
-	mc.setParent('..')
-	
+	#mc.menuItem('Image Output',l=RoterraPrefs.get('importPath'),itl=True,en=0)
+	mc.menuItem(l='Set Path',c=partial(delay,'RoterraPrefs.path','()'))
+	mc.setParent('..')	
 def inScene(fileLocation,folder=''):
-	if furiosoPrefs.get('importBehavior')=='import':
-		behavior='-i'
+	if RoterraPrefs.get('importBehavior')=='import':
+		behavior='i=1'
 	else:
-		behavior='-r'
-	if folder is not None: mel.eval ('file '+behavior+' -ignoreVersion -gl -mergeNamespacesOnClash false -namespace "" "'+fileLocation+'"')
+		behavior='r=1'
+	if folder is not None: 
+            obj=mc.file(fileLocation,r=1,ignoreVersion=0,gl=1,mergeNamespacesOnClash=0,namespace='')
+            #mel.eval ('file '+behavior+' -ignoreVersion -gl -mergeNamespacesOnClash false -namespace "" "'+fileLocation+'"')
+            print 'object=',obj
 	else: print ('source "'+scriptsMEL+str(script)+'"')
 def conformedListUI():#furiItemList
-	mc.iconTextScrollList('FuriosoObjScroll',e=1,ams=1,ra=1)
-	mc.popupMenu('menuObj',p='FuriosoObjScroll')
+	mc.iconTextScrollList('RoterraObjScroll',e=1,ams=1,ra=1)
+	mc.popupMenu('menuObj',p='RoterraObjScroll')
 	mc.menuItem('Rename Material',l='Rename Material',c=partial(delay,'aePrefs.write',"('Behavior','New')"))
 	mc.menuItem('Pivot Conform',l='Pivot Conform',c=partial(delay,'aePrefs.write',"('Behavior','New')"))
 	index=0
 	for each in mc.ls():
-		if mc.objExists(each+'.FuriosoFlag'):
+		if mc.objExists(each+'.RoterraFlag'):
 		    fileColor=[index+1,1,0,0]
 		    if checkConform(each) :
 		         fileColor=[index+1,0,1,0] 
 		    index=index+1
-		    mc.iconTextScrollList('FuriosoObjScroll',e=1,a=each.rsplit('_mesh')[0],itc=fileColor,sc=tagListCallBack)
+		    mc.iconTextScrollList('RoterraObjScroll',e=1,a=each.rsplit('_mesh')[0],itc=fileColor,sc=tagListCallBack)
 def tagListCallBack():
 	sel=[]
 	try:
-		[sel.append(each+'_mesh') for each in mc.iconTextScrollList('FuriosoObjScroll',q=1,si=1) if mc.iconTextScrollList('FuriosoObjScroll',q=1,si=1) ]
+		[sel.append(each+'_mesh') for each in mc.iconTextScrollList('RoterraObjScroll',q=1,si=1) if mc.iconTextScrollList('RoterraObjScroll',q=1,si=1) ]
 	except:
 		pass
 	if sel: 
@@ -221,22 +239,22 @@ def tagListCallBack():
 def addObj(sel):
 	for each in sel:
 	    obj=conformObj(each)
-	    if int(furiosoPrefs.get('Material'))==1:
+	    if int(RoterraPrefs.get('Material'))==1:
 	        print 'yes'
 	        material=conformMat(obj.rsplit('_mesh')[0]+'_material')
 	        mc.select(obj)
 	        mc.hyperShade(assign=material)
 
 	    mc.select(obj)
-	    tagFuriosoFlag(obj)
+	    tagRoterraFlag(obj)
 	conformedListUI()
 def removeObj(opt): #deletes all sets and locators
 	if opt=='all':
 		for each in mc.ls():
-			if mc.objExists(each+'.FuriosoFlag'): mc.deleteAttr(each+'.FuriosoFlag')
+			if mc.objExists(each+'.RoterraFlag'): mc.deleteAttr(each+'.RoterraFlag')
 	if opt=='sel':
 		for each in mc.ls(sl=1):
-			if mc.objExists(each+'.FuriosoFlag'): mc.deleteAttr(each+'.FuriosoFlag')
+			if mc.objExists(each+'.RoterraFlag'): mc.deleteAttr(each+'.RoterraFlag')
 	conformedListUI()
 ################
 def prompt(initial):
@@ -290,10 +308,10 @@ def conformMat(name):
         else:
             mc.confirmDialog(b='Ok',m=name+ ' Already Exists')
         return name
-def tagFuriosoFlag(sel):
-	if not mc.objExists(sel+'.FuriosoFlag') : 
-	    mc.addAttr(sel,ln='FuriosoFlag',dt='string')		
-	mc.setAttr(sel+'.FuriosoFlag',sel.rstrip('_mesh'),type='string')
+def tagRoterraFlag(sel):
+	if not mc.objExists(sel+'.RoterraFlag') : 
+	    mc.addAttr(sel,ln='RoterraFlag',dt='string')		
+	mc.setAttr(sel+'.RoterraFlag',sel.rstrip('_mesh'),type='string')
 def checkConform(sel):
     conform=1
     objWS=mc.xform(sel,q=1,sp=1)
@@ -301,7 +319,7 @@ def checkConform(sel):
         if each :
             conform=0
     return conform  
-def conform(sel):#Furioso obj naming : *_mesh on mesh, *_material on material, auto link file nodes *_color and *_spec
+def conform(sel):#Roterra obj naming : *_mesh on mesh, *_material on material, auto link file nodes *_color and *_spec
     mc.select(sel)
     #sel=mc.ls(sl=True)
     prompt=mc.promptDialog(t="Conform",m="Name:                                     ",tx=sel.rsplit('_mesh')[0],button="Go")
@@ -318,8 +336,12 @@ def conform(sel):#Furioso obj naming : *_mesh on mesh, *_material on material, a
     selObj=objName+'_mesh'
     mc.select(selObj)
     mc.hyperShade(assign=material)
-    return selObj
-
+    return selObj 
+def copyAmt(x,y,z):
+    obj=mc.duplicate(rr=1)
+    mc.move(x,y,z,obj,r=1)
+    for each in range(0,mc.intField('AmtField',q=1,v=1)-1):
+        mc.duplicate(rr=1,st=1)
 def fileNode(name,outAttr):
     if outAttr == 'spec' : connectedAttr = 'specularColor'
     else: connectedAttr = outAttr
@@ -342,8 +364,8 @@ def fileNode(name,outAttr):
             else: print textureFile + ' Already Connected'
        
 #################
-if __name__== 'rcFurioso' :
+if __name__== 'rcRoterra' :
 	ui.win()
 	ui.toolBox()
-	ui.tab('FURIOSO')
+	ui.tab('Roterra')
 	UI()

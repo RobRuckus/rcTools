@@ -1,0 +1,509 @@
+/*
+/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~/
+
+
+Traditional Chinese Rooftop Generator
+	v1.8
+	
+
+VSFX 705 Programming Concept
+with Prof. Deborah R. Fowler 	
+	
+Spring, 2013
+Name: Ziye Liu (FALL 2012 Visual Effects M.F.A.)
+
+
+Instruction:
+
+	Please set the Maya scene's current project folder,
+	so that the "scripts" folder will stay inside your
+	project directory. 
+	
+	The purpose is to make the icons in interface appear,
+	the script will run smoothly without set up the project.
+	
+	For more instructions and hints please refer to the
+	script's interface.
+	
+	Additional information about this script could be found at:
+		blog.ziyeliu.com
+	under page "MEL Rooftop Generator".
+	
+	
+www.ziyeliu.com
+
+(C)Ziye Liu, 2013, All Rights Reserved.
+/~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~/
+*/
+
+
+/////////window////////
+if (`window -ex tileWindow`) deleteUI tileWindow;
+	window -title "Rooftop Generator" -wh 640 920 tileWindow;
+	columnLayout -adj on;
+
+	string $workspace = `workspace -q -rd`;
+
+	//image -i ($workspace + "scripts/favicon.png") -h 100 -w 100;
+	
+	text	-l "Rooftop Generator" -h 20 -fn "boldLabelFont" -align "center" -bgc 0.271 0.325 0.349;
+	text	-l "Version 1.8 Curve" -h 20 -fn "obliqueLabelFont" -align "center" -bgc 0.271 0.325 0.349;
+	text -l "Â©Ziye Liu, 2013" -h 20 -fn "tinyBoldLabelFont" -align "center" -bgc 0.271 0.325 0.349;
+	text -l "www.ziyeliu.com" -h 20 -fn "tinyBoldLabelFont" -align "center" -bgc 0.171 0.225 0.249;
+	
+	//presets library, didn't finished.
+	/*
+	gridLayout -cwh 96 32 -cr on;
+		button -en off -l "Preset\n(coming soon)" -c "preset2";
+		button  -l "Preset 2" -c "preset2";
+		button -en off -l "Preset\n(coming soon)" -c "preset2";
+		button -en off -l "Preset\n(coming soon)" -c "preset2";
+	setParent -top;
+	*/
+	
+	frameLayout -l "Step 1. Generate" -cll on -fn "smallBoldLabelFont" -bs "in";// -bgc 0.522 0.549 0.412;
+		progressBar -max 100 progress;
+		rowLayout  -nc 2 -cw1 96 -adj 2;
+		image -i ($workspace + "scripts/icons_xy.png") -w 96 -h 96;
+			frameLayout -lv off -bv off;
+				text -l "Value greater than 20 by 20 could dramatically slow down the script." -fn "obliqueLabelFont";
+				intSliderGrp -l "Number of Tile(s) in X" -min 1 -max 50 -v 12 -f on -cc "mainTop" -ann "Set the total number of Tile A in X axis." totalXNum;
+				intSliderGrp -l "Number of Tile(s) in Y" -min 1 -max 50 -v 10 -f on -cc "mainTop" -ann "Set the total number of Tile A in Y axis." totalYNum;
+			setParent ..;
+		setParent ..;		
+		rowLayout -nc 2 -cw1 96 -adj 2;
+		image -i ($workspace + "scripts/icons_depthheight.png") -w 96 -h 96;
+			frameLayout -lv off -bv off;
+				floatSliderGrp -l "Rooftop Depth" -min 0.1 -max 10 -v 1 -f on -cc "mainTop" -ann "Scale the Rooftop's Curve Shape in Depth" curveDepthScale;
+				floatSliderGrp -l "Rooftop Height" -min 0.1 -max 10 -v 1 -f on -cc "mainTop" -ann "Scale the Rooftop's Curve Shape in Height" curveHeightScale;
+				floatSliderGrp -l "Cuve Point 1" -min -100 -max 100 -v 0 -f on -cc "mainTop" -ann "Adjust the Rooftop's Curve Shape" cv1Shift;
+				floatSliderGrp -l "Cuve Point 2" -min -100 -max 100 -v 0 -f on -cc "mainTop" -ann "Adjust the Rooftop's Curve Shape" cv2Shift;
+				floatSliderGrp -l "Cuve Point 3" -min -100 -max 100 -v 0 -f on -cc "mainTop" -ann "Adjust the Rooftop's Curve Shape" cv3Shift;
+				floatSliderGrp -l "Cuve Point 4" -min -100 -max 100 -v 0 -f on -cc "mainTop" -ann "Adjust the Rooftop's Curve Shape" cv4Shift;
+			setParent ..;
+		setParent ..;
+	setParent -top;
+	
+	frameLayout -l "Step 2. Adjust Tile Part A" -cll on -fn "smallBoldLabelFont" -bs "in";
+		rowLayout -nc 2 -cw1 64 -adj 2;
+		image -i ($workspace + "scripts/icons_A.png") -w 96 -h 96;
+		frameLayout -lv off -bv off;	
+			frameLayout -l "Size" -cll off -fn "smallBoldLabelFont" -bs "etchedIn";
+					floatSliderGrp -l "Width" -min 1 -max 20 -v 15 -f on -dc "roofTopMatrix" -ann "Adjust the width of Tile A." tileAWidth;
+					floatSliderGrp -l "Depth" -min 1 -max 20 -v 13 -f on -dc "roofTopMatrix" -ann "Adjust the depth of Tile A." tileADepth;
+					floatSliderGrp -l "Height" -min 0.1 -max 10 -v 4 -f on -dc "roofTopMatrix" -ann "Adjust the height of Tile A." tileAHeight;
+			setParent ..;	
+							
+			frameLayout -l "Rotation" -cll off -fn "smallBoldLabelFont" -bs "etchedIn";
+				rowLayout -nc 2 -adj 1;
+					frameLayout -lv off -bv off;
+						floatSliderGrp -en on -l "Rotation Step" -el "Click ->" -min -15 -max 15 -v -15 -f on -ann "Rotate the Tile A individually." tileARotate;	
+						floatSliderGrp -en on -l "Randomness" -el "(not 0) ->"-min 0 -max 1 -v 0 -pre 3 -f on -ann "Add randomness to the rotation operation above." tileARotateRand;
+					setParent ..;
+					gridLayout -nr 2 -nc 2 -cwh 64 32 -cr off;
+						button -l "Rotate -" -c "rotateTileA(-1)" -aop on;
+						button -l "Rotate +" -c "rotateTileA(1)" -aop on;
+						button -l "Random +" -c "randomTileA" -aop on -ann "Add Randomness to the tile, based on value in \"Randomness\".";
+						button 
+							-l "Reset" -bgc 0.749 0.518 0.435
+							-c "floatSliderGrp -e -v 0 tileARotateRand; mainTop"; // reset the randomness value, run the main procedural
+					setParent ..;
+				setParent ..;	
+			setParent ..;
+		intSliderGrp -vis off -en off -l "Segment" -min 5 -max 11 -v 6 -f on -dc "mainTop" -ann "Adjust the segment of Tile A." aSegment; 
+		frameLayout -lv on -bv on -l "Position" -cll off -fn "smallBoldLabelFont" -bs "etchedIn";
+			rowLayout -nc 2 -adj 1;
+				floatSliderGrp -l "Vertical Offset" -el "Click ->" -min -10 -max 10 -v 3 -f on -ann "Height of the rooftop part A, or vertical offset." yOffset;
+				frameLayout -lv off -bv off;
+					button -l "Offset Up" -c "verticalOffsetA(1)" -aop on;
+					button -l "offset Down" -c "verticalOffsetA(-1)" -aop on;
+				setParent ..;
+			setParent ..;
+		setParent ..;	
+	setParent -top;
+	
+	frameLayout -l "Step 3. Adjust Tile Part B" -cll on -fn "smallBoldLabelFont" -bs "in";
+		rowLayout -nc 2 -cw1 64 -adj 2;
+			image -i ($workspace + "scripts/icons_B.png") -w 96 -h 96;
+			frameLayout -lv off -bv off;
+				rowLayout -nc 2 -adj 1;
+					frameLayout -lv off -bv off;
+						floatSliderGrp -l "Length" -min 1 -max 20 -v 13 -f on -dc "lengthTileB" -ann "Adjust the length of Tile B." tileBLength;
+						floatSliderGrp -l "Radius" -min 0.1 -max 4 -v 3 -f on -dc "sizeTileB" -ann "Adjust the radius of Tile B." tileBRadius;
+					setParent ..;
+					gridLayout -nr 1 -nc 2 -cwh 64 64 -cr off;
+						button -l "Shift -" -c "shiftTileB(-1)" -aop on;
+						button -l "Shift +" -c "shiftTileB(1)" -aop on;
+					setParent ..;
+				setParent ..;
+
+				rowLayout -nc 2 -adj 1;
+					frameLayout -lv off -bv off;
+						floatSliderGrp -en on -l "Rotation Step" -el "Click ->" -min -15 -max 15 -v -1 -f on -ann "Rotate the Tile B individually." tileBRotate;	
+						floatSliderGrp -en on -l "Randomness" -el "(not 0) ->"-min 0 -max 1 -v 0 -pre 3 -f on -ann "Add randomness to the rotation operation above." tileBRotateRand;
+					setParent ..;
+					gridLayout -nr 2 -nc 2 -cwh 64 32 -cr off;
+						button -l "Rotate -" -c "rotateTileB(-1)" -aop on;
+						button -l "Rotate +" -c "rotateTileB(1)" -aop on;
+						button -l "Random +" -c "randomTileB" -aop on -ann "Add Randomness to the tile, based on value in \"Randomness\".";
+						button 
+							-l "Reset" -bgc 0.749 0.518 0.435
+							-c "floatSliderGrp -e -v 0 tileBRotateRand; mainTop"; // reset the randomness value, run the main procedural
+					setParent ..;
+				setParent ..;	
+			setParent ..;
+	setParent -top;
+	
+	frameLayout -lv off;
+		rowLayout -nc 2 -adj 2;
+			text -l "Help:";
+			helpLine;
+	setParent -top;
+    
+showWindow tileWindow;
+
+// preset library
+proc preset2()
+{
+	intSliderGrp -e -v 20 totalXNum;
+	intSliderGrp -e -v 10 totalYNum;
+	floatSliderGrp -e -v 10 tileAHeight;
+	floatSliderGrp -e -v -6.7 yOffset;	
+	floatSliderGrp -e -v -3.7 tileARotate;
+	floatSliderGrp -e -v 11.9 tileAWidth;
+	floatSliderGrp -e -v 14.6 tileADepth;
+	floatSliderGrp -e -v 4.3 tileAHeight;	
+	floatSliderGrp -e -v 14.4 tileBLength;
+	floatSliderGrp -e -v 3.0 tileBRadius;
+	floatSliderGrp -e -v -3.1 tileBRotate;	
+	mainTop();
+}
+
+
+/////////
+proc tileA (int $xSideNum, float $tileAW, float $tileAD, float $tileAH)	//build the base shape
+{
+	
+	string $cube1[] = 
+		`polyCube 
+			-w $tileAW 
+			-h $tileAH 
+			-d $tileAD 
+			-sx $xSideNum 
+			-n rt_tile_A1`;
+
+	int $sideLoop = 2;
+	
+	for  ($x 		= 			0; 
+				$x 		< 			(($xSideNum + 1) * 4); 
+				$x 		+= 			($xSideNum + 1)) 
+	{
+			for ($l	=	0;
+					$l		<	($xSideNum / 3);
+					$l		++) 
+			{
+						// move left side edge down
+						move -r 0 ($tileAH / 2 - $tileAH / 5 * $l) 0 ($cube1[0] + ".vtx[" + ($x + $l) + "]");
+			}
+			for ($r	= 0;
+					$r		<	($xSideNum / 3);
+					$r		++)
+			{
+						// move right side edge down
+						move -r 0 ($tileAH / 2 - $tileAH / 5 * $r) 0 ($cube1[0] + ".vtx[" + ($x - $r + $xSideNum) + "]");
+			}
+	}
+}
+
+proc rotateTileA(int $clockwise)			//rotate the tile A objects
+{
+	float $tileARotate = `floatSliderGrp -q -v tileARotate`;
+	float $tileARotateRand = `floatSliderGrp -q -v tileARotateRand`;
+	
+	int $totalXNum = `intSliderGrp -q -v totalXNum`;
+	int $totalYNum = `intSliderGrp -q -v totalYNum`;
+	int $totalTileANum = $totalXNum * $totalYNum + 1;
+	
+	select -r "rt_tile_A1";
+	
+	for ($i = 0; $i < ( $totalTileANum ); $i++)
+	{
+		rotate -r
+			($tileARotate * $clockwise)
+			0
+			0
+			( "rt_tile_A" + ( $i + 1 ) );
+	}	
+	select -cl;
+}
+
+proc randomTileA()					//add randomness to tile A objects
+{
+	float $tileARotateRand = `floatSliderGrp -q -v tileARotateRand`;
+	
+	int $totalXNum = `intSliderGrp -q -v totalXNum`;
+	int $totalYNum = `intSliderGrp -q -v totalYNum`;
+	int $totalTileANum = $totalXNum * $totalYNum + 1;
+	
+	select -r "rt_tile_A1";
+	
+	for ($i = 0; $i < ( $totalTileANum ); $i++)
+	{
+		rotate -r
+			(5 * rand(-$tileARotateRand, $tileARotateRand))
+			(0 + 10 * rand(-$tileARotateRand, $tileARotateRand)) 
+			(0 + 15 * rand(-$tileARotateRand, $tileARotateRand))
+			( "rt_tile_A" + ( $i + 1 ) );
+	}	
+	select -cl;
+}
+
+proc verticalOffsetA(int $updown)		//vertically move the tile A objects.
+{
+	float $yOffset = `floatSliderGrp -q -v yOffset`;
+	select rt_tile_A1;
+	move -r 0 ($yOffset * $updown) 0 "rt_tile_A*";
+	select -cl;
+}
+	
+//////////////////////
+proc tileB()	//build the top tile shape
+{
+	float $tileAD = `floatSliderGrp -q -v tileADepth`;				//get value from interface
+	polyCylinder -sa 13 -r 1 -h $tileAD -n rt_tile_B0;		//name
+}
+
+proc rotateTileB(int $clockwise)
+{
+	float $tileBRotate = `floatSliderGrp -q -v tileBRotate`;
+	select -r "rt_tile_B1";
+	rotate -r ($tileBRotate * $clockwise) 0 0 "rt_tile_B*";
+	select -cl;
+}
+
+proc randomTileB()
+{
+	float $tileBRotateRand = `floatSliderGrp -q -v tileBRotateRand`;
+	
+	int $totalXNum = `intSliderGrp -q -v totalXNum`;
+	int $totalYNum = `intSliderGrp -q -v totalYNum`;
+	int $totalTileANum = ($totalXNum + 1 ) * $totalYNum;
+	
+	select -r "rt_tile_B1";
+	
+	for ($i = 0; $i < ( $totalTileANum ); $i++)
+	{
+		rotate -r
+			(5 * rand(-$tileBRotateRand, $tileBRotateRand))
+			(0 + 10 * rand(-$tileBRotateRand, $tileBRotateRand)) 
+			(0 + 15 * rand(-$tileBRotateRand, $tileBRotateRand))
+			( "rt_tile_B" + ( $i + 1 ) );
+	}	
+	select -cl;
+}
+
+proc shiftTileB(int $shift)
+{
+	select rt_tile_B1;
+	move -r -os 0 (1 * $shift) 0 "rt_tile_B*";
+	select -cl;
+}
+
+proc sizeTileB()
+{
+	float $tileBRadius = `floatSliderGrp -q -v tileBRadius`;
+	setAttr "polyTileB.radius" $tileBRadius;
+}
+
+proc lengthTileB()
+{
+	float $tileBLength = `floatSliderGrp -q -v tileBLength`;
+	setAttr "polyTileB.height" $tileBLength;
+}
+
+//create all the instances from the master object
+proc createTileObjs()
+{	
+	select -all ;delete;
+	int $xSideNum = `intSliderGrp -q -v aSegment`;
+	int $totalXNum = `intSliderGrp -q -v totalXNum`;
+	setProg(0);
+	createRoofCurve();			//	create the roof top curve shape
+	tileA($xSideNum, 16, 15, 2);//	create a master "tile_A"
+	copyAlongCurve("rt_tile_A1", "z", "y", 0);
+	rename "polyCube1" "polyTileA";	//	rename the master
+	tileB();
+	copyAlongCurve("rt_tile_B0", "y", "z", 1);
+	rename "polyCylinder1" "polyTileB";	//	rename the master
+	setProg(100);
+}
+
+////////// line of tileA /////////
+proc roofTopMatrix()
+{
+	//select -all; delete;
+	
+	int $xSideNum = `intSliderGrp -q -v aSegment`;
+	float $tileAW = `floatSliderGrp -q -v tileAWidth`;
+	float $tileAD = `floatSliderGrp -q -v tileADepth`;
+	float $tileAH = `floatSliderGrp -q -v tileAHeight`;
+	
+	int $totalXNum = `intSliderGrp -q -v totalXNum`;
+	int $totalYNum = `intSliderGrp -q -v totalYNum`;
+	float $tileIndent = 15;
+	float $layerOffset = `floatSliderGrp -q -v yOffset`;
+		
+	//tile A
+	for ($y = 0; $y < $totalYNum; $y++)	//repeat row x columns
+	{
+		for ($x = 0; $x < $totalXNum; $x++)
+		{
+		move -os -x
+			($tileAW * $x) 
+			0//($layerOffset * $y) 
+			0//($tileIndent * $y * 0.80)
+			( "rt_tile_A" + ( ( $x + 1 ) + ( $totalXNum * $y ) ) );	// move the object, spacing
+		}
+	}
+	//setAttr "rt_tile_A1.visibility" 0;	//hide master object
+	setAttr "polyTileA.h" $tileAH;
+	setAttr "polyTileA.w" $tileAW;
+	setAttr "polyTileA.d" $tileAD;
+	
+	//tile B
+	for ($y = 0; $y < $totalYNum; $y++)
+	{
+		for ($x = 0; $x < ($totalXNum + 1); $x++)
+		{
+		move -x
+			($tileAW * $x) 
+			0//($layerOffset * $y) 
+			0//($tileIndent * $y * 0.80)
+			( "rt_tile_B" + ( ( $x + 1 ) + ( ( $totalXNum + 1) * $y ) ) );	
+			// move the object, spacing 0.8 is the indent value
+		move -r -x
+			(-$tileAW /2) 
+			0//$tileAH 
+			0//2
+			( "rt_tile_B" + ( ( $x + 1 ) + ( ( $totalXNum + 1) * $y ) ) );	
+		}
+	}
+
+	select -cl;
+}
+
+
+proc createRoofCurve()
+{
+	string $rt_shape = "rooftop_curve_shape_1";	//	roof top curve name
+	float $curveDepthScale = `floatSliderGrp -q -v curveDepthScale`;	//	get values from UI
+	float $curveHeightScale = `floatSliderGrp -q -v curveHeightScale`;	
+	float $cv4Shift = `floatSliderGrp -q -v cv4Shift`;	
+	float $cv3Shift = `floatSliderGrp -q -v cv3Shift`;	
+	float $cv2Shift = `floatSliderGrp -q -v cv2Shift`;	
+	float $cv1Shift = `floatSliderGrp -q -v cv1Shift`;	
+	
+	curve 		//	create the curve
+		-d 3 
+		-p 0 -0 (0 * $curveDepthScale) 
+		-p 0 -0 (15 * $curveDepthScale)
+		-p 0 -0 (50 * $curveDepthScale)
+		-p 0 -0 (80 * $curveDepthScale)
+		-p 0 -0 (100 * $curveDepthScale)
+		-k 0 -k 0 -k 0 -k 1 -k 2 -k 2 -k 2 
+		-n $rt_shape;		//	name it
+	
+	select -r ($rt_shape + ".cv[4]") ;	//	manipulate the curve
+	move -r -y ((-60 + $cv4Shift) * $curveHeightScale) ;
+	select -r ($rt_shape + ".cv[3]") ;
+	move -r -y ((-55 + $cv3Shift) * $curveHeightScale) ;
+	select -r ($rt_shape + ".cv[2]") ;
+	move -r -y ((-40 + $cv2Shift) * $curveHeightScale) ;
+	select -r ($rt_shape + ".cv[1]") ;
+	move -r -y ((-20 + $cv1Shift) * $curveHeightScale) ;
+}
+
+proc setProg(int $step)
+{
+	progressBar -e -pr $step progress;
+}
+
+proc updateProg(int $step)
+{
+	progressBar -e -step $step progress;
+}
+
+proc copyAlongCurve(string $masterObj, string $followAxis, string $upAxis, int $plusNum)
+{	
+	$totalXNum = `intSliderGrp -q -v totalXNum`;
+	$totalYNum = `intSliderGrp -q -v totalYNum`;
+	
+	select -r $masterObj "rooftop_curve_shape_1";		//	select tile_A + curve, prepare for duplication along curve
+	
+	pathAnimation
+		-fractionMode true
+		-follow true    
+		-followAxis $followAxis 		//	set the orientation of tile_A object
+		-upAxis $upAxis 
+		-worldUpType "vector"
+		-worldUpVector 0 1 0 
+		-inverseUp false 
+		-inverseFront false 
+		-bank false 
+		-startTimeU 1 
+		-endTimeU $totalYNum;		// end at totalYNu , that is totalYNum instances of master objects
+	select -cl;
+	
+	selectKey -add -k -t 1 -t $totalYNum ("motionPath*"+"_uValue");		//	flatten the animation curve, will be an evenly distributed result
+	
+	keyTangent -itt linear -ott linear;
+
+	for ( $i = 0; $i < $totalYNum; $i++ )		//	copy (or instance) the master object alone the curve
+	{
+		currentTime ( $i + 1 );
+		for ( $j = 0; $j < ( $totalXNum + $plusNum ); $j++)
+		{
+			instance $masterObj;		
+		} 
+		updateProg(100 / $totalYNum / 2);
+		//select -add ( "rt_tile_A" + ( $i + 2 ) );
+	}	
+	setAttr ($masterObj+".visibility") 0;//HIDE THE MASTER OBJECT
+}
+
+proc mainTop()
+{
+	createTileObjs();//build objects
+	roofTopMatrix(); //move instances into matrix
+	rotateTileA(1); //modify tileA rotation
+	randomTileA();
+	verticalOffsetA(-1);
+	rotateTileB(1);	 //modify tileB rotation
+	randomTileB();
+	sizeTileB();		//modify tileB radius
+	
+	//group them together
+	select -r "rt_tile_A*";
+	select -add "rt_tile_B*";
+	group -n roofTop_A;
+
+	//repeat for another side of the rooftop
+	instance -n roofTop_B roofTop_A;
+	setAttr "roofTop_B.scaleZ" -1;
+	float $curveDepthScale = `floatSliderGrp -q -v curveDepthScale`;
+	float $tileAD = `floatSliderGrp -q -v tileADepth`;
+	move	-r 0 0 ((-100 - ($tileAD /2)) * $curveDepthScale) roofTop_B;
+	
+	/*xform -os -piv 0 0 0;
+	duplicate -n roofTop_B;
+	rotate -r 0 180 0;
+	//move -r 0 0 -100;
+	*/
+	select -cl;
+}
+
+mainTop();
+
+//		 END of Code 	//
+//								//
+//				^_^			//

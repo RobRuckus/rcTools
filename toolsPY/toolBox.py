@@ -13,7 +13,7 @@ from rcTools.rcMaya import *
 ###########subMODULES 
 #from rcTools.toolsPY import rcMaya2AE 
 from rcTools.toolsPY import toElement 
-from rcTools.toolsPY import rcFurioso 
+from rcTools.toolsPY import rcRoterra 
 ################source every mel in toolsMEL: toolsMEL
 
 for each in os.listdir(toolsMEL):
@@ -30,8 +30,8 @@ def UI():
 	rigUI()
 	materialsUI()
 	
-	ui.tab('FURIOSO')
-	rcFurioso.UI()
+	ui.tab('Roterra')
+	rcRoterra.UI()
 
 	ui.tab('SCRIPTS')
 		
@@ -275,7 +275,7 @@ def materialsUI():
 	#existMATUI('frame_MATERIAL')
 	mc.setParent('..')
 	mc.setParent('MAIN')
-def existMATUI(parentFrame):#in FURIOSO
+def existMATUI(parentFrame):#in Roterra
 	if mc.scrollLayout('materiallist',q=1,ex=1)==True: mc.deleteUI('materiallist')
 	mc.setParent(parentFrame)
 	mc.scrollLayout('materiallist',w=ui.rowWidth,h=390)#h=len(ls.shaders())*25)

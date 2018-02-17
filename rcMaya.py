@@ -64,12 +64,14 @@ class ui():#UI Class for Maya
 		mc.setParent(self.tabs)
 		mc.scrollLayout(name,w=self.rowWidth+30,h=self.screensize[1]-150)	
 	def frame(self,name,**kwargs): 
-		mc.frameLayout(self.name+name,w=self.rowWidth,fn='smallBoldLabelFont',bs='in',cll=1,l=name,**kwargs)
+		mc.frameLayout(self.name+name,l=name,w=self.rowWidth,fn='smallBoldLabelFont',bs='in',**kwargs)
 	def buttonRow(self,columns=8,**kwargs):
 		mc.rowColumnLayout(numberOfColumns=columns)
 		for each in range(columns):
 			pass
 			#mc.iconTextButton(w=self.rowWidth/columns,h=self.rowWidth/columns,args)#pass each arg of each button 
+	def iconButton(self,**kwargs):
+		mc.iconTextButton(w=self.iconSize,h=self.iconSize,**kwargs)
 	def fileList(self,filetype='.fbx',location=mc.workspace(q=True,rd=True)):
 	    for folder in ls.dir(location):
 	        mc.frameLayout(l=folder,w=self.rowWidth-10,cll=1,cl=1)
@@ -154,7 +156,6 @@ class customAttr():#CRUD attributes on Nodes
         if self._type(value) =='bool': mc.setAttr(self._attName(att),value,e=1)
     def get(self,att):
         return mc.getAttr(self._attName(att))	
-	
 #########
 def rlmAttrs():#custom renderLayerManager Attributes for tools using customAttr class
 	rlm=customAttr('renderLayerManager')
@@ -340,8 +341,6 @@ class create():
 		#if layer='AODPTHINC':
 			#mc.editRenderLayerAdjustment('miDefaultOptions.lensShaders')
 			#mc.setAttr('miDefaultOptions.lensShaders',0)
-		
-	
 class set():
     def shader(self,shader):
     	shaderName=shader +'_MAT'
