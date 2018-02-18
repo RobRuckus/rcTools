@@ -24,53 +24,46 @@ for each in os.listdir(toolsMEL):
 ui=ui('rcTools')
 def UI():
 	ui.toolBox()
-	
+
 	ui.tab('MAIN')
 	assignUI()
+	rcRoterra.UI()
+	mc.setParent('MAIN')
 	rigUI()
 	materialsUI()
 	
-	ui.tab('Roterra')
-	rcRoterra.UI()
-
 	ui.tab('SCRIPTS')
-		
 	mc.rowColumnLayout(numberOfColumns=8)
-	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8)
-	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8)
-	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8)
-	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8)  
-	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8)
-	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8,ann="Export to AFX",l= "L2F" ,i= (iconPath +"AE_Export_32.png"),c=partial(delay,'mel.eval','("rcExport2AE")'))
-	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8,ann="Export RenderLayers to Files",l= "L2F" ,i= (iconPath +"L2F.png"),c=partial(delay,'mel.eval','("rcLayers2Files")'))
-	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8,ann="Render Manager",l= "RenderManager" ,i= (iconPath +"renderMGR.png"),c=partial(delay,'mel.eval','("rcRenderMGR")'))
+	ui.iconTextButton()
+	ui.iconTextButton()
+	ui.iconTextButton()
+	ui.iconTextButton()  
+	ui.iconTextButton()
+	ui.iconTextButton(ann="Export to AFX",l= "L2F" ,i= (iconPath +"AE_Export_32.png"),c=partial(delay,'mel.eval','("rcExport2AE")'))
+	ui.iconTextButton(ann="Export RenderLayers to Files",l= "L2F" ,i= (iconPath +"L2F.png"),c=partial(delay,'mel.eval','("rcLayers2Files")'))
+	ui.iconTextButton(ann="Render Manager",l= "RenderManager" ,i= (iconPath +"renderMGR.png"),c=partial(delay,'mel.eval','("rcRenderMGR")'))
 	mc.setParent('..')
-
 	scriptsUI()
- 
+
 	mc.showWindow()
 ###############
 def rigUI():
-    icon=ui.rowWidth/8
-    mc.frameLayout('Ctrls',w=ui.rowWidth,cll=1,cl=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='RIG CONTROLERS')
-    
+    ui.frameGRP('Rig Controls')
     mc.rowColumnLayout(numberOfColumns=8)
-    mc.iconTextButton(w=icon,h=icon,en=1,l= "Square" ,i= (iconPath +"ctrl_square.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"Square\")\')'))
-    mc.iconTextButton(w=icon,h=icon,en=1,l= "Circle" ,i= (iconPath +"ctrl_circle.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"Circle\")\')'))
-    mc.iconTextButton(w=icon,h=icon,en=1,l= "Arrow" ,i= (iconPath +"ctrl_arrow.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"Arrow\")\')'))
-    mc.iconTextButton(w=icon,h=icon,en=1,l= "TwoDir" ,i= (iconPath +"ctrl_twoDir.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"TwoDir\")\')'))
-    mc.iconTextButton(w=icon,h=icon,en=1,l= "FourDir" ,i= (iconPath +"ctrl_fourDir.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir\")\')'))
-    mc.iconTextButton(w=icon,h=icon,en=1,l= "FourDir2" ,i= (iconPath +"ctrl_fourDir2.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
-    mc.iconTextButton(w=icon,h=icon,en=1,l= "Box" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"Box\")\')'))
-    mc.iconTextButton(w=icon,h=icon,en=1,l= "Tri" ,i= (iconPath +"ctrl_tri.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"Tri\")\')'))
-    mc.iconTextButton(w=icon,h=icon,en=1,l= "FourDir2" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
-    mc.iconTextButton(w=icon,h=icon,en=1,l= "FourDir2" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
-    mc.iconTextButton(w=icon,h=icon,en=1,l= "FourDir2" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
-    mc.iconTextButton(w=icon,h=icon,en=1,l= "FourDir2" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
-    mc.iconTextButton(w=icon,h=icon,en=1,l= "FourDir2" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
-    mc.iconTextButton(w=icon,h=icon,en=1,l= "FourDir2" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
-    
-    
+    ui.iconTextButton(en=1,l= "Square" ,i= (iconPath +"ctrl_square.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"Square\")\')'))
+    ui.iconTextButton(en=1,l= "Circle" ,i= (iconPath +"ctrl_circle.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"Circle\")\')'))
+    ui.iconTextButton(en=1,l= "Arrow" ,i= (iconPath +"ctrl_arrow.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"Arrow\")\')'))
+    ui.iconTextButton(en=1,l= "TwoDir" ,i= (iconPath +"ctrl_twoDir.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"TwoDir\")\')'))
+    ui.iconTextButton(en=1,l= "FourDir" ,i= (iconPath +"ctrl_fourDir.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir\")\')'))
+    ui.iconTextButton(en=1,l= "FourDir2" ,i= (iconPath +"ctrl_fourDir2.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
+    ui.iconTextButton(en=1,l= "Box" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"Box\")\')'))
+    ui.iconTextButton(en=1,l= "Tri" ,i= (iconPath +"ctrl_tri.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"Tri\")\')'))
+    ui.iconTextButton(en=1,l= "FourDir2" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
+    ui.iconTextButton(en=1,l= "FourDir2" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
+    ui.iconTextButton(en=1,l= "FourDir2" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
+    ui.iconTextButton(en=1,l= "FourDir2" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
+    ui.iconTextButton(en=1,l= "FourDir2" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
+    ui.iconTextButton(en=1,l= "FourDir2" ,i= (iconPath +"ctrl_box.png"),c=partial(delay,'mel.eval','(\'ctrlIcon(\"FourDir2\")\')'))
     mc.setParent('MAIN')   
 def scriptsUI(): 
 	mc.frameLayout(l='TOADSTORM',w=ui.rowWidth,cll=1,cl=1)
@@ -92,7 +85,7 @@ def scriptsUI():
 				mc.button(w=ui.rowWidth,l=file,c=partial(delay,'btnScript','("'+file+'","'+folder+'")'))
 		mc.setParent('..')
 		mc.setParent('..')
-		
+	
 	#Frame Layout for Mels in Main folder 
 	mc.frameLayout(l='GENERAL',w=ui.rowWidth,cll=1,cl=0)
 	mc.rowColumnLayout(w=ui.rowWidth,numberOfColumns=1)
@@ -107,42 +100,47 @@ def callWhiteBox():
 	except:
 		from rcTools.scriptsPY import WhiteBoxTool as whiteBox 
 def assignUI():
-    #ui.frame('ASSIGN')
-	mc.frameLayout('ASSIGNFRAME',w=ui.rowWidth,cll=1,bgc=[.2,.2,.2],fn='smallBoldLabelFont',bs='in',l='ASSIGN')
-	mc.rowColumnLayout('ASSIGNROW',numberOfColumns=2,columnWidth=[(1,ui.rowWidth/2),(2,ui.rowWidth/2)])
-	mc.columnLayout()
-	mc.frameLayout('PIVOTS',cll=0,bgc=[.0,.0,.0]);
-	mc.columnLayout('SHAPECTRL',w=ui.rowWidth/2-5)
-	mc.gridLayout(numberOfColumns=5,cellWidthHeight=[28,28])
-	
-	mc.text(l=''); mc.separator(style='in'); 
-	mc.button(l='Cntr',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcSetPivot CENTER")'))
-	mc.button(l='Orig',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcSetPivot ORIGIN")'))
-	mc.button(l='Sel',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcSetPivot SELECTED")'))
-	mc.button(l='',c=partial(delay,'mel.eval','(toMiddle(\"max\" ,\"max\", \"max\")'))
+	ui.frameGRP('ASSIGN')
+	mc.rowColumnLayout('ASSIGNROW',numberOfColumns=2,cal=[2,'right'],columnWidth=[(1,ui.rowWidth/2-2),(2,ui.rowWidth/2-2)])
+
+	ui.frameSUB('PIVOTS');
+	mc.gridLayout(numberOfColumns=4,cellWidthHeight=[30,30])
 	mc.button(l='')
 	mc.button(l='Y+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mel.eval','("rcSetPivot YMax")'))
-	mc.button(l='')
+	mc.button(l='Z-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mel.eval','("rcSetPivot ZMin")'))
+	mc.button(l='Sel',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcSetPivot SELECTED")'))
+	mc.button(l='X-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mel.eval','("rcSetPivot XMin")'))
+	mc.button(l='Cntr',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcSetPivot CENTER")'))
+	mc.button(l='X+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mel.eval','("rcSetPivot XMax")'))
 	mc.button(l='')
 	mc.button(l='Z+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mel.eval','("rcSetPivot ZMax")'))
-	mc.button(l='X+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mel.eval','("rcSetPivot XMax")'))
-	mc.text(l='')
-	mc.button(l='X-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mel.eval','("rcSetPivot XMin")'))
-	mc.button(l='Z-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mel.eval','("rcSetPivot ZMin")'))
-	mc.button(l='')
-	mc.button(l='')
 	mc.button(l='Y-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mel.eval','("rcSetPivot YMin")'))
 	mc.button(l='')
 	mc.button(l='')
-	mc.setParent('..')
-	mc.setParent('..')
-	mc.separator(style='in')
-	mc.frameLayout('TRANSFORMS',cll=1,bgc=[.0,.0,.0]);
+	mc.setParent('ASSIGNROW')
 
-	mc.gridLayout(numberOfColumns=5,cellWidthHeight=[28,28])
+	ui.frameSUB('ROTATE')
+	mc.rowColumnLayout(numberOfColumns=1)  
+	mc.gridLayout(numberOfColumns=4,cellWidthHeight=[30,30])  
+	mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Rotate",l= "Tile" ,i= "snapValue.png",onc=partial(delay,'rotSnap','(45,1)'),ofc=partial(delay,'rotSnap','(45,0)'))
+	mc.button(l='Y+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'rotAmt ','(mc.intField("RotField",q=1,v=1),"y")'))
+	mc.button(l='Z-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'rotAmt ','(-mc.intField("RotField",q=1,v=1),"z")'))
+	mc.button(l='') 
+	mc.button(l='X+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'rotAmt ','(mc.intField("RotField",q=1,v=1),"x")'))
+	mc.intField('RotField',v=90)#
+	mc.button(l='X-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'rotAmt ','(-mc.intField("RotField",q=1,v=1),"x")'))
+	mc.button(l='')
+	mc.button(l='Z+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'rotAmt ','(mc.intField("RotField",q=1,v=1),"z")'))
+	mc.button(l='Y-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'rotAmt ','(-mc.intField("RotField",q=1,v=1),"y")'))
+	mc.button(l='')
+	mc.button(l='0,0,0',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'rotAmt ','(-mc.intField("RotField",q=1,v=1),"0")'))
+	mc.setParent('ASSIGNROW')
+
+	ui.frameSUB('TRANSFORMS');
+	mc.gridLayout(numberOfColumns=5,cellWidthHeight=[30,30])
+	mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Snap",l= "Tile" ,i= "snapGrid.png",onc=partial(delay,'stepSnap','(5,1)'),ofc=partial(delay,'stepSnap','(5,0)'))
 	mc.text(l='')
-	mc.button(l='Inst',ann='Instance',bgc=[.3,.3,.3],c=partial(delay,'mel.eval','("instance")'))
-	mc.button(l='DpI',ann='Duplicate Input Graph',bgc=[.3,.3,.3],c=partial(delay,'mel.eval','("duplicate -rr -un")'))
+	mc.text(l='')
 	mc.button(l='Orig',ann='Move Object To World Origin',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcMoveSel ORIGIN")'))
 	mc.button(l='Sel',ann='Move First Selected to Second',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcMoveSel SELECTED")'))
 	mc.button(l='fObj',ann='Freeze Object\'s Transform, Rotation, Scale',bgc=[.3,.7,1],c=partial(delay,'mc.makeIdentity','(mc.ls(sl=1),apply=True,t=1,r=1,s=1,n=0,pn=1)')) 
@@ -150,13 +148,44 @@ def assignUI():
 	mc.button(l='Rx',ann='Freeze Rotations',bgc=[.3,.7,1],c=partial(delay,'mc.makeIdentity','(mc.ls(sl=1),apply=True,t=0,r=1,s=0,n=0,pn=1)')) 
 	mc.button(l='Sx',ann='Freeze Scales',bgc=[.3,.7,1],c=partial(delay,'mc.makeIdentity','(mc.ls(sl=1),apply=True,t=0,r=0,s=1,n=0,pn=1)'))
 	mc.button(l='Mov',ann='WhiteBox',bgc=[0,0,0],c=partial(delay,'callWhiteBox','()'))
-	
-	#mc.text(l='')
 	mc.button(l='Crv',ann='Create Curve from Selected Joint Group',c=partial(delay,'mel.eval','("Ctrl_Curve")')) 
 	mc.button(l='Grp',ann='Custom Naming Grouping Procedure',bgc=[.2,.2,.2],c=partial(delay,'mel.eval','("rcCtGrp")'))
+	mc.setParent('ASSIGNROW')
+
+	ui.frameSUB('COPY')
+	mc.rowColumnLayout(numberOfColumns=1)  
+	mc.gridLayout(numberOfColumns=4,cellWidthHeight=[30,30])  
+	mc.button(l='Inst',ann='Instance',bgc=[.3,.3,.3],c=partial(delay,'mel.eval','("instance")'))
+	mc.button(l='DpI',ann='Duplicate Input Graph',bgc=[.3,.3,.3],c=partial(delay,'mel.eval','("duplicate -rr -un")'))
+	mc.button(l='Y+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','(mc.intField("AmtField",q=1,v=1),"0","10","0")'))
+	mc.button(l='Z-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','(mc.intField("AmtField",q=1,v=1),"0","0","-10")'))
+	mc.button(l='')
+	mc.button(l='X-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','(mc.intField("AmtField",q=1,v=1),"-10","0","0")'))
+	mc.intField('AmtField',v=5)#
+	mc.button(l='X+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','(mc.intField("AmtField",q=1,v=1),"10","0","0")'))
+	mc.button(l='')
+	mc.button(l='Z+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','(mc.intField("AmtField",q=1,v=1),"0","0","10")'))
+	mc.button(l='Y-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','(mc.intField("AmtField",q=1,v=1),"0","-10","0")'))
+	mc.iconTextCheckBox(ann="Instance",l= "Inst" ,i= "instancer.svg",onc=partial(delay,'rc.stepSnap','(5,1)'),ofc=partial(delay,'stepSnap','(5,0)'))
+	mc.setParent('ASSIGNROW')
+
+	ui.frameSUB('VIEWPORT')
+	mc.rowColumnLayout(numberOfColumns=1)
+	icon=ui.iconSize
+	mc.rowColumnLayout(numberOfColumns=3)
+	ui.iconTextButton(ann="Fix Render Globals",l= "FIX" ,i="overrideSettings.png",c=partial(delay,'set.globals','(opt="fix")'))
+	ui.iconTextButton(ann="Set Camera to Meters",en=1,l= "Set Camera" ,i= "CameraAE.png",c=partial(delay,'set.camera','(near=.5,far=100000)'))
+	mc.button(h=15,ann='Reset Viewport Show Options',l='RE',bgc=[.0,.5,.0],c=partial(delay,'set.view','(opt=1)'))	
+	mc.button(h=15,ann='Set Viewport to Green for PlayBlast',l='GREEN',bgc=[.0,1,.0],c=partial(delay,'mel.eval','("rcSetView GREEN")'))    
+	mc.button(h=15,ann='Set Viewport to Standard Grey',l='GREY',bgc=[.8,.8,.8],c=partial(delay,'mel.eval','("rcSetView GREY")'))    
+	mc.button(h=15,ann='Set Viewport to Gradient',l='GRAD',c=partial(delay,'mel.eval','("rcSetView GRAD")'))    
+	mc.button(h=15,l='POLY',c=partial(delay,'mel.eval','("rcSetView POLY")'))    
+	mc.button(h=15,l='CTRL',c=partial(delay,'mel.eval','("rcSetView CTRL")'))    
+	mc.button(h=15,l='ALL',c=partial(delay,'mel.eval','("rcSetView SHOWALL")'))    
 	mc.setParent('..')
-	mc.separator(style='in')
-	mc.frameLayout('NORMALS',cll=1,bgc=[.0,.0,.0]);
+	mc.setParent('..')
+
+	ui.frameSUB('NORMALS');
 	mc.gridLayout(numberOfColumns=3,cellWidthHeight=[42,25])
 	mc.text(l='Normal:')
 	mc.iconTextButton(l='Hard',i='polyHardEdge.png',ann='Set Selected Pivot to',c=partial(delay,'mc.polySetToFaceNormal','(setUserNormal=True)'))
@@ -165,9 +194,7 @@ def assignUI():
 	mc.textField('angleparameter',tx='70')
 	mc.button(l='Set',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mc.polySoftEdge','(a=mc.textField(\'angleparameter\',q=True,tx=1),ch=1)'))
 	
-	mc.setParent('..')
-	mc.separator(style='in')
-	
+	mc.setParent('ASSIGNROW')
 	'''
 	mc.separator(style='in',h=ui.borders*3)
 	mc.checkBoxGrp('smoothPreview',h=ui.checkBoxHeight,ncb=1,vr=1,l1='Smooth Preview',v1=1)
@@ -176,42 +203,16 @@ def assignUI():
 	mc.button(h=ui.btn_large,w=ui.rowWidth/2-8,l='APPLY',c=partial(delay,'set.smooth','(0)')) 
 	mc.button(h=ui.btn_small,w=ui.rowWidth/2-8,l='RESET',ann='Remove Overrides for object',c=partial(delay,'set.smooth','(1)'))
 	mc.separator(style='in',h=ui.borders*10)
-	'''
+    '''
 	mc.setParent('ASSIGNROW')
 
-	
-	mc.frameLayout('VIEWPORT',cll=1,bgc=[.0,.0,.0]); mc.columnLayout()
-	mc.columnLayout(w=ui.rowWidth/2)#h=(len(ls.renderAtts())*(ui.checkBoxHeight+ui.borders+2))+(ui.btn_large+ui.btn_small)
-	
-	#mc.gridLayout(numberOfColumns=5,cellWidthHeight=[25,25])
-	#mc.text(l='Disp');
-	#mc.separator(style='in');
-	#mc.setParent('..')
-	icon=ui.rowWidth/8
-	mc.rowColumnLayout(numberOfColumns=3,rat=[1,'both',0])
-	mc.iconTextButton(w=ui.rowWidth/8,h=ui.rowWidth/8,ann="Fix Render Globals",l= "FIX" ,i="overrideSettings.png",c=partial(delay,'set.globals','(opt="fix")'))
-	mc.iconTextButton(w=icon,h=icon,ann="Set Camera to Meters",en=1,l= "Set Camera" ,i= "CameraAE.png",c=partial(delay,'mel.eval','("rcSetCameraClip .5 100000")'))
-	
-	mc.button(h=25,ann='Reset Viewport Show Options',l='RE',bgc=[.0,.5,.0],c=partial(delay,'set.view','(opt=1)'))	
-	mc.button(h=25,ann='Set Viewport to Green for PlayBlast',l='GREEN',bgc=[.0,1,.0],c=partial(delay,'mel.eval','("rcSetView GREEN")'))    
-	mc.button(h=25,ann='Set Viewport to Standard Grey',l='GREY',bgc=[.8,.8,.8],c=partial(delay,'mel.eval','("rcSetView GREY")'))    
-	mc.button(h=25,ann='Set Viewport to Gradient',l='GRAD',c=partial(delay,'mel.eval','("rcSetView GRAD")'))    
-	mc.button(h=25,l='POLY',c=partial(delay,'mel.eval','("rcSetView POLY")'))    
-	mc.button(h=25,l='CTRL',c=partial(delay,'mel.eval','("rcSetView CTRL")'))    
-	mc.button(h=25,l='ALL',c=partial(delay,'mel.eval','("rcSetView SHOWALL")'))    
-	mc.setParent('..')
-	
-	#mc.gridLayout(numberOfColumns=5,cellWidthHeight=[25,25])
-	#mc.text(l='Attr');mc.separator(style='in');mc.separator(style='in');mc.separator(style='in');mc.separator(style='in')
-	
-	mc.setParent('..')
-	mc.frameLayout('ATTRIBUTES',cll=1,bgc=[.0,.0,.0]); mc.columnLayout()
+
+	ui.frameSUB('ATTRIBUTES'); mc.columnLayout()
 	#mc.separator(style='in',bgc=[.2,.2,.2],h=ui.borders*3)
 	for each in ls.renderAtts(): mc.checkBoxGrp(each,ncb=1,vr=1,h=ui.checkBoxHeight,l1=each,v1=1)
 	mc.separator(style='in',h=ui.borders*3)
 	
 	mc.button(h=ui.btn_large,w=ui.rowWidth/2-8,l='APPLY',c=partial(delay,'set.flags','(value="Apply")')) 
-	
 	
 	
 	mc.rowColumnLayout(numberOfColumns=4)
@@ -225,9 +226,9 @@ def assignUI():
 
 
 def materialsUI():
-	icon=ui.rowWidth/8
-	mc.frameLayout('rcMATERIALS',l='MATERIALS',bgc=[.4,.2,.4],w=ui.rowWidth,bs='in',fn='smallBoldLabelFont',cll=1,cl=1)
-	if mc.frameLayout('GLOBAL',q=1,ex=1)==1: mc.frameLayout('GLOBAL',e=1,cl=1)#CLOSE GLOBALS WIN
+	
+	ui.frameGRP('MATERIALS',bgc=[.4,.2,.4])
+	#if mc.frameLayout('GLOBAL',q=1,ex=1)==1: mc.frameLayout('GLOBAL',e=1,cl=1)#CLOSE GLOBALS WIN
 	mc.floatSliderGrp('lambertslider',label='Lambert1 Transparent',minValue=0,maxValue=1,cc=partial(delay,'lambertset','()'))
 	mc.separator(style='in')
 
@@ -237,37 +238,37 @@ def materialsUI():
 	mc.setParent('..')
 	
 	mc.rowColumnLayout(numberOfColumns=8)
-	mc.iconTextButton(w=icon,h=icon,ann="Assign/Create Layer AODPTHINC",l= "AODPTHINC" ,i= (iconPath +"AODPTHINC_32.png"),c=partial(delay,'mel.eval','("rcAssignLayer AODPTHINC")'))
-	mc.iconTextButton(w=icon,h=icon,ann="Assign/Create Layer MASK_RGB" ,l= "MASK_RGB" ,i=(iconPath+"MASK_RGB.png"),c=partial(delay,'mel.eval','("rcAssignLayer MASK_RGB")'))
-	mc.iconTextButton(w=icon,h=icon,ann="Assign/Create Layer CONTOUR" ,l= "" ,i= 'baseLattice.svg',c=partial(delay,'createMat','("CONTOUR")'))
-	mc.textField('CONDIA',w=icon-5,fn='boldLabelFont',tx='01')
-	mc.iconTextButton(w=icon,h=icon,ann='Seperate Objects For Element',i=iconPath+'VC',c=partial(delay,'toElement.seperate','()'))
-	mc.iconTextButton(w=icon,h=icon,ann='Rename Shading Groups',i=iconPath+'VC',c=partial(delay,'toElement.renameSG','()'))
-	mc.iconTextButton(w=icon,h=icon,ann="Unity Conform",l= "BLINN" ,i= "annotation.png",c=partial(delay,'conform','()'))
-	mc.iconTextButton(w=icon,h=icon,ann='Create Image Card From File',i=iconPath+'picture_32',c=partial(delay,'create.imageCard','()'))
-	#mc.iconTextButton(w=icon,h=icon,ann= "Add Gamma Correct Nodes to Selected Shader" ,i= 'gammaCorrect.svg', c=partial(delay,'mel.eval','( "gammaUIMain")'))
+	ui.iconTextButton(ann="Assign/Create Layer AODPTHINC",l= "AODPTHINC" ,i= (iconPath +"AODPTHINC_32.png"),c=partial(delay,'mel.eval','("rcAssignLayer AODPTHINC")'))
+	ui.iconTextButton(ann="Assign/Create Layer MASK_RGB" ,l= "MASK_RGB" ,i=(iconPath+"MASK_RGB.png"),c=partial(delay,'mel.eval','("rcAssignLayer MASK_RGB")'))
+	ui.iconTextButton(ann="Assign/Create Layer CONTOUR" ,l= "" ,i= 'baseLattice.svg',c=partial(delay,'createMat','("CONTOUR")'))
+	mc.textField('CONDIA',w=ui.iconSize-5,fn='boldLabelFont',tx='01')
+	ui.iconTextButton(ann='Seperate Objects For Element',i=iconPath+'VC',c=partial(delay,'toElement.seperate','()'))
+	ui.iconTextButton(ann='Rename Shading Groups',i=iconPath+'VC',c=partial(delay,'toElement.renameSG','()'))
+	ui.iconTextButton(ann="Unity Conform",l= "BLINN" ,i= "annotation.png",c=partial(delay,'conform','()'))
+	ui.iconTextButton(ann='Create Image Card From File',i=iconPath+'picture_32',c=partial(delay,'create.imageCard','()'))
+	#ui.iconTextButton(ann= "Add Gamma Correct Nodes to Selected Shader" ,i= 'gammaCorrect.svg', c=partial(delay,'mel.eval','( "gammaUIMain")'))
 	mc.setParent('..')
 
-	mc.text( font= "tinyBoldLabelFont" ,w= icon, h= 8,l ="    Create/Assign Materials:",al= "left")
+	mc.text( font= "tinyBoldLabelFont" ,w=ui.iconSize, h= 8,l ="    Create/Assign Materials:",al= "left")
 	mc.rowColumnLayout(numberOfColumns=8)
-	mc.iconTextButton(w=icon,h=icon,en=0,ann="Assign/Create Phong",l= "PHONG" ,i= "render_phong.png",c=partial(delay,'mel.eval','("rcAssignShader AO")'))
-	mc.iconTextButton(w=icon,h=icon,en=0,ann="Assign/Create Lambert",l= "LAMBERT" ,i= "render_lambert",c=partial(delay,'mel.eval','("rcAssignShader DPTH")'))
-	mc.iconTextButton(w=icon,ann= "Convert Selected Shader to MIA",i= iconPath +"MIA.png", c= partial(delay,'mel.eval','( "convert2MIA")'))
-	mc.iconTextButton(w=icon,h=icon,ann="Assign/Create AODPTHINC",l= "AODPTHINC" ,i= (iconPath +"AODPTHINC_32.png"),c=partial(delay,'mel.eval','("rcAssignShader AODPTHINC")'))
-	mc.iconTextButton(w=icon,h=icon,ann="Assign/Create AO",l= "AO" ,i= (iconPath +"OCC_32.png"),c=partial(delay,'mel.eval','("rcAssignShader AO")'))
-	mc.iconTextButton(w=icon,h=icon,ann="Assign/Create DPTH",l= "DPTH" ,i= (iconPath +"DPTH_32.png"),en=0,c=partial(delay,'mel.eval','("rcAssignShader DPTH")'))
-	mc.iconTextButton(w=icon,h=icon,ann="Assign/Create INC",l= "INC" ,i= (iconPath +'INC_32.png'),c=partial(delay,'set.shader','("INC")'))
-	mc.iconTextButton(w=icon,h=icon,ann="Assign/Create ALPHA RAMP",l= "A" ,i= (iconPath +'RAMP_A_32.png'),c=partial(delay,'mel.eval','("rcAssignShader RAMP_A")'))
+	ui.iconTextButton(en=0,ann="Assign/Create Phong",l= "PHONG" ,i= "render_phong.png",c=partial(delay,'mel.eval','("rcAssignShader AO")'))
+	ui.iconTextButton(en=0,ann="Assign/Create Lambert",l= "LAMBERT" ,i= "render_lambert",c=partial(delay,'mel.eval','("rcAssignShader DPTH")'))
+	mc.iconTextButton(w=ui.iconSize,ann= "Convert Selected Shader to MIA",i= iconPath +"MIA.png", c= partial(delay,'mel.eval','( "convert2MIA")'))
+	ui.iconTextButton(ann="Assign/Create AODPTHINC",l= "AODPTHINC" ,i= (iconPath +"AODPTHINC_32.png"),c=partial(delay,'mel.eval','("rcAssignShader AODPTHINC")'))
+	ui.iconTextButton(ann="Assign/Create AO",l= "AO" ,i= (iconPath +"OCC_32.png"),c=partial(delay,'mel.eval','("rcAssignShader AO")'))
+	ui.iconTextButton(ann="Assign/Create DPTH",l= "DPTH" ,i= (iconPath +"DPTH_32.png"),en=0,c=partial(delay,'mel.eval','("rcAssignShader DPTH")'))
+	ui.iconTextButton(ann="Assign/Create INC",l= "INC" ,i= (iconPath +'INC_32.png'),c=partial(delay,'set.shader','("INC")'))
+	ui.iconTextButton(ann="Assign/Create ALPHA RAMP",l= "A" ,i= (iconPath +'RAMP_A_32.png'),c=partial(delay,'mel.eval','("rcAssignShader RAMP_A")'))
   
 	
-	mc.button(h=ui.btn_large,w=icon,bgc=[.5,0,0],l="R",c= partial(delay,'set.shader','("RED")'))
-	mc.button(h=ui.btn_large,w=icon,bgc= [0 ,.5 ,0 ],l= "G" ,c=partial(delay,'set.shader','( "GREEN")'))
-	mc.button(h=ui.btn_large,w=icon,bgc= [0 ,0 ,.5] ,l= "B" ,c= partial(delay,'set.shader','( "BLUE")'))
-	mc.iconTextButton(h=ui.btn_large,w=icon,bgc= [0 ,0 ,0] ,l= "A" ,c=partial(delay,'set.shader','( "ALPHA")'),i='textureEditorDisplayAlpha.png')
-	mc.button(h=ui.btn_large,w=icon,bgc= [0 ,.5 ,.5],l= "C" ,c= partial(delay,'set.shader','( "CYAN")'))
-	mc.button(h=ui.btn_large,w=icon,bgc= [.5 ,0, .5],l= "M" ,c= partial(delay,'set.shader','( "MAGENTA")'))
-	mc.button(h=ui.btn_large,w=icon,bgc= [.5 ,.5 ,0],l= "Y" ,c= partial(delay,'set.shader','( "YELLOW")'))
-	mc.button(h=ui.btn_large,w=icon,bgc= [0 ,0 ,0],l= "K" ,c= partial(delay,'set.shader','( "BLACK")'))
+	mc.button(h=ui.btn_large,w=ui.iconSize,bgc=[.5,0,0],l="R",c= partial(delay,'set.shader','("RED")'))
+	mc.button(h=ui.btn_large,w=ui.iconSize,bgc= [0 ,.5 ,0 ],l= "G" ,c=partial(delay,'set.shader','( "GREEN")'))
+	mc.button(h=ui.btn_large,w=ui.iconSize,bgc= [0 ,0 ,.5] ,l= "B" ,c= partial(delay,'set.shader','( "BLUE")'))
+	mc.iconTextButton(h=ui.btn_large,w=ui.iconSize,bgc= [0 ,0 ,0] ,l= "A" ,c=partial(delay,'set.shader','( "ALPHA")'),i='textureEditorDisplayAlpha.png')
+	mc.button(h=ui.btn_large,w=ui.iconSize,bgc= [0 ,.5 ,.5],l= "C" ,c= partial(delay,'set.shader','( "CYAN")'))
+	mc.button(h=ui.btn_large,w=ui.iconSize,bgc= [.5 ,0, .5],l= "M" ,c= partial(delay,'set.shader','( "MAGENTA")'))
+	mc.button(h=ui.btn_large,w=ui.iconSize,bgc= [.5 ,.5 ,0],l= "Y" ,c= partial(delay,'set.shader','( "YELLOW")'))
+	mc.button(h=ui.btn_large,w=ui.iconSize,bgc= [0 ,0 ,0],l= "K" ,c= partial(delay,'set.shader','( "BLACK")'))
 	
 	mc.setParent('..')
 	mc.separator(style='in')
@@ -324,8 +325,6 @@ def browse(location=None):#location default sourceimages
 def lambertset():#transparancy slider for toolbox
 	num=mc.floatSliderGrp('lambertslider',q=1,value=1)
 	mc.setAttr('lambert1.transparency',num,num,num,type='double3')
-
-
 def btnScript(script,folder=''):#passing and sourcing for mel script lists 
 	if folder is not None: mel.eval('source "'+scriptsMEL.replace('\\','/')+folder+'/'+str(script)+'"')
 	else: mel.eval('source "'+scriptsMEL+str(script)+'"')

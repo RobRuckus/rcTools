@@ -36,10 +36,11 @@ class RoterraPrefs(iniFile):#RoterraPrefs
 				self.write('Material','0')
 				self.write('Object','1')
 				self.write('IncludeNamespace','1')
-				self.write('prefix','forest')
+				self.write('prefix','forest_')
 				self.write('suffix','_material')
 				self.write('importBehavior', 'reference')
 				self.write('include',1)
+                self.write('ExcludePrefixSuffix',0)
 				#self.write('ImageLabel', 'Label3')	
 	def path(self):#Write Obj List Location to pref File and Update UI
 		self.importPath=mc.fileDialog2(fm=3,ds=1,okc='Set',cc='Cancel')[0]
@@ -55,62 +56,68 @@ class RoterraPrefs(iniFile):#RoterraPrefs
 RoterraPrefs=RoterraPrefs()
 def UI():
     mc.rowColumnLayout('FURIROW',numberOfColumns=2,columnWidth=[(1,ui.rowWidth/2),(2,ui.rowWidth/2)])
-    ui.frame('CREATE',cll=0,bgc=[.0,.0,.0]);
+    ui.frameSUB('CREATE');
     mc.rowColumnLayout(numberOfColumns=4)
-    ui.iconButton(i= "fileNew.png",c=partial(delay,'planeFromTexture','()'))
+    ui.iconButton(i= "fileNew.png",en=0,c=partial(delay,'planeFromTexture','()'))
     ui.iconButton(ann="Create 10x10 Tile",l= "Tile" ,i= "polyPlane.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 10 -sy 10 -ax 0 1 0 -cuv 2 -ch 1")'))	
     ui.iconButton(ann="Create 1x1 Tile",l= "Tile" ,i= iconPath+"polyPlanenDiv.png",c=partial(delay,'mel.eval','("polyPlane -w 10 -h 10 -sx 1 -sy 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
     ui.iconButton(i= "cube.png",c=partial(delay,'mel.eval','("polyCube -w 10 -h 10 -d 10 -sx 1 -sy 1 -sz 1 -ax 0 1 0 -cuv 2 -ch 1;")'))
     
     mc.setParent('FURIROW')
-    ui.frame('SCENE- J to snap',cll=0,bgc=[.0,.0,.0]);
+    ui.frameSUB('SCENE- J to snap',);
     mc.rowColumnLayout(numberOfColumns=4)
     ui.iconButton(i= "polyQuad",c=partial(delay,'mel.eval','("TogglePolyCount")'))
     ui.iconButton(ann="Set Camera to Meters",en=1,l= "Set Camera" ,i= "CameraAE.png",c=partial(delay,'mel.eval','("rcSetCameraClip .5 100000")'))
-    mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Snap",l= "Tile" ,i= "snapGrid.png",onc=partial(delay,'rc.stepSnap','(5,1)'),ofc=partial(delay,'rc.stepSnap','(5,0)'))
-    mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,ann="Rotate",l= "Tile" ,i= "rotate_M.png",onc=partial(delay,'rc.rotSnap','(45,1)'),ofc=partial(delay,'rc.rotSnap','(45,0)'))
+    mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,en=0,ann="Snap",l= "Tile" ,i= "snapGrid.png",onc=partial(delay,'rc.stepSnap','(5,1)'),ofc=partial(delay,'rc.stepSnap','(5,0)'))
+    mc.iconTextCheckBox(w=ui.iconSize,h=ui.iconSize,en=0,ann="Rotate",l= "Tile" ,i= "rotate_M.png",onc=partial(delay,'rc.rotSnap','(45,1)'),ofc=partial(delay,'rc.rotSnap','(45,0)'))
     
     mc.setParent('FURIROW')
-    ui.frame('CONFORM',cll=0,bgc=[.0,.0,.0]);
+    # ui.frame('CONFORM',cll=0,bgc=[.0,.0,.0]);
+    # mc.rowColumnLayout(numberOfColumns=4)
+    # mc.button(w=ui.rowWidth/6,h=ui.btn_large,al='left',l=' + ',c=partial(delay,'addObj','(mc.ls(sl=1))'))  #
+    # mc.button(h=ui.btn_large,w=ui.rowWidth/6,al='center',l=' - ',c=partial(delay,'removeObj','("sel")')) 
+    # mc.button(h=ui.btn_large,w=ui.rowWidth/6,al='right',l='NUKE',c=partial(delay,'removeObj','("all")'))
+    
+    # mc.setParent('..')
+    ui.frameSUB('MODIFY');
     mc.rowColumnLayout(numberOfColumns=4)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize)
+    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize)
+    ui.iconButton(i= "rotateUVcw.png",c=partial(delay,'mel.eval','("polyRotateUVs 90 1")'))
+    ui.iconButton(i= "historyPulldownIcon.png",bgc=[.5,0,0],c=partial(delay,'mel.eval','("DeleteHistory")')) 
+    mc.setParent('FURIROW')
+    # ui.frameSUB('COPY');
+    # mc.rowColumnLayout(numberOfColumns=1)  
+    # mc.gridLayout(numberOfColumns=5,cellWidthHeight=[28,28])  
+    # mc.button(l='',c=partial(delay,'mel.eval','(toMiddle(\"max\" ,\"max\", \"max\")'))
+    # mc.button(l='')
+    # mc.button(l='Y+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','("0","10","0")'))
+    # mc.button(l='')
+    # mc.button(l='')
+    # mc.button(l='Z+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','("0","0","10")'))
+    # mc.button(l='X+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','("10","0","0")'))
+    # mc.intField('AmtField',v=5)#
+    # mc.button(l='X-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','("-10","0","0")'))
+    # mc.button(l='Z-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','("0","0","-10")'))
+    # mc.button(l='')
+    # mc.button(l='')
+    # mc.button(l='Y-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','("0","-10","0")'))
+    # mc.button(l='')
+    # mc.button(l='')
+    # mc.setParent('FURIROW')
+    mc.setParent('..')
+    ui.frameGRP('Scene',cl=1)
+    mc.rowColumnLayout(numberOfColumns=1)
+    mc.menuBarLayout('conformmenu')
+    mc.separator(h=5,style='in') 
+    mc.menu(l='Options')
+    mc.rowColumnLayout(numberOfColumns=4)
+    ui.iconButton(i= "fileNew.png",c=partial(delay,'planeFromTexture','()'))
     mc.button(w=ui.rowWidth/6,h=ui.btn_large,al='left',l=' + ',c=partial(delay,'addObj','(mc.ls(sl=1))'))  #
     mc.button(h=ui.btn_large,w=ui.rowWidth/6,al='center',l=' - ',c=partial(delay,'removeObj','("sel")')) 
     mc.button(h=ui.btn_large,w=ui.rowWidth/6,al='right',l='NUKE',c=partial(delay,'removeObj','("all")'))
     
     mc.setParent('..')
-    ui.frame('MODIFY',cll=0,bgc=[.0,.0,.0]);
-    mc.rowColumnLayout(numberOfColumns=4)
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize)
-    mc.iconTextButton(w=ui.iconSize,h=ui.iconSize)
-    ui.iconButton(i= "rotateUVcw.png",c=partial(delay,'mel.eval','("polyRotateUVs 90 1")'))
-    ui.iconButton(i= "historyPulldownIcon.png",bgc=[.5,0,0],c=partial(delay,'mel.eval','("DeleteHistory")'))
-    
-    mc.setParent('FURIROW')
-    ui.frame('COPY',cll=0,bgc=[.0,.0,.0]);
-    mc.rowColumnLayout(numberOfColumns=1)  
-    mc.gridLayout(numberOfColumns=5,cellWidthHeight=[28,28])  
-    mc.button(l='',c=partial(delay,'mel.eval','(toMiddle(\"max\" ,\"max\", \"max\")'))
-    mc.button(l='')
-    mc.button(l='Y+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','("0","10","0")'))
-    mc.button(l='')
-    mc.button(l='')
-    mc.button(l='Z+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','("0","0","10")'))
-    mc.button(l='X+',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','("10","0","0")'))
-    mc.intField('AmtField',v=5)#
-    mc.button(l='X-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','("-10","0","0")'))
-    mc.button(l='Z-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','("0","0","-10")'))
-    mc.button(l='')
-    mc.button(l='')
-    mc.button(l='Y-',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'copyAmt ','("0","-10","0")'))
-    mc.button(l='')
-    mc.button(l='')
-    mc.setParent('FURIROW')
-    mc.setParent('..')
-    ui.frame('Scene',bgc=[0.2,.2,.2],cll=1,cl=1);
-    mc.rowColumnLayout(numberOfColumns=1)
-    mc.menuBarLayout('conformmenu')
-    mc.separator(h=5,style='in') 
-    mc.menu(l='Options')
     
     #mc.checkBox('Object',vis=1,l='Object',v=int(RoterraPrefs.get('Object')),cc=partial(delay,'RoterraPrefs.checkBox',"('Object')"))
     #mc.checkBox('Material',vis=1,l='Material',v=int(RoterraPrefs.get('Material')),cc=partial(delay,'RoterraPrefs.checkBox',"('Material')"))
@@ -121,21 +128,22 @@ def UI():
     mc.setParent('..')
 
     
-    ui.frame('Materials',bgc=[0.2,.2,.2],pec=partial(delay,'materialListUI','("RoterraMaterials")'),cll=1)
+    ui.frameGRP('Materials',pec=partial(delay,'materialListUI','("Materials")'))
     mc.menuBarLayout('materialmenu')
     mc.separator(h=5,style='in') 
     mc.menu(l='Options')
     mc.menuItem(d=True,l='Behavior')
     mc.menuItem('IncludeNamespace',l='Include Namespaced Materials',cb=int(RoterraPrefs.get('IncludeNamespace')),c=partial(delay,'RoterraPrefs.menuItem',"('IncludeNamespace')"))
+    mc.menuItem('ExcludePrefixSuffix',l='Only Materials with Prefix and Suffix',cb=int(RoterraPrefs.get('ExcludePrefixSuffix')),c=partial(delay,'RoterraPrefs.menuItem',"('ExcludePrefixSuffix')"))
     #mc.rowColumnLayout(numberOfColumns=2,w=ui.rowWidth)
     mc.rowColumnLayout(numberOfColumns=4)
     mc.text('Prefix: ',align='left')
     mc.textField('prefix',tx='forest_',cc=partial(delay,'updateMaterials','()'))
     mc.text('Suffix: ',align='left')
     mc.textField('suffix',tx='_material',cc=partial(delay,'updateMaterials','()'))
-    materialListUI('RoterraMaterials')
+    materialListUI('Materials')
     mc.setParent('..')
-    ui.frame('Objects',bgc=[0.2,.2,.2],pec=partial(delay,'importListUI','("RoterraObjects")'),cll=1)
+    ui.frameGRP('Objects',pec=partial(delay,'importListUI','("Objects")'))
     mc.menuBarLayout('objmenu')
     mc.separator(h=5,style='in') 
     mc.menu(l='Options')
@@ -146,7 +154,7 @@ def UI():
     mc.menuItem(RoterraPrefs.get('importBehavior'),e=1,rb=1)
     mc.menu('Path',l='Path')
     mc.menuItem(l='Set Path',c=partial(delay,'RoterraPrefs.path',"('')"))
-    importListUI('RoterraObjects')
+    importListUI('Objects')
     updateMenu()
 	#mc.scriptJob('import rcRoterra',event=SceneOpened)
 def importListUI(parentFrame):#furiImportList
@@ -174,22 +182,31 @@ def materialListUI(parentFrame):
     suffix=mc.textField('suffix',q=1,tx=1)
     mc.rowColumnLayout(w=ui.rowWidth-20,numberOfColumns=2)
     for each in sorted(rc.ls.shaders()):
-        sName=each
-        if each.endswith(suffix): 
-            sName=each[:-len(suffix)]
-        if each.startswith(prefix):
-            sName=sName[len(prefix):]
-        
-        #mc.iconTextButton(w=ui.rowWidth-30,al='left',l=str(sName.split(':')))
-        mc.button(w=ui.rowWidth-65,al='right',bgc=[0.1,0.1,0.1],l=sName.split(':')[-1],c=partial(delay,'mc.select','(\''+ str(each)+'\')'))
-        mc.button(w=45,l='ASSIGN',bgc=[0.1,0.3,0.1],c=partial(delay,'mc.hyperShade','(assign=\''+ str(each)+'\')'))#rc.ls.shaderColor(each)[0],
-        #mc.text(sName.split(':'),al='left')
-		#mc.button(w=40,l='GRAPH')   
+        if int(RoterraPrefs.get('ExcludePrefixSuffix'))==1:
+            if each.startswith(prefix) and each.endswith(suffix):
+                sName=each
+                if each.endswith(suffix): 
+                    sName=each[:-len(suffix)]
+                if each.startswith(prefix):
+                    sName=sName[len(prefix):]
+                mc.button(w=ui.rowWidth-65,al='right',bgc=[0.1,0.1,0.1],l=sName.split(':')[-1],c=partial(delay,'mc.select','(\''+ str(each)+'\')'))
+                mc.button(w=45,l='ASSIGN',bgc=[0.1,0.3,0.1],c=partial(delay,'mc.hyperShade','(assign=\''+ str(each)+'\')'))#rc.ls.shaderColor(each)[0],
+        else:
+            sName=each
+            if each.endswith(suffix): 
+                sName=each[:-len(suffix)]
+            if each.startswith(prefix):
+                sName=sName[len(prefix):]
+            mc.button(w=ui.rowWidth-65,al='right',bgc=[0.1,0.1,0.1],l=sName.split(':')[-1],c=partial(delay,'mc.select','(\''+ str(each)+'\')'))
+            mc.button(w=45,l='ASSIGN',bgc=[0.1,0.3,0.1],c=partial(delay,'mc.hyperShade','(assign=\''+ str(each)+'\')'))#rc.ls.shaderColor(each)[0],
+
+            #mc.text(sName.split(':'),al='left')
+        	#mc.button(w=40,l='GRAPH')   
     mc.setParent('..');mc.setParent('..') 
 def updateMaterials():
     RoterraPrefs.write('prefix',mc.textField('prefix',q=1,tx=1))
     RoterraPrefs.write('suffix',mc.textField('suffix',q=1,tx=1))
-    materialListUI('RoterraMaterials')
+    materialListUI('Materials')
 def updateMenu():#UPDATE
 	
 	mc.menu('Path',e=True,dai=True)

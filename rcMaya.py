@@ -55,23 +55,30 @@ class ui():#UI Class for Maya
 		#if mc.workspaceControl(self.dock,ex=True): mc.deleteUI(self.dock)
 		#mc.workspaceControl(self.dock,dockToPanel=['rcTools','left',1],label=self.name,floating=False)
 		mc.window(self.window,t=self.name,dc=['topLeft','bottomLeft'],w=self.rowWidth+50)#,nde=True
-		mc.formLayout(w=self.rowWidth)
+		mc.formLayout(w=self.rowWidth+20)
 		mc.dockControl(self.dock,area='left',content=self.window,label=self.name,floating=False,**kwargs)
 	def toolBox(self):
 		self.win()
-		mc.tabLayout(self.tabs,w=self.rowWidth+20,imw=15)
+		mc.tabLayout(self.tabs,w=self.rowWidth+20,imw=10)
 	def tab(self,name):#tab command for toolBox
 		mc.setParent(self.tabs)
 		mc.scrollLayout(name,w=self.rowWidth+30,h=self.screensize[1]-150)	
 	def frame(self,name,**kwargs): 
 		mc.frameLayout(self.name+name,l=name,w=self.rowWidth,fn='smallBoldLabelFont',bs='in',**kwargs)
+	def frameGRP(self,name,**kwargs):
+		if not 'bgc' in kwargs: kwargs['bgc']=[0,0,0]#DEFAULT COLOR
+		mc.frameLayout(name,cll=1,l=name.upper(),w=self.rowWidth,**kwargs)
+	def frameSUB(self,name,**kwargs):
+		if not 'bgc' in kwargs: kwargs['bgc']=[.2,.2,.2]#DEFAULT COLOR
+		mc.frameLayout(name,l=name.upper(),fn='smallBoldLabelFont',cll=0,bs='in',**kwargs)
+	def iconTextButton(self,**kwargs):
+		mc.iconTextButton(w=self.iconSize,h=self.iconSize,**kwargs)
 	def buttonRow(self,columns=8,**kwargs):
 		mc.rowColumnLayout(numberOfColumns=columns)
 		for each in range(columns):
 			pass
 			#mc.iconTextButton(w=self.rowWidth/columns,h=self.rowWidth/columns,args)#pass each arg of each button 
-	def iconButton(self,**kwargs):
-		mc.iconTextButton(w=self.iconSize,h=self.iconSize,**kwargs)
+	def iconButton(self,**kwargs): mc.iconTextButton(w=self.iconSize,h=self.iconSize,**kwargs)
 	def fileList(self,filetype='.fbx',location=mc.workspace(q=True,rd=True)):
 	    for folder in ls.dir(location):
 	        mc.frameLayout(l=folder,w=self.rowWidth-10,cll=1,cl=1)
@@ -181,9 +188,9 @@ class ls():
         #renderFlags.append('smoothShading')
         #renderFlags.append('useSmoothPreviewForRender')
         renderFlags.append('opposite')
-        renderFlags.append('motionBlur')
-        renderFlags.append('miFinalGatherCast')
-        renderFlags.append('miFinalGatherReceive')
+        #renderFlags.append('motionBlur')
+        #renderFlags.append('miFinalGatherCast')
+        #renderFlags.append('miFinalGatherReceive')
         return renderFlags
     def shaders(self): return [shader for shader in mc.ls(mat=1) if not 'particleCloud1' in shader and not 'lambert1' in shader and not 'displace' in shader] #and not ':' in shader
     def shaderColor(self,shader):#Return Color for UI WIP
@@ -276,12 +283,10 @@ class create():
 		    mc.connectAttr(self.Name+'.outColor', self.SG+'.surfaceShader',f=1)
 		    mc.setAttr(self.Name+'.outColor',1,0,0,type='double3')
 		    mc.setAttr(self.Name+'.outMatteOpacity',1,1,1,type='double3')
-    
 		if mat=='GREEN' :
 		    mc.connectAttr(self.Name+'.outColor', self.SG+'.surfaceShader',f=1)
 		    mc.setAttr(self.Name+'.outColor',0,1,0,type='double3')
 		    mc.setAttr(self.Name+'.outMatteOpacity',1,1,1,type='double3')
-    
 		if mat=='BLUE' :
 		    mc.connectAttr(self.Name+'.outColor', self.SG+'.surfaceShader',f=1)
 		    mc.setAttr(self.Name+'.outColor',0,0,1,type='double3')
@@ -342,66 +347,74 @@ class create():
 			#mc.editRenderLayerAdjustment('miDefaultOptions.lensShaders')
 			#mc.setAttr('miDefaultOptions.lensShaders',0)
 class set():
-    def shader(self,shader):
-    	shaderName=shader +'_MAT'
-    	selShort=mc.ls(sl=1)
-    	selObj=mc.ls(sl=1,dag=1)
-    	if not mc.objExists(shaderName):
-    		create.shader(shader)
-    	#
-    	for each in selObj:
-    	    mc.sets(e=1,forceElement=shader+'SG')
-    		#if mc.nodeType(each)=='mesh' or mc.nodeType(each)=='nurbsSurface':
-    			#mc.select(each)
-    			#eachSn=mc.pickWalk(d='up')
-    			#mc.select(eachSn)
-    			#mc.hyperShade(assign=shaderName)
-    def camera(self,cam):
-    	for each in mc.ls(ca=1): 
-    		if mc.getAttr(each+'.renderable'): mc.setAttr(each+'.renderable',0)
-    	mc.setAttr(cam+'.renderable',1)
-    def layer(self,layer):
-    	selObjShort=mc.ls(sl=1)
-        selObj=ls(sl=1,dag=1)
-        if not layer in mc.lsType('renderLayer'): createLayer(layer)
-        mc.editRenderLayerMembers(layer,selObj,noRecurse=0)
-        set.shader (layer)
-        for each in selObj:  
-        	mc.select(each)
-    def view(self,opt):
-        panels=mc.getPanel(vis=1)
-        for pane in panels:
-            if mc.getPanel(to=pane) == 'modelPanel' : 
-                mc.modelEditor(pane,e=1,sel=True)
-                mc.modelEditor(pane,e=1,sel=False)
-                mc.modelEditor(pane,e=1,sel=True)
-                
-    def pluginMR(self):
-        if not mc.pluginInfo('Mayatomr',q=1,l=1): 
-            mc.loadPlugin('Mayatomr.mll')
-        mel.eval('miCreateDefaultNodes')#sets up MR Globals
-    def renderMR(self):
-        if not mc.getAttr('defaultRenderGlobals.currentRenderer') =='mentalRay':
-            if not mc.confirmDialog(t='rc.Tools',button=['Yes','No'],m='Set Render to MR?',cb='No',ma='center',ds='No')=='No':
-                mc.setAttr('defaultRenderGlobalist.currentRenderer','mentalRay',type='string')
-    def xray(self):#Selected Objects x-Rayed
-    	for each in mc.ls(sl=1,s=1,dag=1): 
-    		mc.displaySurface(each,xRay=not mc.displaySurface(each,q=1,xRay=1)[0])
-    def imagePrefix(self,option='L__L'):
-    	if option=='S__L__L': prefix =str(mc.getAttr('renderLayerManager.shotName'))+"/<RenderLayer>/<RenderLayer>"
-    	if option=='S__L__L.P': prefix =str(mc.getAttr('renderLayerManager.shotName'))+"/<RenderLayer>/<RenderLayer>.<RenderPass>"
-    	if option=='S__L__P__L.P': prefix =str(mc.getAttr('renderLayerManager.shotName'))+"/<RenderLayer>/<RenderPass>/<RenderLayer>.<RenderPass>"	
-    	if option=='L__L': prefix =str("<RenderLayer>/<RenderLayer>")
-    	if option=='L__L.P': prefix =str("<RenderLayer>/<RenderLayer>.<RenderPass>")
-    	if option=='L__P__L.P': prefix =str("<RenderLayer>/<RenderPass>/<RenderLayer>.<RenderPass>")
-    	mc.setAttr('defaultRenderGlobals.imageFilePrefix',prefix,type='string')
-    	#mc.textField('imageFilePrefix',edit=1,text=prefix)
-    	#commitUI()
-    	
-    def globals(self,opt=None):
-        if opt=='fix':#fix Globals Glitch by Blowing Out UI
-            mel.eval('deleteUI unifiedRenderGlobalsWindow;')      
-            mel.eval('buildNewSceneUI;')
+	def shader(self,shader):
+		shaderName=shader +'_MAT'
+		selShort=mc.ls(sl=1)
+		selObj=mc.ls(sl=1,dag=1)
+		if not mc.objExists(shaderName):
+			create.shader(shader)
+		#
+		for each in selObj:
+		    mc.sets(e=1,forceElement=shader+'SG')
+			#if mc.nodeType(each)=='mesh' or mc.nodeType(each)=='nurbsSurface':
+				#mc.select(each)
+				#eachSn=mc.pickWalk(d='up')
+				#mc.select(eachSn)
+				#mc.hyperShade(assign=shaderName)
+	def camera(self,**kwargs):#Set Cameras clip/ .renderable to only one camera 
+		if 'near' in kwargs:
+			mc.currentUnit(l='meter')
+			panels=["modelPanel1","modelPanel2","modelPanel3","modelPanel4"]
+			for each in panels:
+				camera= mc.modelEditor(each,q=1,camera=1)
+				mc.setAttr(camera+'.nearClipPlane', kwargs['near'])
+				mc.setAttr(camera+'.farClipPlane', kwargs['far'])
+		if 'renderCam' in kwargs:
+			for each in mc.ls(ca=1): 
+				if mc.getAttr(each+'.renderable'): mc.setAttr(each+'.renderable',0)
+			mc.setAttr(kwargs['renderCam']+'.renderable',1)
+	def layer(self,layer):
+		selObjShort=mc.ls(sl=1)
+		selObj=ls(sl=1,dag=1)
+		if not layer in mc.lsType('renderLayer'): createLayer(layer)
+		mc.editRenderLayerMembers(layer,selObj,noRecurse=0)
+		set.shader (layer)
+		for each in selObj:  
+			mc.select(each)
+	def view(self,opt):
+		panels=mc.getPanel(vis=1)
+		for pane in panels:
+		    if mc.getPanel(to=pane) == 'modelPanel' : 
+		        mc.modelEditor(pane,e=1,sel=True)
+		        mc.modelEditor(pane,e=1,sel=False)
+		        mc.modelEditor(pane,e=1,sel=True)
+	            
+	def pluginMR(self):
+	    if not mc.pluginInfo('Mayatomr',q=1,l=1): 
+	        mc.loadPlugin('Mayatomr.mll')
+	    mel.eval('miCreateDefaultNodes')#sets up MR Globals
+	def renderMR(self):
+	    if not mc.getAttr('defaultRenderGlobals.currentRenderer') =='mentalRay':
+	        if not mc.confirmDialog(t='rc.Tools',button=['Yes','No'],m='Set Render to MR?',cb='No',ma='center',ds='No')=='No':
+	            mc.setAttr('defaultRenderGlobalist.currentRenderer','mentalRay',type='string')
+	def xray(self):#Selected Objects x-Rayed
+		for each in mc.ls(sl=1,s=1,dag=1): 
+			mc.displaySurface(each,xRay=not mc.displaySurface(each,q=1,xRay=1)[0])
+	def imagePrefix(self,option='L__L'):
+		if option=='S__L__L': prefix =str(mc.getAttr('renderLayerManager.shotName'))+"/<RenderLayer>/<RenderLayer>"
+		if option=='S__L__L.P': prefix =str(mc.getAttr('renderLayerManager.shotName'))+"/<RenderLayer>/<RenderLayer>.<RenderPass>"
+		if option=='S__L__P__L.P': prefix =str(mc.getAttr('renderLayerManager.shotName'))+"/<RenderLayer>/<RenderPass>/<RenderLayer>.<RenderPass>"	
+		if option=='L__L': prefix =str("<RenderLayer>/<RenderLayer>")
+		if option=='L__L.P': prefix =str("<RenderLayer>/<RenderLayer>.<RenderPass>")
+		if option=='L__P__L.P': prefix =str("<RenderLayer>/<RenderPass>/<RenderLayer>.<RenderPass>")
+		mc.setAttr('defaultRenderGlobals.imageFilePrefix',prefix,type='string')
+		#mc.textField('imageFilePrefix',edit=1,text=prefix)
+		#commitUI()
+		
+	def globals(self,opt=None):
+	    if opt=='fix':#fix Globals Glitch by Blowing Out UI
+	        mel.eval('deleteUI unifiedRenderGlobalsWindow;')      
+	        mel.eval('buildNewSceneUI;')
 	    #DEFAULTS
 	    mc.setAttr('defaultRenderGlobals.extensionPadding',4)#FRAME PADDING
 	    mc.setAttr('defaultRenderGlobals.outFormatControl',0)#
@@ -412,52 +425,52 @@ class set():
 	        mc.setAttr('defaultRenderGlobals.outFormatControl',0)
 		#mc.setAttr('miDefaultFrameBuffer.datatype',16)
 		mel.eval('unifiedRenderGlobalsWindow')
-    def viewport(self,value):
-        if value==0:
-         layout=mc.panelConfiguration(l='tempLayout',sc=0)
-         evalStr='updatePanelLayoutFromCurrent "' +'tempLayout'+'"'
-         mel.eval(evalStr)
-         evalStr = 'setNamedPanelLayout "Single Perspective View" '
-         mel.eval(evalStr)
-         perspPane=mc.getPanel(vis=1)
-         mc.scriptedPanel('graphEditor1',e=1,rp=perspPane[0])
-         return 'tempLayout'
-        if value==1:
-         evalStr= 'setNamedPanelLayout "'+ 'tempLayout' + '"'
-         mel.eval(evalStr)
-         killMe=mc.getPanel(cwl='tempLayout')
-         mc.deleteUI(killMe,pc=1)
-    def pivot(opt):#WIP
-        sel=mc.ls(sl=1)
-        lastsel=mc.ls(sl=1,tail=1)
-        selPivot=mc.xform(lastsel[0],q=1,piv=1,ws=1)
-        for each in sel:
-            if opt=='Y+': bounds=mc.xform(each,q=1,bb=1)
+	def viewport(self,value):
+	    if value==0:
+	     layout=mc.panelConfiguration(l='tempLayout',sc=0)
+	     evalStr='updatePanelLayoutFromCurrent "' +'tempLayout'+'"'
+	     mel.eval(evalStr)
+	     evalStr = 'setNamedPanelLayout "Single Perspective View" '
+	     mel.eval(evalStr)
+	     perspPane=mc.getPanel(vis=1)
+	     mc.scriptedPanel('graphEditor1',e=1,rp=perspPane[0])
+	     return 'tempLayout'
+	    if value==1:
+	     evalStr= 'setNamedPanelLayout "'+ 'tempLayout' + '"'
+	     mel.eval(evalStr)
+	     killMe=mc.getPanel(cwl='tempLayout')
+	     mc.deleteUI(killMe,pc=1)
+	def pivot(opt):#WIP
+	    sel=mc.ls(sl=1)
+	    lastsel=mc.ls(sl=1,tail=1)
+	    selPivot=mc.xform(lastsel[0],q=1,piv=1,ws=1)
+	    for each in sel:
+	        if opt=='Y+': bounds=mc.xform(each,q=1,bb=1)
 			    	#mc.move((bounds[3]+bounds[0])/2),bounds[4],(bounds[5]+bounds[2])/2,each+'.rotatePivot',each+'.scalePivot'))
-    def smooth(opt):	
-        for each in mc.ls(sl=1):
-                if opt==1:
-                    mc.displaySmoothness(each,divisionsU=0,divisionsV=0, pointsWire=4,pointsShaded=1,polygonObject=1)
-                    mc.sets(each,edit=1,fe='smoothSet')
-                    mc.setAttr(each+'.useSmoothPreviewForRender',1 )
-                    mc.setAttr(each+'.smoothLevel',2)
-                    mc.setAttr(each+'.renderSmoothLevel',int(mc.textFieldGrp('rsmoothField',q=1,text=1)) )
-                else:
-                    mc.displaySmoothness(each,divisionsU=3,divisionsV=3, pointsWire=16,pointsShaded=4,polygonObject=3)
-                    #mc.sets(each,edit=1,fe='smoothSet')
-                    mc.setAttr(each+'.useSmoothPreviewForRender',0 )
-                    mc.setAttr(each+'.smoothLevel',int(mc.textFieldGrp('dsmoothField',q=1,text=1)) )
-                    mc.setAttr(each+'.renderSmoothLevel',int(mc.textFieldGrp('rsmoothField',q=1,text=1)) )
-    def flags(self,value):#Attribute Render Flag Assigner
-        if value=='Apply':
-            for sel in mc.ls(sl=1,dag=1):
-                objType=mc.nodeType(sel)
-                if objType== 'mesh' or objType == 'nurbsSurface' or objType == 'subdiv':
-                    for att in ls.renderAtts():
-                        if not mc.getAttr(sel + '.' + att) == mc.checkBoxGrp(att,q=1, v1=1):
-                            mc.setAttr( sel + '.' + att , mc.checkBoxGrp(att,q=1, v1=1))
-        else:
-            for each in ls.renderAtts(): mc.checkBoxGrp(each,e=1,v1=value)
+	def smooth(opt):	
+	    for each in mc.ls(sl=1):
+	            if opt==1:
+	                mc.displaySmoothness(each,divisionsU=0,divisionsV=0, pointsWire=4,pointsShaded=1,polygonObject=1)
+	                mc.sets(each,edit=1,fe='smoothSet')
+	                mc.setAttr(each+'.useSmoothPreviewForRender',1 )
+	                mc.setAttr(each+'.smoothLevel',2)
+	                mc.setAttr(each+'.renderSmoothLevel',int(mc.textFieldGrp('rsmoothField',q=1,text=1)) )
+	            else:
+	                mc.displaySmoothness(each,divisionsU=3,divisionsV=3, pointsWire=16,pointsShaded=4,polygonObject=3)
+	                #mc.sets(each,edit=1,fe='smoothSet')
+	                mc.setAttr(each+'.useSmoothPreviewForRender',0 )
+	                mc.setAttr(each+'.smoothLevel',int(mc.textFieldGrp('dsmoothField',q=1,text=1)) )
+	                mc.setAttr(each+'.renderSmoothLevel',int(mc.textFieldGrp('rsmoothField',q=1,text=1)) )
+	def flags(self,value):#Attribute Render Flag Assigner
+	    if value=='Apply':
+	        for sel in mc.ls(sl=1,dag=1):
+	            objType=mc.nodeType(sel)
+	            if objType== 'mesh' or objType == 'nurbsSurface' or objType == 'subdiv':
+	                for att in ls.renderAtts():
+	                    if not mc.getAttr(sel + '.' + att) == mc.checkBoxGrp(att,q=1, v1=1):
+	                        mc.setAttr( sel + '.' + att , mc.checkBoxGrp(att,q=1, v1=1))
+	    else:
+	        for each in ls.renderAtts(): mc.checkBoxGrp(each,e=1,v1=value)
 ########
 def rView():
     panels=mc.getPanel(scriptType='renderWindowPanel')
@@ -466,12 +479,35 @@ def rView():
     curIndex= mc.intScrollBar(scroll,q=True)
     maxIndex= mc.renderWindowEditor('renderView',q=True,nbImages=True)
 #####
+def rotAmt(amt,direction):
+	x=0
+	y=0
+	z=0
+	if direction=='x':
+		x='%sdeg'%str(amt)
+	if direction=='y':
+		y='%sdeg'%str(amt)
+	if direction=='z':
+		z='%sdeg'%str(amt)
+	if direction=='0':
+		mc.rotate(x,y,z)
+	mc.rotate(x,y,z,r=1)
+def copyAmt(amt,x,y,z):
+    obj=mc.duplicate(rr=1)
+    mc.move(x,y,z,obj,r=1)
+    for each in range(0,mc.intField('AmtField',q=1,v=1)-1):
+        mc.duplicate(rr=1,st=1)
 def stepSnap(amt,value):
     mc.manipMoveContext('Move',e=1,snapValue= amt);
     mc.manipMoveContext('Move',e=1,s=value);
 def rotSnap(amt,value):
-    mel.eval('manipRotateSetSnapMode '+str(value))
-    mc.manipRotateContext('Rotate',e=1,snapValue= amt);
+	try:
+		mel.eval('manipRotateSetSnapMode '+str(value))
+		mc.manipRotateContext('Rotate',e=1,snapValue= amt);
+	except:
+		mel.eval('manipRotateProperties;')
+		mel.eval('manipRotateSetSnapMode '+str(value))
+		mc.manipRotateContext('Rotate',e=1,snapValue= amt);
 def rigGrp():
     mc.promptDialog(title='Ctrl_GRP',m='Name:',tx='Ctrl_')
     sel=mc.ls(sl=1)
