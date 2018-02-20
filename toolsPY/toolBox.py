@@ -170,20 +170,40 @@ def assignUI():
 	mc.setParent('ASSIGNROW')
 
 	ui.frameSUB('VIEWPORT')
-	mc.rowColumnLayout(numberOfColumns=1)
-	icon=ui.iconSize
-	mc.rowColumnLayout(numberOfColumns=3)
+	mc.rowColumnLayout(numberOfColumns=4)
 	ui.iconTextButton(ann="Fix Render Globals",l= "FIX" ,i="overrideSettings.png",c=partial(delay,'set.globals','(opt="fix")'))
-	ui.iconTextButton(ann="Set Camera to Meters",en=1,l= "Set Camera" ,i= "CameraAE.png",c=partial(delay,'set.camera','(near=.5,far=100000)'))
-	mc.button(h=15,ann='Reset Viewport Show Options',l='RE',bgc=[.0,.5,.0],c=partial(delay,'set.view','(opt=1)'))	
-	mc.button(h=15,ann='Set Viewport to Green for PlayBlast',l='GREEN',bgc=[.0,1,.0],c=partial(delay,'mel.eval','("rcSetView GREEN")'))    
-	mc.button(h=15,ann='Set Viewport to Standard Grey',l='GREY',bgc=[.8,.8,.8],c=partial(delay,'mel.eval','("rcSetView GREY")'))    
-	mc.button(h=15,ann='Set Viewport to Gradient',l='GRAD',c=partial(delay,'mel.eval','("rcSetView GRAD")'))    
-	mc.button(h=15,l='POLY',c=partial(delay,'mel.eval','("rcSetView POLY")'))    
-	mc.button(h=15,l='CTRL',c=partial(delay,'mel.eval','("rcSetView CTRL")'))    
-	mc.button(h=15,l='ALL',c=partial(delay,'mel.eval','("rcSetView SHOWALL")'))    
+	mc.menuBarLayout()
+	# mc.menuItem(label='<RenderLayer>/<RenderLayer>',c=partial(delay,'set.imagePrefix','("S__L__L")'))
+	# mc.menuItem(label='<RenderLayer>/<RenderLayer>.<RenderPass>',c=partial(delay,'set.imagePrefix','("S__L__L.P")'))
+	# mc.menuItem(label='<RenderLayer>/<RenderPass>/<RenderLayer>.<RenderPass>',c=partial(delay,'set.imagePrefix','("S__L__P__L.P")'))
+	mc.menu(label='Image Prefix')
+	mc.menuItem(label='<RenderLayer>/<RenderLayer>',c=partial(delay,'set.imagePrefix','("L__L")'))
+	mc.menuItem(label='<RenderLayer>/<RenderLayer>.<RenderPass>',c=partial(delay,'set.imagePrefix','("L__L.P")'))
+	mc.menuItem(label='<RenderLayer>/<RenderPass>/<RenderLayer>.<RenderPass>',c=partial(delay,'set.imagePrefix','("L__P__L.P")'))
+	mc.menu(label='Resolution Preset')
+	mc.menuItem(label='4k',c=partial(delay,'set.imagePrefix','("L__L")'))
+	mc.menuItem(label='1024x768_IPAD',c=partial(delay,'set.imagePrefix','("L__L.P")'))
+	mc.menuItem(label='16:9_IPHONE',c=partial(delay,'set.imagePrefix','("L__P__L.P")'))
+
 	mc.setParent('..')
+	ui.iconTextButton(ann="Fix Meter Camera Near/Far",l= "Set Camera" ,i= "CameraAE.png",c=partial(delay,'set.camera','(near=.1,far=10000)'))
+	ui.iconTextButton(i=iconPath+'unity.png') 
+	ui.iconTextButton()
+	mc.button(w=ui.iconSize,h=ui.iconSize,ann='Set Viewport Color',l='BG',c=partial(delay,'mel.eval','("rcSetView GREY")'))
+	mc.popupMenu()  
+	mc.menuItem(l='GREEN',c=partial(delay,'mel.eval','("rcSetView GREEN")'))
+	mc.menuItem(l='GREY',c=partial(delay,'mel.eval','("rcSetView GREY")'))
+	mc.menuItem(l='GRAD',c=partial(delay,'mel.eval','("rcSetView GRAD")'))
+	mc.button(w=ui.iconSize,h=ui.iconSize,bgc=[0,.2,0],l='RE',c=partial(delay,'mel.eval','("rcSetView SHOWALL")'))  
+	mc.popupMenu()  
+	mc.menuItem(l='CTRL',c=partial(delay,'mel.eval','("rcSetView CTRL")'))
+	mc.menuItem(l='POLY',c=partial(delay,'mel.eval','("rcSetView POLY")'))
+	mc.menuItem(l='ALL',c=partial(delay,'mel.eval','("rcSetView SHOWALL")'))  
+	# mc.button(w=ui.iconSize,h=ui.iconSize,l='CTRL',c=partial(delay,'mel.eval','("rcSetView CTRL")'))    
+	#mc.button(w=ui.iconSize,h=ui.iconSize,l='ALL',c=partial(delay,'mel.eval','("rcSetView SHOWALL")'))
+   	mc.iconTextCheckBox(i= "polyQuad",cc=partial(delay,'mel.eval','("TogglePolyCount")'))
 	mc.setParent('..')
+	# mc.setParent('..')
 
 	ui.frameSUB('NORMALS');
 	mc.gridLayout(numberOfColumns=3,cellWidthHeight=[42,25])
@@ -192,7 +212,7 @@ def assignUI():
 	mc.iconTextButton(l='Soft',i='polySoftEdge.png',ann='Set Selected Pivot to',c=partial(delay,'mc.polySoftEdge','(a=180,ch=1)'))
 	mc.text(l='')
 	mc.textField('angleparameter',tx='70')
-	mc.button(l='Set',ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mc.polySoftEdge','(a=mc.textField(\'angleparameter\',q=True,tx=1),ch=1)'))
+	mc.button(l='Set',h=ui.btn_small,ann='Set Selected Pivot to',bgc=[.6,.6,.6],c=partial(delay,'mc.polySoftEdge','(a=mc.textField(\'angleparameter\',q=True,tx=1),ch=1)'))
 	
 	mc.setParent('ASSIGNROW')
 	'''
@@ -223,10 +243,7 @@ def assignUI():
 	mc.button(h=ui.btn_large,l='XRAY',w=ui.rowWidth/2-8,ann='Remove Overrides for object',c=partial(delay,'set.xray','()'))
 
 	mc.setParent('MAIN')  
-
-
 def materialsUI():
-	
 	ui.frameGRP('MATERIALS',bgc=[.4,.2,.4])
 	#if mc.frameLayout('GLOBAL',q=1,ex=1)==1: mc.frameLayout('GLOBAL',e=1,cl=1)#CLOSE GLOBALS WIN
 	mc.floatSliderGrp('lambertslider',label='Lambert1 Transparent',minValue=0,maxValue=1,cc=partial(delay,'lambertset','()'))
@@ -269,23 +286,10 @@ def materialsUI():
 	mc.button(h=ui.btn_large,w=ui.iconSize,bgc= [.5 ,0, .5],l= "M" ,c= partial(delay,'set.shader','( "MAGENTA")'))
 	mc.button(h=ui.btn_large,w=ui.iconSize,bgc= [.5 ,.5 ,0],l= "Y" ,c= partial(delay,'set.shader','( "YELLOW")'))
 	mc.button(h=ui.btn_large,w=ui.iconSize,bgc= [0 ,0 ,0],l= "K" ,c= partial(delay,'set.shader','( "BLACK")'))
-	
 	mc.setParent('..')
 	mc.separator(style='in')
-	#mc.frameLayout('frame_MATERIAL',w=ui.rowWidth,l='Existing Materials List',ec=partial(delay,'existMATUI','()'),cll=1)
-	#existMATUI('frame_MATERIAL')
 	mc.setParent('..')
-	mc.setParent('MAIN')
-def existMATUI(parentFrame):#in Roterra
-	if mc.scrollLayout('materiallist',q=1,ex=1)==True: mc.deleteUI('materiallist')
-	mc.setParent(parentFrame)
-	mc.scrollLayout('materiallist',w=ui.rowWidth,h=390)#h=len(ls.shaders())*25)
-	mc.rowColumnLayout(w=ui.rowWidth-10,numberOfColumns=2)
-	for each in sorted(ls.shaders()):
-		mc.button(w=ui.rowWidth-55,l=each,c=partial(delay,'mc.select','(\''+ str(each)+'\')'))
-		mc.button(w=45,l='ASSIGN',c=partial(delay,'mc.hyperShade','(assign=\''+ str(each)+'\')'))
-		#mc.button(w=40,l='GRAPH')   
-	mc.setParent('..');mc.setParent('..')     
+	mc.setParent('MAIN')     
 def globalsUI():
 	mc.frameLayout('GLOBAL',w=ui.rowWidth,l='GLOBALS',bgc=[.4,.2,.4],bs='in',fn='smallBoldLabelFont',cl=1)
 	mc.rowColumnLayout(w=ui.rowWidth,numberOfColumns=4)
@@ -310,7 +314,6 @@ def globalsUI():
 	
 	mc.setParent('..')
 	mc.setParent('..')
-
 ############### 
 def browse(location=None):#location default sourceimages
     if not location: location=mc.workspace(q=1,dir=1)

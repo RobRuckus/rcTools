@@ -347,6 +347,9 @@ class create():
 			#mc.editRenderLayerAdjustment('miDefaultOptions.lensShaders')
 			#mc.setAttr('miDefaultOptions.lensShaders',0)
 class set():
+	def fileNode(self,**kwargs): 
+		for each in mc.ls(type='file'): 
+			mc.setAttr(each+'.alphaIsLuminance',0)
 	def shader(self,shader):
 		shaderName=shader +'_MAT'
 		selShort=mc.ls(sl=1)
@@ -362,7 +365,7 @@ class set():
 				#mc.select(eachSn)
 				#mc.hyperShade(assign=shaderName)
 	def camera(self,**kwargs):#Set Cameras clip/ .renderable to only one camera 
-		if 'near' in kwargs:
+		if 'near' in kwargs:#centimeters near=.1 far=10000   meters makes it .001 , 100  so put it back 
 			mc.currentUnit(l='meter')
 			panels=["modelPanel1","modelPanel2","modelPanel3","modelPanel4"]
 			for each in panels:

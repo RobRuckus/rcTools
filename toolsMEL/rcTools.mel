@@ -256,7 +256,7 @@ global proc Bind()       {
 	string $file=`file -r -type "mayaBinary" -gl -loadReferenceDepth "all" -shd "renderLayersByName" -namespace "MOL_0" -options "v=0" "/Volumes/PDSA1/CFF/CFF_2012/Working_Files/Programs/Maya/scenes/refs/BindingMolecule.mb"`;
 	print $file;
 	}
-global proc ctrlIcon(string $proc){
+global proc ctrlIcon(string $proc){//DEPRECATED
 	switch($proc){
 		case "Box":
 			curve -name "box" -d 1 -p -0.5 0.5 -0.5 -p 0.5 0.5 -0.5 -p 0.5 0.5 0.5 -p -0.5 0.5 0.5 -p -0.5 0.5 -0.5 -p -0.5 -0.5 -0.5 -p -0.5 -0.5 0.5 -p 0.5 -0.5 0.5 -p 0.5 -0.5 -0.5 -p -0.5 -0.5 -0.5 -p -0.5 -0.5 0.5 -p -0.5 0.5 0.5 -p 0.5 0.5 0.5 -p 0.5 -0.5 0.5 -p 0.5 -0.5 -0.5 -p 0.5 0.5 -0.5 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 ;
@@ -418,7 +418,7 @@ global proc rcMoveSel(string $opt){
         	select -deselect $selLast[0];
         	for ($each in $sel) 
         		move -a $pivotSel[0] $pivotSel[1] $pivotSel[2] -rpr $each;
-        		rotate -xyz  $pivRotate[0] $pivRotate[1] $pivRotate[2]  $each;
+        		//rotate -xyz  $pivRotate[0] $pivRotate[1] $pivRotate[2]  $each;
         	break;
  
     }
@@ -950,7 +950,7 @@ global proc rccAssignDisplacementSwitch(string $shader, string $obj, string $dis
 	}
 
 ////SET
-global proc rcSetCameraClip(float $near, float $far) {
+global proc rcSetCameraClip(float $near, float $far) {//DEPRECATED
 	string $panelSet[] = {"modelPanel1", "modelPanel2", "modelPanel3", "modelPanel4"};
 	for($thisPanel in $panelSet){
 	string $camera = `modelEditor -q -camera $thisPanel`; 
