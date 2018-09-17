@@ -148,7 +148,7 @@ def materialListUI(parentFrame):
 
     prefix=RoterraPrefs.get('prefix')#mc.textField('prefix',q=1,tx=1)
     suffix=mc.textField('suffix',q=1,tx=1)
-    mc.rowColumnLayout(w=ui.rowWidth-20,numberOfColumns=2)
+    mc.rowColumnLayout(w=ui.rowWidth,numberOfColumns=3)
     for each in sorted(rc.ls.shaders()):
         if int(RoterraPrefs.get('ExcludePrefixSuffix'))==1:
             if each.startswith(prefix) and each.endswith(suffix):
@@ -157,15 +157,17 @@ def materialListUI(parentFrame):
                     sName=each[:-len(suffix)]
                 if each.startswith(prefix):
                     sName=sName[len(prefix):]
-                mc.button(w=ui.rowWidth-65,al='right',bgc=[0.1,0.1,0.1],l=sName.split(':')[-1],c=partial(delay,'mc.select','(\''+ str(each)+'\')'))
-                mc.button(w=45,l='ASSIGN',bgc=[0.1,0.3,0.1],c=partial(delay,'mc.hyperShade','(assign=\''+ str(each)+'\')'))#rc.ls.shaderColor(each)[0],
+                mc.button(w=15,l='?',bgc=[0.5,0.5,0.5],c=partial(delay,'mc.hyperShade','(objects=\''+ str(each)+'\')'))#rc.ls.shaderColor(each)[0],   
+                mc.button(w=ui.rowWidth-65,bgc=[0.1,0.1,0.1],l=sName.split(':')[-1],c=partial(delay,'mc.select','(\''+ str(each)+'\')'))
+                mc.button(w=55,l='ASSIGN',bgc=[0.1,0.3,0.1],c=partial(delay,'mc.hyperShade','(assign=\''+ str(each)+'\')'))#rc.ls.shaderColor(each)[0],
         else:
             sName=each
             if each.endswith(suffix): 
                 sName=each[:-len(suffix)]
             if each.startswith(prefix):
                 sName=sName[len(prefix):]
-            mc.button(w=ui.rowWidth-65,al='right',bgc=[0.1,0.1,0.1],l=sName.split(':')[-1],c=partial(delay,'mc.select','(\''+ str(each)+'\')'))
+            mc.button(w=15,l='?',bgc=[0.5,0.5,0.5],c=partial(delay,'mc.hyperShade','(objects=\''+ str(each)+'\')'))#rc.ls.shaderColor(each)[0],   
+            mc.button(w=ui.rowWidth-65,bgc=[0.1,0.1,0.1],l=sName.split(':')[-1],c=partial(delay,'mc.select','(\''+ str(each)+'\')'))
             mc.button(w=45,l='ASSIGN',bgc=[0.1,0.3,0.1],c=partial(delay,'mc.hyperShade','(assign=\''+ str(each)+'\')'))#rc.ls.shaderColor(each)[0],
 
             #mc.text(sName.split(':'),al='left')
@@ -192,7 +194,7 @@ def inScene(fileLocation,folder=''):
 	else:
 		behavior='r=1'
 	if folder is not None: 
-            obj=mc.file(fileLocation,r=1,shd="displayLayers",ignoreVersion=0,gl=1,mergeNamespacesOnClash=0,namespace='')
+            obj=mc.file(fileLocation,r=1,shd=["displayLayers","shadingNetworks"],ignoreVersion=0,gl=1,mergeNamespacesOnClash=0,namespace='')
             #mel.eval ('file '+behavior+' -ignoreVersion -gl -mergeNamespacesOnClash false -namespace "" "'+fileLocation+'"')
             print 'object=',obj
 	else: print ('source "'+scriptsMEL+str(script)+'"')
@@ -224,12 +226,12 @@ def tagListCallBack():
 def addObj(sel):
 	for each in sel:
 	    if int(RoterraPrefs.get('Material'))==1:
-	        material=conformMat(obj.rsplit('_mesh')[0]+'_material')
-	        mc.select(obj)
+	        material=conformMat(each.rsplit('_mesh')[0]+'_material')
+	        mc.select(each)
 	        mc.hyperShade(assign=material)
 
-	    mc.select(obj)
-	    tagRoterraFlag(obj)
+	    mc.select(each)
+	    tagRoterraFlag(each)
 	conformedListUI()
 def removeObj(opt): #deletes all sets and locators
 	if opt=='all':
