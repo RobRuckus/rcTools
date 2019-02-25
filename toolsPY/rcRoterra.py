@@ -91,7 +91,7 @@ def UI():
     mc.setParent('FURIROW')
     mc.setParent('..')
 
-    ui.frameGRP('Materials',pec=partial(delay,'materialListUI','("Materials")'))
+    ui.frameGRP('Materials',cl=1,pec=partial(delay,'materialListUI','("Materials")'))
     mc.menuBarLayout('materialmenu')
     mc.separator(h=5,style='in') 
     mc.menu(l='Options')
@@ -110,7 +110,7 @@ def UI():
 
     materialListUI('Materials')
     mc.setParent('..')
-    ui.frameGRP('Objects',pec=partial(delay,'importListUI','("Objects")'))
+    ui.frameGRP('Objects',cl=1,pec=partial(delay,'importListUI','("Objects")'))
     mc.menuBarLayout('objmenu')
     mc.separator(h=5,style='in') 
     mc.menu(l='Options')

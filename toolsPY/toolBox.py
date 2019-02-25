@@ -14,24 +14,21 @@ from rcTools.rcMaya import *
 #from rcTools.toolsPY import rcMaya2AE 
 from rcTools.toolsPY import toElement 
 from rcTools.toolsPY import rcRoterra 
-################source every mel in toolsMEL: toolsMEL
 
-for each in os.listdir(toolsMEL):
+for each in os.listdir(toolsMEL):#source every mel in toolsMEL: toolsMEL
 	file,ext=os.path.splitext(each)
 	path= os.path.join(toolsMEL.replace('\\','/'),each)
 	if ext =='.mel': mel.eval('source "%s"'%path)
-###############
-ui=ui('rcTools')
-def UI():
-	ui.toolBox()
 
+ui=ui('rcTools')
+def UI():#toolbox UI 
+	ui.toolBox()
 	ui.tab('MAIN')
 	assignUI()
 	rcRoterra.UI()
 	mc.setParent('MAIN')
 	rigUI()
 	materialsUI()
-	
 	ui.tab('SCRIPTS')
 	mc.rowColumnLayout(numberOfColumns=8)
 	ui.iconTextButton()
@@ -44,11 +41,10 @@ def UI():
 	ui.iconTextButton(ann="Render Manager",l= "RenderManager" ,i= (iconPath +"renderMGR.png"),c=partial(btnDelay,'mel.eval','("rcRenderMGR")'))
 	mc.setParent('..')
 	scriptsUI()
-
 	mc.showWindow()
-###############
+###############UI Schemes from Templates in rcMaya.ui class 
 def rigUI():
-    ui.frameGRP('Rig Controls')
+    ui.frameGRP('Rig Controls',cl=1)
     mc.rowColumnLayout(numberOfColumns=8)
     ui.iconTextButton(en=1,l= "Square" ,i= (iconPath +"ctrl_square.png"),c=partial(btnDelay,'mel.eval','(\'ctrlIcon(\"Square\")\')'))
     ui.iconTextButton(en=1,l= "Circle" ,i= (iconPath +"ctrl_circle.png"),c=partial(btnDelay,'mel.eval','(\'ctrlIcon(\"Circle\")\')'))
@@ -244,7 +240,7 @@ def assignUI():
 
 	mc.setParent('MAIN')  
 def materialsUI():
-	ui.frameGRP('MATERIALS',bgc=[.4,.2,.4])
+	ui.frameGRP('MATERIALS',cl=1,bgc=[.4,.2,.4])
 	#if mc.frameLayout('GLOBAL',q=1,ex=1)==1: mc.frameLayout('GLOBAL',e=1,cl=1)#CLOSE GLOBALS WIN
 	mc.floatSliderGrp('lambertslider',label='Lambert1 Transparent',minValue=0,maxValue=1,cc=partial(btnDelay,'lambertset','()'))
 	mc.separator(style='in')
@@ -290,7 +286,7 @@ def materialsUI():
 	mc.separator(style='in')
 	mc.setParent('..')
 	mc.setParent('MAIN')     
-def globalsUI():
+def globalsUI():#MENTALRAY DEPRICATED
 	mc.frameLayout('GLOBAL',w=ui.rowWidth,l='GLOBALS',bgc=[.4,.2,.4],bs='in',fn='smallBoldLabelFont',cl=1)
 	mc.rowColumnLayout(w=ui.rowWidth,numberOfColumns=4)
 	#mc.text(l='Anti\nAlias:',w=35,font='tinyBoldLabelFont',h=textHeight,al='right')

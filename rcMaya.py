@@ -9,13 +9,13 @@ from functools import partial
 def delay(method,string,*args): exec(method+string) #Button Delay Function
 ########
 class settingsFile(iniFile):
-    def __init__(self):
+    def __init__(self):#Defaulting to userDirectory 
         iniFile.__init__(self,os.path.join(userDirectory(),'settings.ini').replace('\\','/'))
         if not os.path.isfile(self.fileName):#Defaults 
 				file=open(self.fileName,'w')
 				file.close()
 				#DEFAULTS
-	def path(self,opt):
+	def path(self,opt):# Write Folder or File Locations
 	    if opt=='folder':
 	        self.path=mc.fileDialog2(fm=1,da=1,okc='SEt',cc='Cancel')[0]
 	    if opt=='file':
@@ -67,7 +67,7 @@ class ui():#UI Class for Maya
 		mc.frameLayout(self.name+name,l=name,w=self.rowWidth,fn='smallBoldLabelFont',bs='in',**kwargs)
 	def frameGRP(self,name,**kwargs):
 		if not 'bgc' in kwargs: kwargs['bgc']=[0,0,0]#DEFAULT COLOR
-		mc.frameLayout(name,cll=1,l=name.upper(),w=self.rowWidth,**kwargs)
+		mc.frameLayout(name,l=name.upper(),w=self.rowWidth,cll=1,**kwargs)
 	def frameSUB(self,name,**kwargs):
 		if not 'bgc' in kwargs: kwargs['bgc']=[.2,.2,.2]#DEFAULT COLOR
 		mc.frameLayout(name,l=name.upper(),fn='smallBoldLabelFont',cll=0,bs='in',**kwargs)
@@ -90,7 +90,6 @@ class ui():#UI Class for Maya
 	                mc.button(w=self.rowWidth,l=file,c=partial(delay,'inScene','("'+path+'","'+folder+'")'))
 		mc.setParent('..')
 		mc.setParent('..')
-#def variableScroll(self,
 class sceneData():#Custom Scene Data Returns
 	def ws(self): return mc.workspace(q=True,rd=True)
 	def wsImagesName(self): return mc.workspace('images',q=True,fileRuleEntry=True)
@@ -482,7 +481,7 @@ def rView():
     curIndex= mc.intScrollBar(scroll,q=True)
     maxIndex= mc.renderWindowEditor('renderView',q=True,nbImages=True)
 #####
-def rotAmt(amt,direction):
+def rotAmt(amt,direction):#COMMAND CONSTRUCT
 	x=0
 	y=0
 	z=0
