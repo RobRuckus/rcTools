@@ -55,6 +55,8 @@ class RoterraPrefs(iniFile):#RoterraPrefs
     		#conformedListUI()
 RoterraPrefs=RoterraPrefs()
 def UI():
+    
+    ui.frameGRP('Roterra',cl=0)
     mc.rowColumnLayout('FURIROW',numberOfColumns=2,columnWidth=[(1,ui.rowWidth/2),(2,ui.rowWidth/2)])
     ui.frameSUB('CREATE');
     mc.rowColumnLayout(numberOfColumns=4)
@@ -68,11 +70,9 @@ def UI():
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize)
     mc.iconTextButton(w=ui.iconSize,h=ui.iconSize)
     ui.iconButton(i= "rotateUVcw.png",c=partial(delay,'mel.eval','("polyRotateUVs 90 1")'))
-    ui.iconButton(i= "historyPulldownIcon.png",bgc=[.5,0,0],c=partial(delay,'mel.eval','("DeleteHistory")')) 
+    ui.iconButton(i= "DeleteHistory.png",c=partial(delay,'mel.eval','("DeleteHistory")')) 
     mc.setParent('FURIROW')
     mc.setParent('..')
-
-    ui.frameGRP('Scene',cl=1)
     mc.rowColumnLayout(numberOfColumns=1)
     mc.menuBarLayout('conformmenu')
     mc.separator(h=5,style='in') 
@@ -89,6 +89,7 @@ def UI():
 
     mc.iconTextScrollList('RoterraObjScroll',vis=1,w=ui.rowWidth,h=150)
     mc.setParent('FURIROW')
+    mc.setParent('..')
     mc.setParent('..')
 
     ui.frameGRP('Materials',cl=1,pec=partial(delay,'materialListUI','("Materials")'))

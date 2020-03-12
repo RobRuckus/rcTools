@@ -139,7 +139,7 @@ def assignUI():
 	mc.text(l='')
 	mc.button(l='Orig',ann='Move Object To World Origin',bgc=[.2,.2,.2],c=partial(btnDelay,'mel.eval','("rcMoveSel ORIGIN")'))
 	mc.button(l='Sel',ann='Move First Selected to Second',bgc=[.2,.2,.2],c=partial(btnDelay,'mel.eval','("rcMoveSel SELECTED")'))
-	mc.button(l='fObj',ann='Freeze Object\'s Transform, Rotation, Scale',bgc=[.3,.7,1],c=partial(btnDelay,'mc.makeIdentity','(mc.ls(sl=1),apply=True,t=1,r=1,s=1,n=0,pn=1)')) 
+	mc.iconTextButton(l='fObj',ann='Freeze Object\'s Transform, Rotation, Scale',i="FreezeTransform.png",c=partial(btnDelay,'mc.makeIdentity','(mc.ls(sl=1),apply=True,t=1,r=1,s=1,n=0,pn=1)')) 
 	mc.button(l='Tx',ann='Freeze Transforms',bgc=[.3,.7,1],c=partial(btnDelay,'mc.makeIdentity','(mc.ls(sl=1),apply=True,t=1,r=0,s=0,n=0,pn=1)')) 
 	mc.button(l='Rx',ann='Freeze Rotations',bgc=[.3,.7,1],c=partial(btnDelay,'mc.makeIdentity','(mc.ls(sl=1),apply=True,t=0,r=1,s=0,n=0,pn=1)')) 
 	mc.button(l='Sx',ann='Freeze Scales',bgc=[.3,.7,1],c=partial(btnDelay,'mc.makeIdentity','(mc.ls(sl=1),apply=True,t=0,r=0,s=1,n=0,pn=1)'))

@@ -54,15 +54,15 @@ class ui():#UI Class for Maya
 		if mc.dockControl(self.dock,ex=True):mc.deleteUI(self.dock)
 		#if mc.workspaceControl(self.dock,ex=True): mc.deleteUI(self.dock)
 		#mc.workspaceControl(self.dock,dockToPanel=['rcTools','left',1],label=self.name,floating=False)
-		mc.window(self.window,t=self.name,dc=['topLeft','bottomLeft'],w=self.rowWidth+50)#,nde=True
-		mc.formLayout(w=self.rowWidth+20)
+		mc.window(self.window,w=self.rowWidth,t=self.name,dc=['topLeft','bottomLeft'])#,nde=True....,
+		mc.formLayout()
 		mc.dockControl(self.dock,area='left',content=self.window,label=self.name,floating=False,**kwargs)
 	def toolBox(self):
 		self.win()
-		mc.tabLayout(self.tabs,w=self.rowWidth+20,imw=10)
+		mc.tabLayout(self.tabs,w=self.rowWidth+20,h=self.screensize[1]-120,imw=10)#
 	def tab(self,name):#tab command for toolBox
 		mc.setParent(self.tabs)
-		mc.scrollLayout(name,w=self.rowWidth+30,h=self.screensize[1]-150)	
+		mc.scrollLayout(name,w=self.rowWidth,h=self.screensize[1]-120)#
 	def frame(self,name,**kwargs): 
 		mc.frameLayout(self.name+name,l=name,w=self.rowWidth,fn='smallBoldLabelFont',bs='in',**kwargs)
 	def frameGRP(self,name,**kwargs):
@@ -178,6 +178,8 @@ def rlmAttrs():#custom renderLayerManager Attributes for tools using customAttr 
 class ls():
     def renderAtts(self):#return custom Attribute List 
         renderFlags=[]
+        
+        renderFlags.append('primaryVisibility')
         renderFlags.append('castsShadows')
         renderFlags.append('receiveShadows')
         renderFlags.append('visibleInReflections')
