@@ -7,9 +7,9 @@ http://robocolabo.com/blog/
 Version: 0.1
 Function:
 try:
-	reload(rcRoterra)
+    reload(rcRoterra)
 except:
-	import rcRoterra
+    import rcRoterra
 """
 ###########
 import subprocess
@@ -25,34 +25,34 @@ def delay(method,string,*args): exec(method+string) #Button Delay Function
 #UI VARIABLES FROM MAIN
 ui=rc.ui('Roterra')
 class RoterraPrefs(iniFile):#RoterraPrefs
-	def __init__(self):
-		iniFile.__init__(self,os.path.join(userDirectory(),'rcFuri.ini').replace('\\','/'))
-		if not os.path.isfile(self.fileName):#Defaults 
-				file=open(self.fileName,'w')
-				file.close()
-				mc.confirmDialog(m='Set Path to Model Folder')
-				self.path()
-				self.write('Flag','1')
-				self.write('Material','0')
-				self.write('Object','1')
-				self.write('IncludeNamespace','1')
-				self.write('prefix','forest_')
-				self.write('suffix','_material')
-				self.write('importBehavior', 'reference')
-				self.write('include',1)
+    def __init__(self):
+        iniFile.__init__(self,os.path.join(userDirectory(),'rcFuri.ini').replace('\\','/'))
+        if not os.path.isfile(self.fileName):#Defaults 
+                file=open(self.fileName,'w')
+                file.close()
+                mc.confirmDialog(m='Set Path to Model Folder')
+                self.path()
+                self.write('Flag','1')
+                self.write('Material','0')
+                self.write('Object','1')
+                self.write('IncludeNamespace','1')
+                self.write('prefix','forest_')
+                self.write('suffix','_material')
+                self.write('importBehavior', 'reference')
+                self.write('include',1)
                 self.write('ExcludePrefixSuffix',0)
-				#self.write('ImageLabel', 'Label3')	
-	def path(self):#Write Obj List Location to pref File and Update UI
-		self.importPath=mc.fileDialog2(fm=3,ds=1,okc='Set',cc='Cancel')[0]
-		self.write('importPath',self.importPath)
-	def checkBox(self,name):#Write checkBox Value
-		self.write(name,int(mc.checkBox(name,q=1,v=1)))
-	def menuItem(self,name):#Write menuItem Value
-	    self.write(name,int(mc.menuItem(name,q=1,cb=1)))
-	def set(self,att,value):#Write Value
-    		self.write(att,value)
-    		#importListUI()
-    		#conformedListUI()
+                #self.write('ImageLabel', 'Label3')	
+    def path(self):#Write Obj List Location to pref File and Update UI
+        self.importPath=mc.fileDialog2(fm=3,ds=1,okc='Set',cc='Cancel')[0]
+        self.write('importPath',self.importPath)
+    def checkBox(self,name):#Write checkBox Value
+        self.write(name,int(mc.checkBox(name,q=1,v=1)))
+    def menuItem(self,name):#Write menuItem Value
+        self.write(name,int(mc.menuItem(name,q=1,cb=1)))
+    def set(self,att,value):#Write Value
+            self.write(att,value)
+            #importListUI()
+            #conformedListUI()
 RoterraPrefs=RoterraPrefs()
 def UI():
     
@@ -133,15 +133,15 @@ def importListUI(parentFrame):#furiImportList
     mc.scrollLayout('importObjScroll',w=ui.rowWidth,h=600)
     # ui.fileList(location=RoterraPrefs.get('path'))
     for folder in rc.ls.dir(location):
-		mc.frameLayout(l=folder,w=ui.rowWidth-10,cll=1,cl=1)#mc.text(l=folder+':',align='left')
-		mc.columnLayout(w=ui.rowWidth)
-		for item in sorted(rc.ls.dir(os.path.join(location,folder),folder=0)):
-			file,ext=os.path.splitext(item)#split file and Extension 
-			path= os.path.join(location,folder,item).replace('\\','/')
-			if ext =='.fbx': 
-				mc.button(w=ui.rowWidth,l=file,c=partial(delay,'inScene','("'+path+'","'+file+'")'))
-		mc.setParent('..')
-		mc.setParent('..')
+        mc.frameLayout(l=folder,w=ui.rowWidth-10,cll=1,cl=1)#mc.text(l=folder+':',align='left')
+        mc.columnLayout(w=ui.rowWidth)
+        for item in sorted(rc.ls.dir(os.path.join(location,folder),folder=0)):
+            file,ext=os.path.splitext(item)#split file and Extension 
+            path= os.path.join(location,folder,item).replace('\\','/')
+            if ext =='.fbx': 
+                mc.button(w=ui.rowWidth,l=file,c=partial(delay,'inScene','("'+path+'","'+file+'")'))
+        mc.setParent('..')
+        mc.setParent('..')
 def materialListUI(parentFrame):
     if mc.scrollLayout('materiallist',q=1,ex=1)==True: mc.deleteUI('materiallist')
     mc.setParent(parentFrame)
@@ -172,76 +172,76 @@ def materialListUI(parentFrame):
             mc.button(w=45,l='ASSIGN',bgc=[0.1,0.3,0.1],c=partial(delay,'mc.hyperShade','(assign=\''+ str(each)+'\')'))#rc.ls.shaderColor(each)[0],
 
             #mc.text(sName.split(':'),al='left')
-        	#mc.button(w=40,l='GRAPH')   
+            #mc.button(w=40,l='GRAPH')   
     mc.setParent('..');mc.setParent('..') 
 def updateMaterials():
     RoterraPrefs.write('prefix',mc.textField('prefix',q=1,tx=1))
     RoterraPrefs.write('suffix',mc.textField('suffix',q=1,tx=1))
     materialListUI('Materials')
 def updateMenu():#UPDATE
-	
-	mc.menu('Path',e=True,dai=True)
-	mc.menuItem(p='Path',d=True,dl='Folder')
-	#for each in sceneData.outputImages():
-		#mc.menuItem(each,l=each,itl=True,c=partial(delay,'spawnBrowser','("%s")'%os.path.dirname(each)))
-	#mc.menuItem(l='Set Path Presets',c=partial(delay,'rc.set.globals','()'))
-	#mc.menuItem(d=True,dl='Path')
-	#mc.menuItem('Image Output',l=RoterraPrefs.get('importPath'),itl=True,en=0)
-	mc.menuItem(p='Path',l='Set Path',c=partial(delay,'RoterraPrefs.path','()'))
-	mc.setParent('..')	
+    
+    mc.menu('Path',e=True,dai=True)
+    mc.menuItem(p='Path',d=True,dl='Folder')
+    #for each in sceneData.outputImages():
+        #mc.menuItem(each,l=each,itl=True,c=partial(delay,'spawnBrowser','("%s")'%os.path.dirname(each)))
+    #mc.menuItem(l='Set Path Presets',c=partial(delay,'rc.set.globals','()'))
+    #mc.menuItem(d=True,dl='Path')
+    #mc.menuItem('Image Output',l=RoterraPrefs.get('importPath'),itl=True,en=0)
+    mc.menuItem(p='Path',l='Set Path',c=partial(delay,'RoterraPrefs.path','()'))
+    mc.setParent('..')	
 def inScene(fileLocation,folder=''):
-	if RoterraPrefs.get('importBehavior')=='import':
-		behavior='i=1'
-	else:
-		behavior='r=1'
-	if folder is not None: 
+    if RoterraPrefs.get('importBehavior')=='import':
+        behavior='i=1'
+    else:
+        behavior='r=1'
+    if folder is not None: 
             obj=mc.file(fileLocation,r=1,shd=["displayLayers","shadingNetworks"],ignoreVersion=0,gl=1,mergeNamespacesOnClash=0,namespace='')
             #mel.eval ('file '+behavior+' -ignoreVersion -gl -mergeNamespacesOnClash false -namespace "" "'+fileLocation+'"')
-            print 'object=',obj
-	else: print ('source "'+scriptsMEL+str(script)+'"')
+            print ('object=',obj)
+    else: print ('source "'+scriptsMEL+str(script)+'"')
 def conformedListUI():#furiItemList
-	mc.iconTextScrollList('RoterraObjScroll',e=1,ams=1,ra=1)
-	mc.popupMenu('menuObj',p='RoterraObjScroll')
-	mc.menuItem('Rename Material',l='Rename Material',c=partial(delay,'aePrefs.write',"('Behavior','New')"))
-	mc.menuItem('Pivot Conform',l='Pivot Conform',c=partial(delay,'aePrefs.write',"('Behavior','New')"))
-	index=0
-	for each in mc.ls():
-		if mc.objExists(each+'.RoterraFlag'):
-		    fileColor=[index+1,1,0,0]
-		    if checkConform(each) :
-		         fileColor=[index+1,0,1,0] 
-		    index=index+1
-		    mc.iconTextScrollList('RoterraObjScroll',e=1,a=each.rsplit('_mesh')[0],itc=fileColor,sc=tagListCallBack)
+    mc.iconTextScrollList('RoterraObjScroll',e=1,ams=1,ra=1)
+    mc.popupMenu('menuObj',p='RoterraObjScroll')
+    mc.menuItem('Rename Material',l='Rename Material',c=partial(delay,'aePrefs.write',"('Behavior','New')"))
+    mc.menuItem('Pivot Conform',l='Pivot Conform',c=partial(delay,'aePrefs.write',"('Behavior','New')"))
+    index=0
+    for each in mc.ls():
+        if mc.objExists(each+'.RoterraFlag'):
+            fileColor=[index+1,1,0,0]
+            if checkConform(each) :
+                 fileColor=[index+1,0,1,0] 
+            index=index+1
+            mc.iconTextScrollList('RoterraObjScroll',e=1,a=each.rsplit('_mesh')[0],itc=fileColor,sc=tagListCallBack)
 def tagListCallBack():
-	sel=[]
-	try:
-		[sel.append(each+'_mesh') for each in mc.iconTextScrollList('RoterraObjScroll',q=1,si=1) if mc.iconTextScrollList('RoterraObjScroll',q=1,si=1) ]
-	except:
-		pass
-	if sel: 
-	    if sel=='_mesh':
-	        pass
-	    else:
-	        mc.select(sel)
+    sel=[]
+    try:
+        [sel.append(each+'_mesh') for each in mc.iconTextScrollList('RoterraObjScroll',q=1,si=1) if mc.iconTextScrollList('RoterraObjScroll',q=1,si=1) ]
+    except:
+        pass
+    if sel: 
+        if sel=='_mesh':
+            pass
+        else:
+            mc.select(sel)
 
 def addObj(sel):
-	for each in sel:
-	    if int(RoterraPrefs.get('Material'))==1:
-	        material=conformMat(each.rsplit('_mesh')[0]+'_material')
-	        mc.select(each)
-	        mc.hyperShade(assign=material)
+    for each in sel:
+        if int(RoterraPrefs.get('Material'))==1:
+            material=conformMat(each.rsplit('_mesh')[0]+'_material')
+            mc.select(each)
+            mc.hyperShade(assign=material)
 
-	    mc.select(each)
-	    tagRoterraFlag(each)
-	conformedListUI()
+        mc.select(each)
+        tagRoterraFlag(each)
+    conformedListUI()
 def removeObj(opt): #deletes all sets and locators
-	if opt=='all':
-		for each in mc.ls():
-			if mc.objExists(each+'.RoterraFlag'): mc.deleteAttr(each+'.RoterraFlag')
-	if opt=='sel':
-		for each in mc.ls(sl=1):
-			if mc.objExists(each+'.RoterraFlag'): mc.deleteAttr(each+'.RoterraFlag')
-	conformedListUI()
+    if opt=='all':
+        for each in mc.ls():
+            if mc.objExists(each+'.RoterraFlag'): mc.deleteAttr(each+'.RoterraFlag')
+    if opt=='sel':
+        for each in mc.ls(sl=1):
+            if mc.objExists(each+'.RoterraFlag'): mc.deleteAttr(each+'.RoterraFlag')
+    conformedListUI()
 ################
 def prompt(initial):
     prompt=mc.promptDialog(t="Conform",m="Name:                                     ",tx=initial,button="Go")
@@ -295,9 +295,9 @@ def conformMat(name):
             mc.confirmDialog(b='Ok',m=name+ ' Already Exists')
         return name
 def tagRoterraFlag(sel):
-	if not mc.objExists(sel+'.RoterraFlag') : 
-	    mc.addAttr(sel,ln='RoterraFlag',dt='string')		
-	mc.setAttr(sel+'.RoterraFlag',sel.rstrip('_mesh'),type='string')
+    if not mc.objExists(sel+'.RoterraFlag') : 
+        mc.addAttr(sel,ln='RoterraFlag',dt='string')		
+    mc.setAttr(sel+'.RoterraFlag',sel.rstrip('_mesh'),type='string')
 def checkConform(sel):
     conform=1
     objWS=mc.xform(sel,q=1,sp=1)
@@ -333,7 +333,7 @@ def fileNode(name,outAttr):
     else: connectedAttr = outAttr
     obj=name.rsplit('_material')[0]+'_file_' + outAttr   
     if not mc.objExists(obj):
-        print 'obj doesnt exist'
+        print ('obj doesnt exist')
         image=mc.shadingNode('file',asTexture=True,name=obj)
         mc.setAttr(image+'.fileTextureName','sourceimages/'+name.rsplit('_material')[0]+'_'+outAttr+'.png',type='string')
         mc.connectAttr(image+'.outColor',name+'.'+connectedAttr)
@@ -347,11 +347,11 @@ def fileNode(name,outAttr):
             textureFile=mc.getAttr(obj+'.fileTextureName')
             if not textureFile=='sourceimages/'+name+'_'+outAttr+'.png':#check for conformity 
                 mc.confirmDialog(b='Ok',m = 'Texture File Mismatch: '+ textureFile)      
-            else: print textureFile + ' Already Connected'
+            else: print (textureFile + ' Already Connected')
        
 #################
 if __name__== 'rcRoterra' :
-	ui.win()
-	ui.toolBox()
-	ui.tab('Roterra')
-	UI()
+    ui.win()
+    ui.toolBox()
+    ui.tab('Roterra')
+    UI()
