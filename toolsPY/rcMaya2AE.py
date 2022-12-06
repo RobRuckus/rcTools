@@ -54,7 +54,7 @@ class aePrefs(iniFile):#aePrefs.ini
 		self.write('AELoc',self.AEPath)
 		if mc.objExists('Path'): mc.menuItem('Path',e=1,l=self.get('AELoc'))
 	def menuItem(self,name):#Write menuItem Value
-			self.write(name,int(mc.menuItem(name,q=1,cb=1)))
+	    self.write(name,int(mc.menuItem(name,q=1,cb=1)))
 	def checkBox(self,name):#Write checkBox Value
 		self.write(name,int(mc.checkBox(name,q=1,v=1)))
 	def set(self,att,value):#Write Value
@@ -269,8 +269,6 @@ def UI():
 	updateMenu()
 	
 	
-	
-	
 	mc.separator(h=5,style='in')
 	mc.rowColumnLayout(numberOfColumns=2,columnWidth=[(1, 70),(2, 215)])
 	mc.text(al='right',font='tinyBoldLabelFont',label='Comp Name: ',ann='The Name of the Comp that is Anchored to this Scene in After Effects')
@@ -306,16 +304,13 @@ def applyrlmAttrs():
 	buildUILists()
 	
 def updateMenu():#UPDATE
-	
 	mc.menu('Path',e=True,dai=True)
 	mc.menuItem(d=True,dl='Maya Render Images')
 	for each in sceneData.outputImages():
 		mc.menuItem(each,l=each,itl=True,c=partial(delay,'spawnBrowser','("%s")'%os.path.dirname(each)))
 	mc.menuItem(l='Set Path Presets',c=partial(delay,'rc.set.globals','()'))
-	mc.menuItem(d=True,dl='After Effects')
-	
-	mc.menuItem('Image Output',l=aePrefs.get('AELoc'),itl=True,en=0)
-	
+	mc.menuItem(d=True,dl='After Effects')	
+	mc.menuItem('Image Output',l=aePrefs.get('AELoc'),itl=True,en=0)	
 	mc.menuItem(l='Set Path',c=partial(delay,'aePrefs.path','()'))
 	mc.setParent('..')
 	

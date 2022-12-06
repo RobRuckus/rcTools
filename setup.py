@@ -1,3 +1,6 @@
+""" 
+WIP automated setup scripts for guest workstation 
+"""
 import shutil
 import os
 

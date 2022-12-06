@@ -1,0 +1,9 @@
+
+
+
+try:
+	reload(rcFurioso)
+except:
+	from rcTools import *
+	sys.path.append(os.path.join(userDirectory(),'rcTools','toolsPY'))
+	import rcFurioso

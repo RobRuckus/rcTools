@@ -1,4 +1,8 @@
+<<<<<<< HEAD
+scriptsMEL/
+=======
 
+>>>>>>> refs/remotes/origin/master
 pluginsMAYA/
 #################
 ## Eclipse
@@ -216,3 +220,5 @@ pip-log.txt
 
 #Mr Developer
 .mr.developer.cfg
+*.py#
+rcTools/
